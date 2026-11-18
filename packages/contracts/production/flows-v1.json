@@ -831,6 +831,28 @@
             "A05"
           ],
           "active_match": false
+        },
+        {
+          "event": "approve",
+          "from": "approved",
+          "to": "approved",
+          "role": "system",
+          "eligible": false,
+          "policies": [
+            "A05"
+          ],
+          "active_match": false
+        },
+        {
+          "event": "reject",
+          "from": "approved",
+          "to": "rejected",
+          "role": "system",
+          "eligible": false,
+          "policies": [
+            "A05"
+          ],
+          "active_match": false
         }
       ],
       "forbidden": "Every unlisted transition; wrong actor/object; stale version; unknown required policy; denied/unknown eligibility when required.",

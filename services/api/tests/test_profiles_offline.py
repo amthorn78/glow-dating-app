@@ -72,6 +72,8 @@ MEDIA_COMMANDS = {
     "review",
     "run_check",
     "request_purge",
+    # SV2-R (OD-68): the check's decision on a photo approved while its toggle was off.
+    "recheck",
 }
 MEDIA_READS = {"delivery_reference"}
 # SV2 Stage B, correction C1 (DM-58 item 9): the two writers that take the account row in any

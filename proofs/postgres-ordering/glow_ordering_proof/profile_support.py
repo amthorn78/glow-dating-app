@@ -26,6 +26,12 @@ mail's codes, and Django's test client. Then:
   completion, the system review step and the automated check, which the test drives with its own
   adapter (``DecidingCheck``) in its own setup, since the runtime's check approves nothing. The
   object key is read from the grant's row in the disposable database: no member is given it.
+- **The photo check's toggle** (SV2-R; OD-68): ``media.photo_check`` is off at launch, and while
+  it is off ``run_check`` approves a photo without the check. ``approved_photo`` drives the check
+  with the test's own adapter, so it publishes the toggle on in its setup (``photo_check``), as
+  every case that drives the check with its own adapter does (SV2-R's acceptance check 4): each
+  earlier case's photo is approved by the check, as before. SV2-R's own cases set the toggle as
+  each needs it.
 """
 
 from __future__ import annotations
@@ -717,9 +723,11 @@ class ProfileContext:
 
     def approved_photo(self, member: Member) -> str:
         """An approved photo through Stage B's own path: quarantine, the system review step and
-        G-02's seam, then the test's own check approving it."""
+        G-02's seam, then the test's own check approving it, with the photo check's toggle
+        published on in its setup (SV2-R; OD-68)."""
         from glow_profiles import media
 
+        self.photo_check(True)
         asset_id = self.uploaded_photo(member)
         expect(media.review(UUID(asset_id)).outcome == "applied", "the review step ran")
         approved = media.run_check(UUID(asset_id), ports=test_ports(check=DecidingCheck()))
@@ -728,6 +736,17 @@ class ProfileContext:
         expect(lifecycle["state"] == "approved", "the photo is approved")
         self.values.add(lifecycle["approved_delivery_ref"])
         return asset_id
+
+    def photo_check(self, enabled: bool) -> None:
+        """SV2-R (OD-68): the photo check's toggle, published as staff will, in the state asked
+        for, unless it is already in it."""
+        from glow_domain import profile_settings as ps
+        from glow_profiles import settings_store
+
+        current = settings_store.read_unlocked(ps.PHOTO_CHECK).content
+        if current["enabled"] is not enabled:
+            result = self.publish(ps.PHOTO_CHECK, {"enabled": enabled})
+            expect(result.outcome == "applied", "the photo check's toggle is published")
 
     # -- staff (no route; P07's console calls these) ------------------------------------------
 

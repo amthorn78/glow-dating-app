@@ -9,7 +9,10 @@ database.
   authenticates its own events only, and processing reads only the key it is given;
 - the projections: only an approved variant's reference, the closed DTOs unchanged;
 - no member route reaches a provider, system or staff step;
-- the check's approval returns at a hold before it writes anything (correction C2, F1).
+- every approval returns at a hold before it writes anything (correction C2, F1; SV2-R);
+- SV2-R (OD-68): the photo check's toggle read in each step's one ``read_shared`` call,
+  ``run_check``'s off branch calling no check port and recording the toggle's own subject and
+  reason, and the recheck's order of checks, writes and the hold port.
 
 The profile suite on the disposable PostgreSQL drives each writer through the routes and the
 ports.
@@ -69,6 +72,27 @@ class RegistryTests(unittest.TestCase):
         self.assertEqual(md.TRANSITIONS[("restrict_media", md.APPROVED)][1], "moderator")
         self.assertEqual(md.TRANSITIONS[("uploaded", md.UPLOAD_PENDING)][1], "provider")
         self.assertEqual(md.TRANSITIONS[("purged", md.REMOVAL_PENDING)][1], "provider")
+        # SV2-R (OD-68): the recheck's two transitions out of approved are the system's; with
+        # the owner's reorder and removal and the moderator's restriction, they are the only ones.
+        self.assertEqual(md.TRANSITIONS[("approve", md.APPROVED)], (md.APPROVED, "system"))
+        self.assertEqual(md.TRANSITIONS[("reject", md.APPROVED)], (md.REJECTED, "system"))
+        self.assertEqual(
+            {
+                (event, after)
+                for (event, before), (after, _role) in md.TRANSITIONS.items()
+                if before == md.APPROVED
+            },
+            {
+                ("reorder", md.APPROVED),
+                ("remove", md.REMOVAL_PENDING),
+                ("restrict_media", md.REVIEW_PENDING),
+                ("approve", md.APPROVED),
+                ("reject", md.REJECTED),
+            },
+        )
+        for event in ("uploaded", "review", "purged", "upload_grant"):
+            with self.subTest(event=event):
+                self.assertIsNone(md.next_state(event, md.APPROVED))
         # Upload cannot skip quarantine or review (F05).
         self.assertIsNone(md.next_state("approve", md.QUARANTINED))
         self.assertIsNone(md.next_state("review", md.UPLOAD_PENDING))
@@ -357,6 +381,9 @@ class RouteTests(unittest.TestCase):
                 "delivery_reference",
                 "restrict_media",
                 "media_fixtures",
+                # SV2-R (OD-68): the recheck and its read, for P11's worker only.
+                "recheck",
+                "awaiting_recheck",
             ):
                 with self.subTest(module=module, name=name):
                     self.assertNotIn(f"{name}(", text)
@@ -394,15 +421,32 @@ class RouteTests(unittest.TestCase):
         self.assertLess(
             text.index("adapters.hold.held"), text.index("_decision_audit(tx, asset, 'approve'")
         )
-        approvals = [
-            node
-            for node in ast.walk(tree)
+        # SV2-R (its brief's "Earlier tests"): each approval in media.py, by its step. run_check's
+        # one approval is the check's and, while the toggle is off, the off branch's; the
+        # recheck's keeps a photo approved. Each asks the hold port first (below).
+        approvals = sorted(
+            function.name
+            for function in tree.body
+            if isinstance(function, ast.FunctionDef)
+            for node in ast.walk(function)
             if isinstance(node, ast.Call)
             and ast.unparse(node.func) == "transition"
             and len(node.args) > 2
             and getattr(node.args[2], "value", None) == "approve"
-        ]
-        self.assertEqual(len(approvals), 1)
+        )
+        self.assertEqual(approvals, ["recheck", "run_check"])
+        recheck = next(
+            node
+            for node in tree.body
+            if isinstance(node, ast.FunctionDef) and node.name == "recheck"
+        )
+        text = ast.unparse(recheck)
+        self.assertLess(
+            text.index("adapters.hold.held"), text.index("transition(tx, asset.id, 'approve'")
+        )
+        self.assertLess(
+            text.index("adapters.hold.held"), text.index("_decision_audit(tx, asset, 'approve'")
+        )
 
     def test_a_hold_returns_before_the_approval_writes_anything(self) -> None:
         # SV2 Stage B, correction C2 (the exact-head review's F1): the approval's held branch is
@@ -410,15 +454,20 @@ class RouteTests(unittest.TestCase):
         # before every write of the approval: its audit row, the delivery reference, the
         # transition and the recompute. The port asked and its answer ignored fails here; the
         # profile suite's ``media.a_hold_stops_the_checks_approval`` shows it on PostgreSQL.
+        # SV2-R (its brief's "Earlier tests"; DM-92 YY1, YY5): the same rule holds for every
+        # approval, run_check's (the check's and the off branch's, one approval) and the
+        # recheck's, which writes no recompute (its photo stays approved).
+        self.held_before_every_write("run_check", recomputes=True)
+        self.held_before_every_write("recheck", recomputes=False)
+
+    def held_before_every_write(self, step: str, *, recomputes: bool) -> None:
         tree = modules()["media.py"]
-        run_check = next(
-            node
-            for node in tree.body
-            if isinstance(node, ast.FunctionDef) and node.name == "run_check"
+        function = next(
+            node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == step
         )
         body = next(
             node
-            for node in run_check.body
+            for node in function.body
             if isinstance(node, ast.FunctionDef) and node.name == "body"
         )
         approving = [
@@ -459,18 +508,172 @@ class RouteTests(unittest.TestCase):
             ".save(",
             ".create(",
         ):
-            with self.subTest(write=write):
+            with self.subTest(step=step, write=write):
                 self.assertNotIn(write, earlier)
         for write in (
             "_decision_audit(tx, asset, 'approve'",
             "transition(tx, asset.id, 'approve'",
             "adapters.storage.delivery_reference(variant.key)",
-            "recompute.recompute(tx, account_id, now",
+            *(("recompute.recompute(tx, account_id, now",) if recomputes else ()),
         ):
-            with self.subTest(write=write):
+            with self.subTest(step=step, write=write):
                 self.assertIn(write, later)
-        # The port is asked once in the check, at this guard only.
+        if not recomputes:
+            self.assertNotIn("recompute.recompute(", later)
+        # The port is asked once in the step, at this guard only.
         self.assertEqual(ast.unparse(body).count("adapters.hold.held("), 1)
+
+
+def _body(step: str) -> ast.FunctionDef:
+    """The transaction body of one step of ``media.py``."""
+    function = next(
+        node
+        for node in modules()["media.py"].body
+        if isinstance(node, ast.FunctionDef) and node.name == step
+    )
+    return next(
+        node for node in function.body if isinstance(node, ast.FunctionDef) and node.name == "body"
+    )
+
+
+class PhotoCheckToggleTests(unittest.TestCase):
+    """SV2-R (its brief's R2; OD-68; DM-84 section 5; DM-91 XX6): the photo check's toggle in
+    ``run_check`` and the recheck. The profile suite's ``sv2r.`` cases drive both on PostgreSQL."""
+
+    TOGGLE_READ = (
+        "settings_store.read_shared(tx, [ps.ONBOARDING_CONSENT, ps.PHOTO_CHECK, ps.MEDIA_POLICY])"
+    )
+
+    def statements(self, step: str) -> list[str]:
+        return [ast.unparse(statement) for statement in _body(step).body]
+
+    def test_each_step_reads_the_toggle_in_its_one_read_shared_call_in_name_order(self) -> None:
+        for step in ("run_check", "recheck"):
+            with self.subTest(step=step):
+                statements = self.statements(step)
+                self.assertEqual(statements[0], "lock_account(tx, account_id)")
+                self.assertIn(self.TOGGLE_READ, statements[1])
+                text = ast.unparse(_body(step))
+                self.assertEqual(text.count("settings_store.read_shared("), 1)
+                # The names are written in D19's order, and read_shared sorts them anyway.
+                names = ["ps.ONBOARDING_CONSENT", "ps.PHOTO_CHECK", "ps.MEDIA_POLICY"]
+                self.assertEqual(
+                    [ps.ONBOARDING_CONSENT, ps.PHOTO_CHECK, ps.MEDIA_POLICY],
+                    sorted([ps.MEDIA_POLICY, ps.ONBOARDING_CONSENT, ps.PHOTO_CHECK]),
+                )
+                positions = [statements[1].index(name) for name in names]
+                self.assertEqual(positions, sorted(positions))
+
+    def test_the_off_branch_calls_no_check_port_and_records_the_toggles_own_reason(self) -> None:
+        body = _body("run_check")
+        branch = next(
+            statement
+            for statement in body.body
+            if isinstance(statement, ast.If) and ast.unparse(statement.test) == "checking"
+        )
+        on = "\n".join(ast.unparse(statement) for statement in branch.body)
+        off = "\n".join(ast.unparse(statement) for statement in branch.orelse)
+        self.assertIn("adapters.check.decide(", on)
+        self.assertIn("md.CHECK_SUBJECT, md.APPROVED_BY_CHECK", on)
+        self.assertNotIn("adapters.check", off)
+        self.assertNotIn("md.CHECK_SUBJECT", off)
+        self.assertNotIn("md.APPROVED_BY_CHECK", off)
+        self.assertIn("decided = md.CheckDecision('approve')", off)
+        self.assertIn("subject, approval = (md.PHOTO_CHECK_OFF_SUBJECT, md.PHOTO_CHECK_OFF)", off)
+        # The check port is asked nowhere else in run_check, and the toggle is read as a strict
+        # boolean, after the one read_shared call.
+        text = ast.unparse(body)
+        self.assertEqual(text.count("adapters.check.decide("), 1)
+        self.assertIn("checking = found[ps.PHOTO_CHECK].content['enabled'] is True", text)
+        # The restriction stops the off branch as it stops the check: it comes before the branch.
+        self.assertLess(text.index("asset.restriction_ref is not None"), text.index("if checking"))
+        # The one approval records the branch's subject and reason.
+        self.assertIn("_decision_audit(tx, asset, 'approve', approval, subject=subject)", text)
+        self.assertNotEqual(md.PHOTO_CHECK_OFF_SUBJECT, md.CHECK_SUBJECT)
+        self.assertNotEqual(md.PHOTO_CHECK_OFF, md.APPROVED_BY_CHECK)
+        self.assertTrue(ps.staff_subject_ok(md.PHOTO_CHECK_OFF_SUBJECT))
+        self.assertTrue(ps.reason_ok(md.PHOTO_CHECK_OFF))
+
+    def test_the_recheck_changes_nothing_while_the_toggle_is_off(self) -> None:
+        statements = self.statements("recheck")
+        text = "\n".join(statements)
+        guard = next(
+            index
+            for index, statement in enumerate(_body("recheck").body)
+            if isinstance(statement, ast.If)
+            and ast.unparse(statement.test)
+            == "settings[ps.PHOTO_CHECK].content['enabled'] is not True"
+        )
+        branch = _body("recheck").body[guard]
+        assert isinstance(branch, ast.If)
+        self.assertEqual(
+            [ast.unparse(statement) for statement in branch.body],
+            ["return Result('no_change', reason='photo_check_off')"],
+        )
+        earlier = "\n".join(statements[:guard])
+        for call in ("adapters.", "_decision_audit(", "transition(", "recompute.", ".save("):
+            with self.subTest(call=call):
+                self.assertNotIn(call, earlier)
+        # Then only a photo approved under the toggle's reason, then the check port, once.
+        self.assertLess(text.index("photo_check_off"), text.index("not_awaiting_recheck"))
+        self.assertLess(text.index("not_awaiting_recheck"), text.index("adapters.check.decide("))
+        self.assertEqual(text.count("adapters.check.decide("), 1)
+
+    def test_the_recheck_records_the_checks_decision_and_its_rejection_recomputes(self) -> None:
+        body = _body("recheck")
+        branches = {
+            ast.unparse(statement.test): "\n".join(ast.unparse(s) for s in statement.body)
+            for statement in body.body
+            if isinstance(statement, ast.If)
+        }
+        approve = branches["decided.decision == 'approve'"]
+        self.assertIn("_decision_audit(tx, asset, 'approve', md.APPROVED_BY_CHECK)", approve)
+        self.assertNotIn("subject=", approve)
+        self.assertIn("review_ref=review_ref", approve)
+        reject = branches["decided.decision == 'reject'"]
+        self.assertIn("transition(tx, asset.id, 'reject'", reject)
+        self.assertLess(
+            reject.index("transition(tx, asset.id, 'reject'"),
+            reject.index("recompute.recompute(tx, account_id, now, writer=recompute.OTHER_FLOW)"),
+        )
+        self.assertEqual(
+            branches["decided.decision == 'undecided'"],
+            "return Result('no_change', reason='undecided')",
+        )
+        # The recheck finds a photo by the toggle's own audit row: its subject, reason and action.
+        helper = next(
+            node
+            for node in modules()["media.py"].body
+            if isinstance(node, ast.FunctionDef) and node.name == "_approvals_while_off"
+        )
+        source = ast.unparse(helper)
+        for part in (
+            "action='approve'",
+            "object_type='media_asset'",
+            "staff_subject=md.PHOTO_CHECK_OFF_SUBJECT",
+            "reason_code=md.PHOTO_CHECK_OFF",
+        ):
+            with self.subTest(part=part):
+                self.assertIn(part, source)
+
+    def test_the_read_lists_only_approved_photos_of_active_accounts(self) -> None:
+        read = next(
+            node
+            for node in modules()["media.py"].body
+            if isinstance(node, ast.FunctionDef) and node.name == "awaiting_recheck"
+        )
+        source = ast.unparse(read)
+        for part in (
+            "state=md.APPROVED",
+            "account__state='active'",
+            "review_ref__in=_approvals_while_off().values('id')",
+        ):
+            with self.subTest(part=part):
+                self.assertIn(part, source)
+        # It writes and locks nothing: no transaction, no lock, no port.
+        for call in ("run(", "lock_account", "select_for_update", "adapters", ".save(", "create("):
+            with self.subTest(call=call):
+                self.assertNotIn(call, source)
 
 
 class AccountStateTests(unittest.TestCase):
