@@ -1,15 +1,16 @@
 # SV2-R prompt — SV2's completion requirements after OD-68: the identity requirement set aside, and the photo check's toggle
 
 - **Owner:** App Manager 12. Nathan starts this session manually, in the `Glow App - No Stream` environment (OD-36), and relays its report.
-- **Revision 1, 18 November 2026.**
-- **Durable brief:** [SV2-R — SV2's completion requirements after OD-68](../planning/sv2-r-od-68-requirements-change.md), revision 4 (DM-91's XX5 to XX8 and DM-92's YY1 to YY7 applied as given).
+- **Revision 2, 18 November 2026,** after revision 1's session stopped under its stop rule before changing anything (the brief's "Sessions"): the owned paths gain the proof's plan pins and its README paragraph, SV2-R's cases take a prefix of their own, and a continuing session restarts from this commit. Revision 1 was at `9c888c0`.
+- **Durable brief:** [SV2-R — SV2's completion requirements after OD-68](../planning/sv2-r-od-68-requirements-change.md), revision 6 (DM-91's XX5 to XX8, DM-92's YY1 to YY7 and DM-93's ZZ1 to ZZ4 applied as given).
 - **Where the result goes:**
   - the session's changes in the brief's owned paths, and its record, `docs/testing/evidence/<the session's date>-sv2-r-requirements-change.md`, on its own branch;
   - the run of record: the Foundation run on its last code commit;
   - the manager adds its verification to the record, and records the outcome in the brief's "Sessions".
 - **Model and reasoning setting** (OD-10, OD-30, OD-33, OD-34, OD-42). The reading is the recommendation; it gates nothing, and Nathan picks.
-  - **TypeSafe v8.2: Opus 5.5 at high.** Effort score 2.25 (confidence 0.63); rung probabilities low 0.00, medium 0.15, high 0.45, extra high 0.39, max 0.01, ultracode 0.00. Model probabilities Fable 5.1 0.00, Opus 5.5 0.56, Sonnet 5.5 0.44, Haiku 5.5 0.00 (confidence 0.41). Twenty-four cells, computed from the two answers: Fable 5.1 at low 0.000, Fable 5.1 at medium 0.000, Fable 5.1 at high 0.000, Fable 5.1 at extra high 0.000, Fable 5.1 at max 0.000, Fable 5.1 at ultracode 0.000, Opus 5.5 at low 0.000, Opus 5.5 at medium 0.084, Opus 5.5 at high 0.252, Opus 5.5 at extra high 0.218, Opus 5.5 at max 0.006, Opus 5.5 at ultracode 0.000, Sonnet 5.5 at low 0.000, Sonnet 5.5 at medium 0.066, Sonnet 5.5 at high 0.198, Sonnet 5.5 at extra high 0.172, Sonnet 5.5 at max 0.004, Sonnet 5.5 at ultracode 0.000, Haiku 5.5 at low 0.000, Haiku 5.5 at medium 0.000, Haiku 5.5 at high 0.000, Haiku 5.5 at extra high 0.000, Haiku 5.5 at max 0.000, Haiku 5.5 at ultracode 0.000. Flags: boundary between extra high and high; model near tie between Opus 5.5 and Sonnet 5.5. Sent 2026-11-18T15:56:15Z. Nathan picks the cell.
-- **The Dev Manager's read:** done. Dev Manager 5 read the brief in DM-91 and DM-92, and its words are applied as given. This prompt authorizes no credential use and no live provider action, so it needs no read of its own (the charter, "Read before it takes effect"). The suites' keys and the database password are generated for one run and destroyed with it.
+  - **TypeSafe v8.2: Opus 5.5 at high.** Effort score 2.25 (confidence 0.61); rung probabilities low 0.00, medium 0.16, high 0.43, extra high 0.40, max 0.01, ultracode 0.00. Model probabilities Fable 5.1 0.00, Opus 5.5 0.65, Sonnet 5.5 0.35, Haiku 5.5 0.00 (confidence 0.53). Twenty-four cells, computed from the two answers: Fable 5.1 at low 0.000, Fable 5.1 at medium 0.000, Fable 5.1 at high 0.000, Fable 5.1 at extra high 0.000, Fable 5.1 at max 0.000, Fable 5.1 at ultracode 0.000, Opus 5.5 at low 0.000, Opus 5.5 at medium 0.104, Opus 5.5 at high 0.280, Opus 5.5 at extra high 0.260, Opus 5.5 at max 0.007, Opus 5.5 at ultracode 0.000, Sonnet 5.5 at low 0.000, Sonnet 5.5 at medium 0.056, Sonnet 5.5 at high 0.150, Sonnet 5.5 at extra high 0.140, Sonnet 5.5 at max 0.003, Sonnet 5.5 at ultracode 0.000, Haiku 5.5 at low 0.000, Haiku 5.5 at medium 0.000, Haiku 5.5 at high 0.000, Haiku 5.5 at extra high 0.000, Haiku 5.5 at max 0.000, Haiku 5.5 at ultracode 0.000. Flags: boundary between extra high and high. Sent 2026-11-18T17:06:14Z. Nathan picks the cell.
+  - This reading is of the revision's corrected action text (about twenty named earlier tests in three test homes), as DM-93 section 4 asked. Revision 1's reading (sent 15:56:15 UTC, on a text that said about a dozen tests in two suites) was the same cell, Opus 5.5 at high; both are in the uses table.
+- **The Dev Manager's read:** done. Dev Manager 5 read the brief in DM-91 to DM-93, and its words are applied as given. This prompt authorizes no credential use and no live provider action, so it needs no read of its own (the charter, "Read before it takes effect"). The suites' keys and the database password are generated for one run and destroyed with it.
 - **Environment** (OD-36): `Glow App - No Stream`. No Stream variable is needed.
 - **It runs alone** (OD-29). Then, in order: the manager's verification; the pull request and Codex's review of its head; an exact-head code review of the final code head (the brief's "Review plan"); corrections as findings need; the merge after its run, Codex's summary on the final head and its checklist.
 - **Deletion condition:** prune after SV2-R's pull request merges and its merge receipt is recorded.
@@ -18,7 +19,7 @@
 
 ---
 
-You are the **implementation session for SV2-R**, for the Glow dating app, in the public repository `amthorn78/glow-dating-app`. Nathan Amthor, its owner, started you manually. This prompt is revision 1, from commit `<START_SHA>` of the manager branch `claude/magical-wozniak-yfmmx2`.
+You are the **implementation session for SV2-R**, for the Glow dating app, in the public repository `amthorn78/glow-dating-app`. Nathan Amthor, its owner, started you manually. This prompt is revision 2, from commit `<START_SHA>` of the manager branch `claude/magical-wozniak-yfmmx2`.
 
 **What SV2-R is.** A bounded change to SV2, the server's profiles and media slice, after Nathan's direction OD-68 (17 November 2026): ID validation is set aside for the MVP and kept possible later, and the automated photo check is dropped behind a toggle. Today no profile can become `visible`, since the completion rule still asks for identity verification and a photo approved by the automated check. SV2-R makes it possible, and stays proven on a disposable PostgreSQL in CI and sealed from the served runtime until P11. It covers:
 - **R1:** the identity requirement set aside: off the completion check, with the identity record, its port, the staff approval and its setting, and the contract's value kept;
@@ -29,7 +30,9 @@ You are the **implementation session for SV2-R**, for the Glow dating app, in th
 
 There is no provider, deployed URL, real member, HDE call or stored credential.
 
-**The brief, `docs/planning/sv2-r-od-68-requirements-change.md`, revision 4, is the specification.** Much of its text is the Dev Manager's words (DM-84 section 5, DM-91, DM-92), checked against the code. Follow them exactly. Where this prompt summarizes the brief, the brief wins.
+**If you ran revision 1 and stopped,** you start again here: reset your checkout to `<START_SHA>` (section 2's `git switch -C` does it; you changed nothing), pass the start gate at that commit, and read the brief at revision 6 whole, since your first reading was of revision 4. Your branch name may stay.
+
+**The brief, `docs/planning/sv2-r-od-68-requirements-change.md`, revision 6, is the specification.** Much of its text is the Dev Manager's words (DM-84 section 5, DM-91 to DM-93), checked against the code. Follow them exactly. Where this prompt summarizes the brief, the brief wins.
 
 **What came before.**
 - **SV2** built the profile and its settings (Stage A, PR43, `4dc2061`) and photos (Stage B, PR44, `3240ef0`), with corrections, proven by the profile suite on the third disposable database. Its brief, `docs/planning/sv2-profiles-media.md`, revision 8, holds D2 (the settings store), D9 (completion and the one shared recompute), D10 (photos), D13 to D15 (the seal, no new dependency, reversals), D18 (identity verification and the staff approval) and D19 (one pointer order).
@@ -47,6 +50,8 @@ There is no provider, deployed URL, real member, HDE call or stored credential.
     - `packages/contracts/production/flows-v1.json`, and `packages/contracts/README.md`'s note of the registry's change;
     - tests under `services/api/tests/` and `packages/contracts/tests/`;
     - the proof's profile suite: `proofs/postgres-ordering/glow_ordering_proof/profile_cases.py` and `profile_support.py`;
+    - `proofs/postgres-ordering/tests/test_profile_offline.py`, for its pins on the plan only: the case count, a list of SV2-R's own cases with its rule, and `LABEL_BINDINGS`, each change recorded with what it now pins;
+    - `proofs/postgres-ordering/README.md`, for the profile suite's paragraph only (line 17 today): its case count and what SV2-R's cases add;
     - the record;
   - push only your own session branch, with `git push -u origin <branch>`. Never push `main`, the manager branch or `claude/dev-manager`, and never delete a branch;
   - on GitHub, read only, through your GitHub tools: no pull request, comment, review, re-run, workflow dispatch or setting. Use `gh` for nothing but a search. Change nothing in Notion.
@@ -57,7 +62,8 @@ There is no provider, deployed URL, real member, HDE call or stored credential.
     - `services/api/glow_api/` (the seal);
     - the contract's schema (`gapp-api-v1.schema.json`), `openapi.json` and any generated output;
     - any `apps/` path, `apps/mobile` included (its interactions fixture imports the flow registry): a mobile source, test or fixture that would have to change for the Mobile checks job to pass;
-    - any other file of `proofs/postgres-ordering`, `scripts/`, any workflow, the `Dockerfile`, an environment template, or a `requirements` file;
+    - any other file or passage of `proofs/postgres-ordering`, `scripts/`, any workflow, the `Dockerfile`, an environment template, or a `requirements` file;
+  - **`LABEL_NAMES`:** a new case's label that needs a name `LABEL_NAMES` does not hold (the brief's "Earlier tests", ZZ4); `LABEL_NAMES` stays as it is;
   - **a dependency:** any new Python or npm package, or a changed pin (D14);
   - **a design change:** an existing DTO or an existing flow-registry entry would have to change (the registry gains exactly the brief's two `system` entries out of `approved`, and nothing else changes);
   - **the seal:** the served runtime would import a new module or select a fixture provider;
@@ -117,9 +123,9 @@ If a check fails, stop and report. The prompt is stale if:
 
 **Then read, completely:**
 - **The instructions:** root `AGENTS.md` and `CLAUDE.md`; `services/api/README.md`, `proofs/postgres-ordering/README.md` and `packages/contracts/README.md`; `apps/mobile/AGENTS.md` (you change nothing there).
-- **The brief,** revision 4, whole, its "Earlier tests" above all.
+- **The brief,** revision 6, whole, its "Earlier tests" above all.
 - **The SV2 brief's** D2, D9, D10, D13 to D15, D18 and D19 (`docs/planning/sv2-profiles-media.md`).
-- **The Dev Manager's reports** that shaped SV2-R, in `docs/continuity/dev-manager/reviews/`: DM-84 (section 5, its toggle defaults), DM-91 (sections 3 and 4) and DM-92 (section 3).
+- **The Dev Manager's reports** that shaped SV2-R, in `docs/continuity/dev-manager/reviews/`: DM-84 (section 5, its toggle defaults), DM-91 (sections 3 and 4), DM-92 (section 3) and DM-93 (section 3).
 - **Nathan's direction** OD-68 in `docs/continuity/owner-directions.md`.
 - **The code you change or build beside:**
   - `services/api/glow_profiles/`: `requirements.py`, `media.py` (`transition`, `review`, `run_check`, `_decision_audit`, `request_purge`, `delivery_reference`), `media_fixtures.py`, `settings_store.py` (`read_shared` and its pointer order), `staff.py` (`publish_setting`, `approve_without_id`, `revoke_approval`, `restrict_media`), `recompute.py` and `tx.py` (`lock_account`);
@@ -127,6 +133,8 @@ If a check fails, stop and report. The prompt is stale if:
   - `services/api/glow_persistence/models.py`, and migrations `0007_settings_launch_defaults.py` and `0009_media_policy_seed.py`, whose seed pattern (version, pointer and `StaffAudit` row with `seed_launch_default`) the new migration follows;
   - `packages/contracts/production/flows-v1.json` (F05) and `packages/contracts/transition_contract.py`, with `packages/contracts/tests/test_transition_contract.py`;
   - every test and proof case the brief's "Earlier tests" names, and `profile_support.py`'s `approved_photo`;
+  - `proofs/postgres-ordering/tests/test_profile_offline.py` (the plan test, `LABEL_NAMES` and `LABEL_BINDINGS`), and the discovery suite's `B_C1_CASES` in `test_discovery_offline.py`, the precedent for a list of a stage's own cases;
+  - `proofs/postgres-ordering/README.md`, the profile suite's paragraph;
   - the Database proof checks job in `.github/workflows/foundation.yml`, its SV2 steps.
 - **The record of SV2:** `docs/testing/evidence/2026-11-10-sv2-profiles-media.md`, "Stage B" and its corrections.
 
@@ -149,6 +157,8 @@ If a check fails, stop and report. The prompt is stale if:
    - the toggle's pointer taken out of D19's order (check 9).
 3. **R3:** `requirements.py`'s docstring says how a photo reaches `approved` in each state of the toggle.
 4. **The earlier tests** the brief's "Earlier tests" names: change each as it says, and record each change with its reason, before and after. Any other earlier test that fails is a stop (above).
+   - **SV2-R's new profile cases** take a prefix of their own (for example `sv2r.`) and name SV2-R's acceptance checks in a form the plan test cannot read as SV2's (for example `"SV2-R 3"`). The plan test gains their list, pinned by name, with its own rule: each names at least one of SV2-R's checks, and each of checks 1, 3 to 6 and 9 is named by a case of the plan. The Stage B list and its rule stay as they are; `CASE_COUNT` and `LABEL_BINDINGS` are pinned anew.
+   - **The proof's README,** the profile suite's paragraph: the new count and what SV2-R's cases add, as each earlier stage's are recorded there.
 5. **The local checks:**
    - **API,** in `services/api`: `python3.12 -m venv .venv`, then `.venv/bin/python -m pip install --require-hashes -r requirements-dev.lock`. Then, with `GLOW_ENV=test`: `manage.py check`, `manage.py test tests --verbosity 2`, `ruff check .`, `ruff format --check .`, `mypy`, and the contract tests (`PYTHONPATH=. python -m unittest discover -s ../../packages/contracts/tests -v`), as CI runs them;
    - **the contracts,** in `packages/contracts`: `npm ci --ignore-scripts`, then `npm run check`;
