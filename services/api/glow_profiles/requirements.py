@@ -9,13 +9,24 @@ after the account row lock, which every writer of a requirement takes first:
 - ``profile_fields``: a display name, a non-empty summary, a gender and at least one "looking for"
   value;
 - ``area``: a home area;
-- ``photo``: at least one approved photo, approved by the automated check (SV2 Stage B; D10). A
-  photo under a staff restriction is back in review, and one its owner removed is
-  ``removal_pending``, so neither counts;
+- ``photo``: at least one approved photo (SV2 Stage B; D10). How a photo reaches ``approved``
+  depends on the photo check's toggle, ``media.photo_check`` (SV2-R; OD-68): while it is off (its
+  launch value), Glow's processing and G-02's seam pass it to review and ``media.run_check``
+  approves it without the automated check, under the toggle's own subject and reason; while it is
+  on, the automated check approves it, and ``media.recheck`` sends a photo approved while the
+  toggle was off through the check, which keeps it approved or rejects it. A photo under a staff
+  restriction is back in review, and one its owner removed is ``removal_pending``, so neither
+  counts;
 - ``chart``: the current birth input revision and its mapping are both ``resolved``, and the
   mapping points at that revision. SV2 has no HDE, so nothing resolves in the sealed runtime; a
-  test seeds both in its own setup;
-- ``identity_verification``: ``verified`` by the automated check, or ``staff_approved``.
+  test seeds both in its own setup.
+
+**Identity verification is set aside** (SV2-R, R1; OD-68: "ID validation set aside for now but
+kept possible later"): ``missing`` no longer checks it, so the completion read never reports
+``identity_verification``. The value stays in the closed list (``ALL``, the contract's
+``OwnCompletion``), and the ``IdentityVerification`` record, its port and staff's approval without
+it (D18) stay unchanged, so ID validation can return; its own brief re-adds the requirement. A
+``verified`` or ``staff_approved`` record meets nothing meanwhile.
 
 No staff review stands between a complete profile and ``visible`` (OD-61). The sensitive fields
 are not required.
@@ -33,7 +44,6 @@ from glow_persistence.models import (
     BirthInput,
     ConsentDecision,
     EngineIdentity,
-    IdentityVerification,
     MediaAsset,
     ProfileFieldChoice,
 )
@@ -45,7 +55,8 @@ AREA = "area"
 PHOTO = "photo"
 CHART = "chart"
 IDENTITY_VERIFICATION = "identity_verification"
-# The completion read's closed list (D11), in order.
+# The completion read's closed list (D11), in order. ``IDENTITY_VERIFICATION`` stays in it, but
+# ``missing`` never reports it while ID validation is set aside (SV2-R, R1; OD-68).
 ALL: tuple[str, ...] = (
     CONSENT,
     ADULT_CHECK,
@@ -97,7 +108,8 @@ def _field_values(account_id: UUID, field: str) -> list[str]:
 
 
 def missing(account_id: UUID, profile: Any, onboarding_policy_version: str) -> list[str]:
-    """What the profile still needs, in the closed list's order, read on the current rows."""
+    """What the profile still needs, in the closed list's order, read on the current rows. Identity
+    verification is not checked while ID validation is set aside (SV2-R, R1; OD-68)."""
     found: list[str] = []
     if not onboarding_current(account_id, onboarding_policy_version):
         found.append(CONSENT)
@@ -119,7 +131,4 @@ def missing(account_id: UUID, profile: Any, onboarding_policy_version: str) -> l
         found.append(PHOTO)
     if not chart_resolved(account_id):
         found.append(CHART)
-    verification = IdentityVerification.objects.filter(account_id=account_id).first()
-    if verification is None or verification.state not in ("verified", "staff_approved"):
-        found.append(IDENTITY_VERIFICATION)
     return found

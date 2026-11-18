@@ -41,6 +41,8 @@ WRITERS = {
     ("media.py", "run_check"): "OTHER_FLOW",
     ("media.py", "remove_photo"): "OTHER_FLOW",
     ("staff.py", "restrict_media"): "OTHER_FLOW",
+    # SV2-R (OD-68): the recheck's rejection takes a photo out of view and recomputes.
+    ("media.py", "recheck"): "OTHER_FLOW",
 }
 # The operations that write no completion requirement, so never recompute.
 NOT_WRITERS = {
@@ -125,10 +127,11 @@ NOT_A_PROFILES_STATE = {
         "_mapping_to_pending",
         "mapping.state = 'pending'",
     ): "EngineIdentity",
-    # SV2 Stage B (D10): a photo's one state write, another model's (F05's registry table).
+    # SV2 Stage B (D10): a photo's one state write, another model's (F05's registry table). SV2-R's
+    # docstring lines above it moved it from line 128 (its brief, "Earlier tests"; DM-93 ZZ3).
     (
         "glow_profiles/media.py",
-        128,
+        132,
         "transition",
         "asset.state = after",
     ): "MediaAsset",

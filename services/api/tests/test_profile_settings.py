@@ -90,11 +90,14 @@ class LaunchDefaultTests(unittest.TestCase):
         self.assertEqual(ps.LAUNCH_REASONS[ps.STAFF_APPROVAL], "OD-61")
         # SV2 Stage B (DM-57 U10): the media policy's seed reason is development-media-1.
         self.assertEqual(ps.LAUNCH_REASONS[ps.MEDIA_POLICY], "development-media-1")
+        # SV2-R (OD-68): the photo check's toggle is seeded with the reason OD-68, off.
+        self.assertEqual(ps.LAUNCH_REASONS[ps.PHOTO_CHECK], "OD-68")
+        self.assertEqual(ps.LAUNCH_DEFAULTS[ps.PHOTO_CHECK], {"enabled": False})
         self.assertEqual(
             {
                 ps.LAUNCH_REASONS[name]
                 for name in ps.ALL_SETTINGS
-                if name not in (ps.STAFF_APPROVAL, ps.MEDIA_POLICY)
+                if name not in (ps.STAFF_APPROVAL, ps.MEDIA_POLICY, ps.PHOTO_CHECK)
             },
             {"OD-60"},
         )
@@ -254,6 +257,44 @@ class FixedLimitTests(unittest.TestCase):
         )
         self.assertEqual(
             ps.publication_refusals(ps.HISTORY, hidden, hidden, onboarding_consent_version=v1), ()
+        )
+
+    def test_the_photo_checks_toggle_has_a_closed_schema(self) -> None:
+        # SV2-R (its brief's R2 and acceptance check 7; OD-68): one boolean, ``enabled``, and
+        # nothing else; either value publishes, and anything else is refused before any write.
+        self.assertIn(ps.PHOTO_CHECK, ps.ALL_SETTINGS)
+        for enabled in (False, True):
+            with self.subTest(enabled=enabled):
+                self.assertEqual(ps.publication_refusals(ps.PHOTO_CHECK, {"enabled": enabled}), ())
+                self.assertEqual(
+                    ps.publication_refusals(
+                        ps.PHOTO_CHECK, {"enabled": enabled}, {"enabled": not enabled}
+                    ),
+                    (),
+                )
+        for broken in (
+            {},
+            {"enabled": 1},
+            {"enabled": 0},
+            {"enabled": "true"},
+            {"enabled": None},
+            {"enabled": True, "check": "fixture"},
+            {"on": True},
+            [True],
+            True,
+            None,
+        ):
+            with self.subTest(content=broken):
+                self.assertEqual(ps.publication_refusals(ps.PHOTO_CHECK, broken), (ps.SCHEMA,))
+
+    def test_the_photo_checks_pointer_sorts_where_d19_needs_it(self) -> None:
+        # SV2-R (D19): run_check and the recheck take consent.onboarding, the toggle and the
+        # media policy in one read_shared call, so the toggle sorts between the two.
+        self.assertLess(ps.ONBOARDING_CONSENT, ps.PHOTO_CHECK)
+        self.assertLess(ps.PHOTO_CHECK, ps.MEDIA_POLICY)
+        self.assertEqual(
+            sorted([ps.MEDIA_POLICY, ps.PHOTO_CHECK, ps.ONBOARDING_CONSENT]),
+            [ps.ONBOARDING_CONSENT, ps.PHOTO_CHECK, ps.MEDIA_POLICY],
         )
 
     def test_closed_schemas_refuse_unknown_keys_and_types(self) -> None:

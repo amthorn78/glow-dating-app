@@ -23,7 +23,11 @@ only** in SV2: no R2 call, no credential, no SDK. P11 builds the R2 adapter and 
   review.
 - ``PhotoCheckPort`` is the automated check (OD-61: no manual staff review, photos included), with
   no vendor: its fixture adapter approves nothing in the runtime, and a test drives it in its own
-  setup. Its decisions are recorded with a ``system:`` subject.
+  setup. Its decisions are recorded with a ``system:`` subject. **Since SV2-R (OD-68)** the check
+  runs only while the toggle ``media.photo_check`` is on: while it is off, a photo in review is
+  approved without it, under the toggle's own subject and reason (``PHOTO_CHECK_OFF_SUBJECT``,
+  ``PHOTO_CHECK_OFF``), never as the check's; once it is on, a photo approved while it was off
+  goes through the check (``recheck``), by F05's two ``system`` transitions out of ``approved``.
 - ``HoldPort`` answers whether a hold stops a path (a CyberTipline report asks for a year's
   preservation, USF-04; G-05's hold survives deletion). Every path SV2 builds that a hold must
   stop asks it first: approval, delivery and a removed asset's purge. SV2's fixture answers "no
@@ -77,14 +81,25 @@ TRANSITIONS: dict[tuple[str, str], tuple[str, str]] = {
     ("remove", REVIEW_PENDING): (REMOVAL_PENDING, "owner"),
     ("purged", REMOVAL_PENDING): (REMOVED, "provider"),
     ("restrict_media", APPROVED): (REVIEW_PENDING, "moderator"),
+    # SV2-R (OD-68; DM-84 section 5; DM-91 4.3): the check's decision on a photo approved while
+    # the toggle was off. Its approval keeps the photo approved and moves its review reference to
+    # the check's decision; its rejection takes the photo out of view.
+    ("approve", APPROVED): (APPROVED, "system"),
+    ("reject", APPROVED): (REJECTED, "system"),
 }
 
 # The system subjects of the automated decisions (D10: written to ``StaffAudit`` with a
 # ``system:`` subject, as D2's seed is).
 CHECK_SUBJECT = "system:photo-check"
 REVIEW_SUBJECT = "system:photo-review"
+# SV2-R (OD-68): the subject of an approval made while the photo check's toggle is off, never the
+# check's own, so no record says the check approved it.
+PHOTO_CHECK_OFF_SUBJECT = "system:photo-check-off"
 # The reason codes of the automated decisions.
 APPROVED_BY_CHECK = "automated_check"
+# SV2-R (OD-68): the reason of an approval made while the toggle is off; the recheck finds by it the
+# photos the check has not yet seen.
+PHOTO_CHECK_OFF = "photo_check_off"
 NO_VARIANT = "no_variant"
 NO_DETECTOR = "no_detector"
 

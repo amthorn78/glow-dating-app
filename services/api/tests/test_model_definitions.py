@@ -317,9 +317,10 @@ for name, previous in (('0006_area_table', '0005_profiles_settings'),
     assert data.operations[0].reversible, name
 # SV2 Stage B's 0008 and 0009 follow 0007 (test_sv2_stage_b_migrations_follow_0007), SV3
 # Stage A's 0010 follows 0009 (test_sv3_stage_a_migration_follows_0009), and SV3 Stage B's 0011,
-# for D12's undo, follows 0010 (test_sv3_stage_b_migration_follows_0010), each pinned as written.
+# for D12's undo, follows 0010 (test_sv3_stage_b_migration_follows_0010), and SV2-R's 0012, the
+# toggle's seed, follows 0011 (test_sv2r_migration_follows_0011), each pinned as written.
 leaves = loader.graph.leaf_nodes('glow_persistence')
-assert leaves == [('glow_persistence', '0011_interaction_undo')], leaves
+assert leaves == [('glow_persistence', '0012_photo_check_seed')], leaves
 migrations = Path.cwd() / 'glow_persistence' / 'migrations'
 for name in ('0005_profiles_settings', '0006_area_table', '0007_settings_launch_defaults'):
     source = (migrations / f'{name}.py').read_text()
@@ -333,9 +334,10 @@ spec = importlib.util.spec_from_file_location(
     'seed_0007', migrations / '0007_settings_launch_defaults.py')
 seed = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(seed)
-# Stage B seeds the media policy in 0009, so 0007 holds every setting but that one.
+# Stage B seeds the media policy in 0009, and SV2-R the photo check's toggle in 0012, so 0007 holds
+# every setting but those two.
 assert seed.SEED == {name: ps.LAUNCH_DEFAULTS[name] for name in ps.SEEDED_BY_0007}
-assert set(seed.SEED) == set(ps.ALL_SETTINGS) - {ps.MEDIA_POLICY}
+assert set(seed.SEED) == set(ps.ALL_SETTINGS) - {ps.MEDIA_POLICY, ps.PHOTO_CHECK}
 """)
 
     def test_sv2_stage_b_migrations_follow_0007(self):
@@ -474,6 +476,46 @@ assert [c[0] for c in record.get_field('outcome_code').choices] == [
     'committed', 'liked', 'passed', 'unmatched', 'blocked', 'unblocked', 'withdrawn']
 source = (Path.cwd() / 'glow_persistence' / 'migrations' / '0011_interaction_undo.py').read_text()
 assert 'RunSQL' not in source and 'RunPython' not in source
+""")
+
+    def test_sv2r_migration_follows_0011(self):
+        # SV2-R (its brief's R2 and acceptance check 7; OD-68): 0012 seeds the photo check
+        # toggle's version 1, ``{"enabled": false}``, with its pointer and its ``StaffAudit`` row
+        # (``seed_launch_default``), with the subject ``system:launch-default`` and the reason
+        # OD-68, as 0007 and 0009 write theirs, and nothing else; 0001 to 0011 are unchanged
+        # (above). It is pinned as written.
+        import hashlib
+
+        migration = API_ROOT / "glow_persistence" / "migrations" / "0012_photo_check_seed.py"
+        self.assertEqual(
+            hashlib.sha256(migration.read_bytes()).hexdigest(),
+            "4e40028b63947646da1c03443f86304189069a5caf596f8752ef9e65761f39d2",
+        )
+        self.check_script("""
+from django.db.migrations.operations.special import RunPython
+loader = MigrationLoader(None)
+data = loader.disk_migrations[('glow_persistence', '0012_photo_check_seed')]
+assert data.dependencies == [('glow_persistence', '0011_interaction_undo')]
+assert [type(op) for op in data.operations] == [RunPython]
+assert data.operations[0].reversible
+source = (Path.cwd() / 'glow_persistence' / 'migrations' / '0012_photo_check_seed.py').read_text()
+assert 'RunSQL' not in source and 'OutboxEvent' not in source
+for word in ('urllib', 'requests', 'http.client', 'socket', 'urlopen', 'boto', 's3'):
+    assert word not in source, word
+for word in ('seed_launch_default', 'scope="settings"', 'policy_version=f"{NAME}.v1"',
+             'number=1', 'after_version=1', 'before_version=None'):
+    assert word in source, word
+import importlib.util
+from glow_domain import profile_settings as ps
+spec = importlib.util.spec_from_file_location(
+    'seed_0012', Path.cwd() / 'glow_persistence' / 'migrations' / '0012_photo_check_seed.py')
+seed = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(seed)
+assert seed.NAME == ps.PHOTO_CHECK == 'media.photo_check'
+assert seed.SEED == ps.LAUNCH_DEFAULTS[ps.PHOTO_CHECK] == {'enabled': False}
+assert seed.REASON == ps.LAUNCH_REASONS[ps.PHOTO_CHECK] == 'OD-68'
+assert seed.LAUNCH_SUBJECT == ps.LAUNCH_SUBJECT
+assert ps.PHOTO_CHECK not in ps.SEEDED_BY_0007
 """)
 
     def test_sv2_stage_b_models_hold_only_what_d10_needs(self):

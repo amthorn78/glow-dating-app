@@ -25,13 +25,17 @@ requested; ``removed`` follows the acknowledgment of every object of the asset.
 only, then G-02's seam for every adopted upload (given the variant, or the original when processing
 made none; an upload with no variant is rejected with ``no_variant``); ``run_check``, the automated
 check's approval or rejection, written to ``StaffAudit`` with a ``system:`` subject, asking the hold
-port before approval and never acting on an asset under a staff restriction; ``request_purge``,
+port before approval and never acting on an asset under a staff restriction, and, while the photo
+check's toggle is off (SV2-R; OD-68), the approval without the check, under the toggle's own
+subject and reason; ``recheck``, the check's decision on a photo approved while the toggle was off,
+once it is on, with ``awaiting_recheck`` listing those photos for P11's worker; ``request_purge``,
 asking the hold port before the store is asked to delete, in any account state (as
 ``acknowledge_deletion``; every other step refuses an account that is not ``active``); and
 ``delivery_reference``, an approved variant's reference for P11's delivery, asking the hold port
-first. Staff's restriction on a report is ``staff.restrict_media``. **D9:** the check's approval
-ends with the recompute (``requirements_met`` when it meets the last requirement); the removal or
-restriction of the last approved photo demotes a ``visible`` profile (``requirement_removed``).
+first. Staff's restriction on a report is ``staff.restrict_media``. **D9:** ``run_check``'s
+approval ends with the recompute (``requirements_met`` when it meets the last requirement); the
+removal or restriction of the last approved photo, and the recheck's rejection of it, demote a
+``visible`` profile (``requirement_removed``).
 Nothing here logs or returns an object key, an original's reference or photo bytes.
 """
 
@@ -499,10 +503,13 @@ def _owner(asset_id: UUID) -> UUID | None:
     return None if found is None else UUID(str(found))
 
 
-def _decision_audit(tx: Tx, asset: Any, action: str, reason: str) -> UUID:
-    """The automated check's decision in ``StaffAudit``, with its ``system:`` subject (D10)."""
+def _decision_audit(
+    tx: Tx, asset: Any, action: str, reason: str, *, subject: str = md.CHECK_SUBJECT
+) -> UUID:
+    """The automated decision in ``StaffAudit``, with its ``system:`` subject (D10): the check's,
+    or, for an approval while the photo check's toggle is off, the toggle's own (SV2-R)."""
     row = StaffAudit.objects.create(
-        staff_subject=md.CHECK_SUBJECT,
+        staff_subject=subject,
         scope="moderation",
         action=action,
         object_type="media_asset",
@@ -600,7 +607,14 @@ def run_check(
     (OD-61), written to ``StaffAudit`` with a ``system:`` subject. The check never acts on an
     asset under a staff restriction (only the staff decision that closes the report clears one),
     and an approval asks the hold port first. An approval ends with D9's recompute, which makes
-    the profile ``visible`` when it meets the last requirement (``requirements_met``)."""
+    the profile ``visible`` when it meets the last requirement (``requirements_met``).
+
+    **The photo check's toggle** (SV2-R; OD-68), read with the recompute's pointers in the one
+    ``read_shared`` call: while it is on, the check port decides, as above. While it is off, the
+    check port is not called, and the asset is approved by the same ``approve``, under the
+    toggle's own subject and reason (``system:photo-check-off``, ``photo_check_off``), never the
+    check's; a restriction, a missing variant and the hold port stop it as they stop the check's
+    approval, and it ends with the same recompute."""
     adapters = _ports(ports)
     found = _owner(asset_id)
     if found is None:
@@ -609,9 +623,13 @@ def run_check(
 
     def body(tx: Tx) -> Result:
         lock_account(tx, account_id)
-        # D19: the recompute's consent.onboarding with the media policy, in one call; the
-        # decision needs the policy current (P04.3).
-        settings_store.read_shared(tx, [ps.ONBOARDING_CONSENT, ps.MEDIA_POLICY])
+        # D19: the recompute's consent.onboarding with the photo check's toggle and the media
+        # policy, in one call, in name order; the decision needs the policy current (P04.3), and
+        # the toggle says whether the check decides (SV2-R; OD-68).
+        found = settings_store.read_shared(
+            tx, [ps.ONBOARDING_CONSENT, ps.PHOTO_CHECK, ps.MEDIA_POLICY]
+        )
+        checking = found[ps.PHOTO_CHECK].content["enabled"] is True
         asset = locked_asset(account_id, asset_id)
         signal(tx.probe, "after_locks")
         now = clock(tx)
@@ -620,13 +638,129 @@ def run_check(
         if asset.state != md.REVIEW_PENDING:
             return Result("no_change", reason="not_in_review")
         if asset.restriction_ref is not None:
-            # D10: the check never clears a staff restriction.
+            # D10: the check never clears a staff restriction, nor does the toggle (SV2-R).
             return Result("no_change", reason="restricted")
-        variant = (
-            MediaObject.objects.filter(asset_id=asset.id, role="variant")
-            .order_by("-created_at")
-            .first()
+        variant = _variant(asset.id)
+        if checking:
+            decided = adapters.check.decide(asset.id, None if variant is None else variant.key)
+            subject, approval = md.CHECK_SUBJECT, md.APPROVED_BY_CHECK
+        else:
+            # SV2-R (OD-68): the toggle is off. The check port is not called, and the approval is
+            # the toggle's own, under its subject and reason, never recorded as the check's.
+            decided = md.CheckDecision("approve")
+            subject, approval = md.PHOTO_CHECK_OFF_SUBJECT, md.PHOTO_CHECK_OFF
+        if decided.decision == "undecided":
+            return Result("no_change", reason="undecided")
+        if decided.decision == "approve":
+            if variant is None:
+                raise Refused(STATE_CONFLICT, "no_variant")
+            if adapters.hold.held(asset.id):
+                return Result("no_change", reason="held")
+            review_ref = _decision_audit(tx, asset, "approve", approval, subject=subject)
+            asset = transition(
+                tx,
+                asset.id,
+                "approve",
+                now,
+                delivery_ref=adapters.storage.delivery_reference(variant.key),
+                review_ref=review_ref,
+            )
+            # D9: the shared recompute (F04 ``requirements_met`` when this meets the last one).
+            change = recompute.recompute(tx, account_id, now, writer=recompute.OTHER_FLOW)
+            return Result("applied", detail={"state": asset.state, "profile": change.after})
+        if decided.decision == "reject":
+            reason = decided.reason if REASON_CODE.fullmatch(decided.reason) else "rejected"
+            _decision_audit(tx, asset, "reject", reason)
+            asset = transition(tx, asset.id, "reject", now, rejection_reason=reason)
+            return Result("applied", detail={"state": asset.state})
+        raise Refused(STATE_CONFLICT, "unknown_decision")
+
+    return run(body, probe)
+
+
+def _variant(asset_id: UUID) -> Any:
+    """The asset's latest variant, or ``None`` when processing made none."""
+    return (
+        MediaObject.objects.filter(asset_id=asset_id, role="variant")
+        .order_by("-created_at")
+        .first()
+    )
+
+
+def _approvals_while_off() -> Any:
+    """The ``StaffAudit`` rows of the approvals made while the photo check's toggle was off."""
+    return StaffAudit.objects.filter(
+        action="approve",
+        object_type="media_asset",
+        staff_subject=md.PHOTO_CHECK_OFF_SUBJECT,
+        reason_code=md.PHOTO_CHECK_OFF,
+    )
+
+
+def awaiting_recheck() -> list[str]:
+    """SV2-R (OD-68): the photos ``recheck`` takes, for P11's worker (no route; SV2 has no worker,
+    and tests drive the step): every ``approved`` photo of an ``active`` account whose approval,
+    its review reference, carries the toggle's reason, oldest first. Their IDs only."""
+    return [
+        str(asset_id)
+        for asset_id in MediaAsset.objects.filter(
+            state=md.APPROVED,
+            account__state="active",
+            review_ref__in=_approvals_while_off().values("id"),
         )
+        .order_by("created_at", "id")
+        .values_list("id", flat=True)
+    ]
+
+
+def recheck(
+    asset_id: UUID,
+    *,
+    probe: TransactionProbe | None = None,
+    ports: md.MediaPorts | None = None,
+) -> Result:
+    """SV2-R (OD-68; DM-84 section 5; DM-91 4.3; DM-92 YY1): the automated check's decision on
+    one ``approved`` photo whose approval carries the photo check's toggle's reason, once the
+    toggle is on. It takes the account row lock first, refusing an account that is not
+    ``active``, then the toggle with the recompute's pointers in one ``read_shared`` call, as
+    ``run_check`` does; while the toggle is off it changes nothing and does not call the check
+    port. Then the check port decides:
+
+    - **approve:** the hold port is asked first, as before every approval, and a held photo is
+      ``no_change``, with nothing written; otherwise F05's ``approve`` from ``approved`` keeps the
+      photo shown and records the check's decision (``StaffAudit`` with ``system:photo-check`` and
+      ``automated_check``, the photo's review reference moved to it), so the step no longer finds
+      it;
+    - **reject:** F05's ``reject`` from ``approved``: the photo leaves view (``rejected``, delivery
+      withheld), and D9's recompute follows, which demotes a ``visible`` profile when it was the
+      last approved photo (``requirement_removed``);
+    - **undecided:** nothing changes."""
+    adapters = _ports(ports)
+    found = _owner(asset_id)
+    if found is None:
+        return Result("refused", NOT_FOUND, "asset_missing")
+    account_id: UUID = found
+
+    def body(tx: Tx) -> Result:
+        lock_account(tx, account_id)
+        # D19: as run_check's, one call in name order.
+        settings = settings_store.read_shared(
+            tx, [ps.ONBOARDING_CONSENT, ps.PHOTO_CHECK, ps.MEDIA_POLICY]
+        )
+        asset = locked_asset(account_id, asset_id)
+        signal(tx.probe, "after_locks")
+        now = clock(tx)
+        if asset is None:
+            raise Refused(NOT_FOUND, "asset_missing")
+        if settings[ps.PHOTO_CHECK].content["enabled"] is not True:
+            # The toggle is off: nothing changes, and the check port is not called (DM-91 XX6).
+            return Result("no_change", reason="photo_check_off")
+        if (
+            asset.state != md.APPROVED
+            or not _approvals_while_off().filter(pk=asset.review_ref).exists()
+        ):
+            return Result("no_change", reason="not_awaiting_recheck")
+        variant = _variant(asset.id)
         decided = adapters.check.decide(asset.id, None if variant is None else variant.key)
         if decided.decision == "undecided":
             return Result("no_change", reason="undecided")
@@ -644,14 +778,14 @@ def run_check(
                 delivery_ref=adapters.storage.delivery_reference(variant.key),
                 review_ref=review_ref,
             )
-            # D9: the shared recompute (F04 ``requirements_met`` when this meets the last one).
-            change = recompute.recompute(tx, account_id, now, writer=recompute.OTHER_FLOW)
-            return Result("applied", detail={"state": asset.state, "profile": change.after})
+            return Result("applied", detail={"state": asset.state})
         if decided.decision == "reject":
             reason = decided.reason if REASON_CODE.fullmatch(decided.reason) else "rejected"
             _decision_audit(tx, asset, "reject", reason)
             asset = transition(tx, asset.id, "reject", now, rejection_reason=reason)
-            return Result("applied", detail={"state": asset.state})
+            # D9: the shared recompute (F04 ``requirement_removed`` for the last approved photo).
+            change = recompute.recompute(tx, account_id, now, writer=recompute.OTHER_FLOW)
+            return Result("applied", detail={"state": asset.state, "profile": change.after})
         raise Refused(STATE_CONFLICT, "unknown_decision")
 
     return run(body, probe)
