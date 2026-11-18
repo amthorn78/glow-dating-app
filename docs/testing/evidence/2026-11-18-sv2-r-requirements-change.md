@@ -428,4 +428,5 @@ Local results are this session's runs. The run of record is below.
 - **On the final head `115bc5a`,** read with the GitHub tools before the merge: run 44413105426 (`pull_request`), all eight jobs `success`, no retry step run, the gate's "Application checks passed"; Codex's summary complete on `115bc5a` with no findings; no review thread. PF02's revision 1.7 there equals `50a3e25`'s, so DM-91's read covered it (the review log's "Deferred conditions").
 - **The reviews:** the exact-head review of `f4703a1` (changes requested, for tests only), correction C1 (`f4c93ea`) and its delta review (approve with nits), each above.
 - **Pruned in this receipt** (each deletion condition met by the merge and this receipt), with every link to them pinned at `6edae78`: the DM-91, DM-92 and DM-93 consultations, and SV2-R's implementation, review, correction C1 and delta review prompts.
+- **After the merge:** `main`'s push run 44416436012 on `6edae78` passed all eight jobs, the gate printing "Application checks passed" (read with the GitHub tools at 23:18 UTC); the branch cleanup (run 44416435980) deleted SV2-R's two session branches.
 - **SV2-R is done.**
