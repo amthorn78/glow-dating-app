@@ -359,3 +359,29 @@ reference only), and the sealed server route is `services/api/glow_discovery`'s
   each still invalid; through Python and the generated validators.
 - **Regeneration** rewrites `gapp-api-v1.ts`, `validators.js` and `validators.d.ts`;
   `gapp-dev-v1.ts` is unchanged, and a second `npm run generate` changes nothing.
+
+## SV2-R: the photo check's toggle, two F05 transitions
+
+SV2-R ([brief](../../docs/planning/sv2-r-od-68-requirements-change.md), revision 6, R2; OD-68;
+DM-84 section 5; DM-91 4.3) puts the automated photo check behind a toggle, `media.photo_check`,
+off at launch, in SV2's settings store. A photo approved while it was off goes through the check
+once it is on (`glow_profiles.media.recheck`), and the check's decision on that photo needs a
+`system` transition out of `approved`, which F05 had none of (`restrict_media` is the moderator's).
+
+- **The registry** (`flows-v1.json`): F05 gains two entries after its existing thirteen, each
+  `system` with the policy `A05`, not eligible and with no active match: `approve` from
+  `approved` to `approved` (the check keeps the photo shown, and its decision becomes the photo's
+  review reference, as `reorder` is the owner's `approved` to `approved`), and `reject` from
+  `approved` to `rejected` (the photo leaves view). No existing entry changes, and no DTO; every
+  other unlisted transition stays forbidden. `glow_domain.media.TRANSITIONS` holds the same two,
+  and `services/api/tests/test_profile_media.py` holds the two tables equal.
+- **The examples:** `tests/test_transition_contract.py`'s
+  `test_sv2r_f05_system_transitions_out_of_approved` allows both for the system with `A05`;
+  refuses the owner, a moderator and a participant (`forbidden`) and the system without `A05`
+  (`policy_unresolved`); keeps `approve` to `rejected`, `reject` to `approved` or to
+  `review_pending`, `approve` to `review_pending`, `review`, `uploaded` and `purged` from
+  `approved` a `state_conflict`; and pins F05's five transitions out of `approved`.
+- **The identity requirement** is set aside in the server's completion rule (R1), and the
+  completion read's closed list keeps `identity_verification`, so the schema is unchanged.
+- **Regeneration** reads only the schemas, so it changes no generated output; the corpus is
+  unchanged.

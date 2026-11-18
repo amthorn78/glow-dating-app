@@ -19,6 +19,11 @@ The media policy (D10; SV2 Stage B) is ``media.policy``: its version 1 holds
 is applied), with the reason ``development-media-1`` (DM-57 U10). Its ceilings are code: the types,
 bytes and declared pixels of ``development-media-1`` until PV04 proves a real decode path's limits,
 and the contract's 20 collection entries; a publication above one is refused, naming it.
+
+The photo check's toggle (SV2-R; OD-68) is ``media.photo_check``: ``{"enabled": false}`` at
+launch, under a closed schema, seeded by migration 0012 with the reason ``OD-68``. It covers the
+automated check (``PhotoCheckPort``) only: while it is off a photo in review is approved under the
+toggle's own subject and reason, and while it is on the check decides (``glow_profiles.media``).
 """
 
 from __future__ import annotations
@@ -50,9 +55,12 @@ STAFF_APPROVAL = "identity.staff_approval"
 ONBOARDING_CONSENT = "consent.onboarding"
 SENSITIVE_CONSENT = "consent.sensitive_profile"
 MEDIA_POLICY = "media.policy"
+# SV2-R (OD-68): the photo check's toggle. It sorts between ``consent.onboarding`` and
+# ``media.policy``, its place in D19's one pointer order.
+PHOTO_CHECK = "media.photo_check"
 
 # The settings migration 0007 seeds (SV2 Stage A), in its order; Stage B's media policy is
-# seeded by migration 0009 (D2; DM-57 U10).
+# seeded by migration 0009 (D2; DM-57 U10), and SV2-R's photo check toggle by migration 0012.
 SEEDED_BY_0007: tuple[str, ...] = (
     GENDER_LIST,
     ORIENTATION_LIST,
@@ -69,7 +77,7 @@ SEEDED_BY_0007: tuple[str, ...] = (
     ONBOARDING_CONSENT,
     SENSITIVE_CONSENT,
 )
-ALL_SETTINGS: tuple[str, ...] = (*SEEDED_BY_0007, MEDIA_POLICY)
+ALL_SETTINGS: tuple[str, ...] = (*SEEDED_BY_0007, MEDIA_POLICY, PHOTO_CHECK)
 # The settings a member's catalog read and their profile commands depend on, in this order.
 CATALOG_SETTINGS: tuple[str, ...] = (
     GENDER_LIST,
@@ -86,12 +94,16 @@ LAUNCH_SUBJECT = "system:launch-default"
 # 10 November 2026 (OD-61).
 # The media policy's seed reason is ``development-media-1``, whose values it holds (DM-57 U10).
 MEDIA_SEED_REASON = "development-media-1"
+# SV2-R: the photo check's toggle is seeded with the register row of Nathan's direction, OD-68.
+PHOTO_CHECK_SEED_REASON = "OD-68"
 LAUNCH_REASONS: dict[str, str] = {
     name: (
         "OD-61"
         if name == STAFF_APPROVAL
         else MEDIA_SEED_REASON
         if name == MEDIA_POLICY
+        else PHOTO_CHECK_SEED_REASON
+        if name == PHOTO_CHECK
         else "OD-60"
     )
     for name in ALL_SETTINGS
@@ -282,6 +294,8 @@ LAUNCH_DEFAULTS: dict[str, dict[str, Any]] = {
         "grant_seconds": 60,
         "transfer_attempts": 3,
     },
+    # SV2-R (OD-68; DM-84 section 5): the automated photo check is off at launch.
+    PHOTO_CHECK: {"enabled": False},
 }
 
 MEDIA_KEYS: tuple[str, ...] = (
@@ -537,6 +551,13 @@ def _media_refusals(content: Any) -> list[str]:
     return refusals
 
 
+def _photo_check_refusals(content: Any) -> list[str]:
+    """SV2-R (OD-68): the toggle's closed schema, one boolean and nothing else."""
+    if not _keys(content, ("enabled",)) or not _bool(content["enabled"]):
+        return [SCHEMA]
+    return []
+
+
 def _consent_refusals(content: Any) -> list[str]:
     if not _keys(content, ("development", "text")) or not _bool(content["development"]):
         return [SCHEMA]
@@ -575,6 +596,8 @@ def publication_refusals(
         found = _consent_refusals(content)
     elif name == MEDIA_POLICY:
         found = _media_refusals(content)
+    elif name == PHOTO_CHECK:
+        found = _photo_check_refusals(content)
     else:
         found = [SCHEMA]
     return tuple(dict.fromkeys(found))

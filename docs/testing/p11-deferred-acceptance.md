@@ -279,3 +279,10 @@ right, Maker entitlement or paid activation. P11 must map these boundaries into
 the app's own logical database and restricted roles on HDE's PostgreSQL service
 (ADR 0004), without altering HDE or legacy objects. A05 still owns resurfacing/rematch/history and
 retention choices; no test case selects them for launch.
+
+## SV2-R carryforward
+
+From SV2-R (its [brief](../planning/sv2-r-od-68-requirements-change.md); its [record](evidence/2026-11-18-sv2-r-requirements-change.md), "Exact-head review"; DM-91 section 4.3):
+
+- **The recheck's worker.** SV2-R adds the system steps `recheck` and `awaiting_recheck` with no caller: a photo approved while the photo check's toggle was off is rechecked by P11's worker once the toggle is on. `awaiting_recheck()` reads every matching photo in one unbounded query and takes no lock (the exact-head review's N4). The worker pages it; each `recheck` takes its own locks and reads the toggle again.
+- **A second `media_approved`.** The recheck's approval emits `media_approved` again for a photo already approved. Nothing reads it today; a later consumer must not take it as a first approval (DM-91 section 4.3).

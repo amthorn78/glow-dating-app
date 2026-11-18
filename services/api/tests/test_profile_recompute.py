@@ -41,6 +41,8 @@ WRITERS = {
     ("media.py", "run_check"): "OTHER_FLOW",
     ("media.py", "remove_photo"): "OTHER_FLOW",
     ("staff.py", "restrict_media"): "OTHER_FLOW",
+    # SV2-R (OD-68): the recheck's rejection takes a photo out of view and recomputes.
+    ("media.py", "recheck"): "OTHER_FLOW",
 }
 # The operations that write no completion requirement, so never recompute.
 NOT_WRITERS = {
@@ -125,10 +127,11 @@ NOT_A_PROFILES_STATE = {
         "_mapping_to_pending",
         "mapping.state = 'pending'",
     ): "EngineIdentity",
-    # SV2 Stage B (D10): a photo's one state write, another model's (F05's registry table).
+    # SV2 Stage B (D10): a photo's one state write, another model's (F05's registry table). SV2-R's
+    # docstring lines above it moved it from line 128 (its brief, "Earlier tests"; DM-93 ZZ3).
     (
         "glow_profiles/media.py",
-        128,
+        132,
         "transition",
         "asset.state = after",
     ): "MediaAsset",
@@ -302,8 +305,9 @@ PROFILE_CREATE = (
 
 
 def _profile_creations(trees: dict[str, ast.Module]) -> list[tuple[str, str, str]]:
-    """Every ``create``, ``get_or_create``, ``update_or_create`` or ``bulk_create`` on a receiver
-    naming ``Profile``, and every ``Profile(...)`` built, in the scanned modules (N2)."""
+    """Every creation in ``CREATING`` (``create``, ``get_or_create``, ``update_or_create`` or
+    ``bulk_create``, or its async form) on a receiver naming ``Profile``, and every
+    ``Profile(...)`` built, in the scanned modules (N2; SV2-R's correction C1, N-a)."""
     found = []
     for name, tree in trees.items():
         functions = [node for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)]
@@ -313,7 +317,7 @@ def _profile_creations(trees: dict[str, ast.Module]) -> list[tuple[str, str, str
             func = node.func
             creates = (
                 isinstance(func, ast.Attribute)
-                and func.attr in {"create", "get_or_create", "update_or_create", "bulk_create"}
+                and func.attr in CREATING
                 and "Profile" in ast.unparse(func.value).replace("(", ".").split(".")
             )
             builds = isinstance(func, ast.Name) and func.id == "Profile"
@@ -354,7 +358,17 @@ CREATIONS_WITH_STATE = {
     ("glow_profiles/operations.py", "decide_sensitive_consent.body")
     + ("ConsentDecision.objects.create", "'accepted' if accepting else 'withdrawn'"),
 }
-CREATING = {"create", "get_or_create", "update_or_create", "bulk_create"}
+# SV2-R's correction C1 (the carried entry N-a): each creation's async form too.
+BULK = {"bulk_create", "abulk_create"}
+CREATING = {
+    "create",
+    "get_or_create",
+    "update_or_create",
+    "acreate",
+    "aget_or_create",
+    "aupdate_or_create",
+    *BULK,
+}
 
 
 def _enclosing(tree: ast.Module, line: int) -> str:
@@ -372,8 +386,8 @@ def _enclosing(tree: ast.Module, line: int) -> str:
 
 
 def _asset_creations(trees: dict[str, ast.Module]) -> list[tuple[str, str, str]]:
-    """Every ``create``, ``get_or_create``, ``update_or_create`` or ``bulk_create`` on a receiver
-    naming ``MediaAsset``, and every ``MediaAsset(...)`` built, in the scanned modules (F3)."""
+    """Every creation in ``CREATING`` on a receiver naming ``MediaAsset``, and every
+    ``MediaAsset(...)`` built, in the scanned modules (F3; N-a)."""
     found = []
     for name, tree in trees.items():
         for node in ast.walk(tree):
@@ -393,15 +407,16 @@ def _asset_creations(trees: dict[str, ast.Module]) -> list[tuple[str, str, str]]
 
 def _creations_with_state(trees: dict[str, ast.Module]) -> set[tuple[str, ...]]:
     """Every creation that sets a ``state`` (or unpacks ``**``), whatever its receiver: a
-    ``create``, ``get_or_create`` or ``update_or_create``, or a call of a name that starts with
-    a capital (a class built), by file, enclosing definitions, call and the state it sets (F3)."""
+    ``create``, ``get_or_create`` or ``update_or_create`` or its async form, or a call of a name
+    that starts with a capital (a class built), by file, enclosing definitions, call and the state
+    it sets (F3; N-a)."""
     found = set()
     for name, tree in trees.items():
         for node in ast.walk(tree):
             if not isinstance(node, ast.Call):
                 continue
             last = ast.unparse(node.func).split(".")[-1]
-            if not (last in CREATING - {"bulk_create"} or last[:1].isupper()):
+            if not (last in CREATING - BULK or last[:1].isupper()):
                 continue
             for keyword in node.keywords:
                 if keyword.arg in ("state", None):
@@ -510,6 +525,33 @@ print(json.dumps({"rule": rule, "entries": entries, "cleared": cleared, "rides":
                 self.assertEqual(rule["eligible"], after == "visible")
 
 
+def _clones(trees: dict[str, ast.Module]) -> list[tuple[str, str, str]]:
+    """SV2-R's correction C1 (the carried entry N-a): every row cloned for a new insert, by file,
+    enclosing definitions and statement: a primary key set to ``None`` (``x.pk = None``,
+    ``x.id = None``), after which a save inserts a copy of the row, its state included; and every
+    call given ``force_insert``. No code in ``glow_profiles`` or the age port does either."""
+    found = []
+    for name, tree in trees.items():
+        for node in ast.walk(tree):
+            targets: list[ast.expr] = []
+            if isinstance(node, ast.Assign):
+                targets = list(node.targets)
+            elif isinstance(node, ast.AnnAssign):
+                targets = [node.target]
+            value = getattr(node, "value", None)
+            if (
+                any(isinstance(t, ast.Attribute) and t.attr in ("pk", "id") for t in targets)
+                and isinstance(value, ast.Constant)
+                and value.value is None
+            ):
+                found.append((name, _enclosing(tree, node.lineno), ast.unparse(node)))
+            if isinstance(node, ast.Call) and any(
+                keyword.arg == "force_insert" for keyword in node.keywords
+            ):
+                found.append((name, _enclosing(tree, node.lineno), ast.unparse(node)))
+    return found
+
+
 class CallSiteTests(unittest.TestCase):
     def test_every_requirement_writer_ends_with_the_recompute(self) -> None:
         trees = modules()
@@ -602,6 +644,8 @@ class CallSiteTests(unittest.TestCase):
         self.assertEqual(
             photos, [(*ASSET_CREATE[:2], "MediaAsset.objects.create", "md.UPLOAD_PENDING")]
         )
+        # SV2-R's correction C1 (N-a): nor is any row cloned for a new insert.
+        self.assertEqual(_clones(trees), [])
 
     def test_the_creation_guard_sees_each_spelling(self) -> None:
         # Each spelling F3 names, as ``_asset_creations`` and ``_creations_with_state`` see it.
@@ -627,6 +671,60 @@ class CallSiteTests(unittest.TestCase):
                 ("model.objects.create", "'approved'"),
                 ("Asset", "fields"),
             },
+        )
+        self.assertEqual(_clones(trees), [])
+
+    def test_the_creation_guard_sees_each_async_and_clone_spelling(self) -> None:
+        # SV2-R's correction C1 (the carried entry N-a): an async creation and a clone saved as a
+        # new row, as ``_asset_creations``, ``_profile_creations``, ``_creations_with_state`` and
+        # ``_clones`` see them.
+        tree = ast.parse(
+            "async def restrict(asset_id, asset):\n"
+            "    await MediaAsset.objects.acreate(state='approved')\n"
+            "    await MediaAsset.objects.aget_or_create(pk=asset_id, state='approved')\n"
+            "    await MediaAsset.objects.aupdate_or_create(pk=asset_id, state='approved')\n"
+            "    await MediaAsset.objects.abulk_create([asset])\n"
+            "    await Profile.objects.acreate(state='visible')\n"
+            "    model = MediaAsset\n"
+            "    await model.objects.acreate(state='approved')\n"
+            "def clone(asset, profile):\n"
+            "    asset.pk = None\n"
+            "    asset.save(force_insert=True)\n"
+            "    profile.id = None\n"
+            "    profile.save()\n"
+        )
+        trees = {"glow_profiles/staff.py": tree}
+        self.assertEqual(
+            {entry[2].split("(")[0] for entry in _asset_creations(trees)},
+            {
+                "MediaAsset.objects.acreate",
+                "MediaAsset.objects.aget_or_create",
+                "MediaAsset.objects.aupdate_or_create",
+                "MediaAsset.objects.abulk_create",
+            },
+        )
+        self.assertEqual(len(_asset_creations(trees)), 4)
+        self.assertEqual(
+            [entry[2] for entry in _profile_creations(trees)],
+            ["Profile.objects.acreate(state='visible')"],
+        )
+        self.assertEqual(
+            {(entry[2], entry[3]) for entry in _creations_with_state(trees)},
+            {
+                ("MediaAsset.objects.acreate", "'approved'"),
+                ("MediaAsset.objects.aget_or_create", "'approved'"),
+                ("MediaAsset.objects.aupdate_or_create", "'approved'"),
+                ("Profile.objects.acreate", "'visible'"),
+                ("model.objects.acreate", "'approved'"),
+            },
+        )
+        self.assertEqual(
+            sorted((entry[1], entry[2]) for entry in _clones(trees)),
+            [
+                ("clone", "asset.pk = None"),
+                ("clone", "asset.save(force_insert=True)"),
+                ("clone", "profile.id = None"),
+            ],
         )
 
     def test_a_failing_date_returns_its_refusal_at_both_writers(self) -> None:

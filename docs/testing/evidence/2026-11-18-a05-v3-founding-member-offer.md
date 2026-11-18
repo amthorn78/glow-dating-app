@@ -671,3 +671,11 @@ Against the brief's review plan (revision 2), on the session's head `362edb0` (f
   - **UST-28:** Colorado's online exception (§6-1-731(3)(d)) is exact in the title 6 PDF fetched at 03:13 UTC.
   - **UST-24:** New York's $1,000 cap, two-year limit and online exception, in A428 fetched now, match after removing the bill's line numbers, as the session recorded (the page's hash differs from the session's).
 
+
+## 18. PR53's merge receipt (App Manager 12, 18 November 2026, 08:35 UTC)
+
+- **PR53 merged** at `15d54f647aa012edf53165f04a0a7e4931a7b67f` (08:32 UTC), after its run (Foundation 44267620419, success; the gate printed "Ordinary documentation: application jobs intentionally skipped") and Codex's summary on the final head `75bd3c0` (no findings; no review threads), and Dev Manager 5's reads (DM-88 for PF02 1.6, DM-89, DM-90). Its parents are `d57da65` and `75bd3c0`, and its tree equals `75bd3c0`'s.
+- **`main`'s push run** 44267927177 passed, the gate printing "Ordinary documentation: application jobs intentionally skipped".
+- **The cleanup** 44267927331 deleted this session's branch `claude/zealous-ride-v8tszx` (`362edb0`, merged into `main`) and kept `main`, the manager branch and `claude/dev-manager`.
+- **`git ls-remote`** (08:33 UTC): `main` `15d54f6`; the manager branch `75bd3c0`, fast-forwarded here to `15d54f6`; `claude/dev-manager` `1ce329d`. No pull request is open.
+- **Pruned:** the founding-member offer's decision message and the DM-88, DM-89 and DM-90 consultations, each with its deletion condition met; their links, OD-71's included (DM-90 section 6), are pinned at `15d54f6`.

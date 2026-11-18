@@ -547,9 +547,40 @@ class ProfilePlanTests(unittest.TestCase):
     def test_the_case_count_is_pinned(self) -> None:
         # C2 (finding 15): 47 cases after C1, and C2's six; SV2 Stage B's eleven (DM-57 section 5:
         # the count changes with Stage B's cases); Stage B's correction C1's three (DM-58 item 9);
-        # Stage B's correction C2's two (the exact-head review's F1 and F5).
-        self.assertEqual(profile_cases.CASE_COUNT, 69)
+        # Stage B's correction C2's two (the exact-head review's F1 and F5). Re-pinned by SV2-R
+        # (its brief, "Earlier tests"; DM-93 ZZ4): its eight, named below, the last in the plan.
+        self.assertEqual(profile_cases.CASE_COUNT, 77)
         self.assertEqual(len(profile_cases.plan()), profile_cases.CASE_COUNT)
+        self.assertEqual(profile_cases.plan()[69:], SV2R_CASES)
+
+    def test_sv2rs_own_cases_name_its_checks(self) -> None:
+        # SV2-R (its brief, "Earlier tests"; DM-93 ZZ4, as SV3's correction B-C1's B_C1_CASES):
+        # SV2-R's own cases, by name, each under its own prefix and naming at least one of
+        # SV2-R's checks as "SV2-R <n>", which the plan test cannot read as one of SV2's; and each
+        # of SV2-R's checks 1, 3 to 6 and 9 named by a case of the plan.
+        entries = {entry.case_id: entry for entry in profile_cases.CASES}
+        named: set[str] = set()
+        for case_id in SV2R_CASES:
+            with self.subTest(case=case_id):
+                self.assertTrue(case_id.startswith("sv2r."))
+                checks = [check for check in entries[case_id].checks if check in SV2R_CHECKS]
+                self.assertTrue(checks, "names at least one of SV2-R's checks")
+                named.update(checks)
+                # None of SV2's own check numbers: an SV2-R case never stands in for SV2's.
+                self.assertFalse(
+                    {check for check in entries[case_id].checks if check.isdigit()},
+                    "no SV2 check number",
+                )
+        covered = {check for entry in profile_cases.CASES for check in entry.checks}
+        for number in ("1", "3", "4", "5", "6", "9"):
+            with self.subTest(sv2r_check=number):
+                self.assertIn(f"SV2-R {number}", covered)
+        self.assertLessEqual(named, SV2R_CHECKS)
+        # Only SV2-R's own cases take its prefix, and none is in the Stage B list's prefixes.
+        self.assertEqual(
+            tuple(case_id for case_id in profile_cases.plan() if case_id.startswith("sv2r.")),
+            SV2R_CASES,
+        )
 
     def test_the_expected_routes_are_the_api_routes(self) -> None:
         # Read from services/api's URL configuration as text, without importing it.
@@ -563,6 +594,21 @@ class ProfilePlanTests(unittest.TestCase):
             and isinstance(node.args[0], ast.Constant)
         }
         self.assertEqual(declared, set(profile_cases.EXPECTED_PROFILE_ROUTES))
+
+
+# SV2-R's own cases (its brief, "Earlier tests"; DM-93 ZZ4), in the plan's order, and its
+# acceptance checks as its cases name them, in a form SV2's plan test cannot read as SV2's.
+SV2R_CASES = (
+    "sv2r.a_profile_completes_without_identity_verification",
+    "sv2r.the_staff_approval_meets_nothing",
+    "sv2r.toggle_off_approves_without_the_check",
+    "sv2r.toggle_on_the_check_decides_as_before",
+    "sv2r.the_recheck",
+    "sv2r.toggle_off_again_approves_under_its_reason",
+    "sv2r.the_toggle_is_a_setting",
+    "sv2r.locks_serialize_on_the_toggles_pointer",
+)
+SV2R_CHECKS = frozenset(f"SV2-R {number}" for number in range(1, 13))
 
 
 # C3 (finding 3): the names a check's label may interpolate. Each holds a code, a route, a setting,

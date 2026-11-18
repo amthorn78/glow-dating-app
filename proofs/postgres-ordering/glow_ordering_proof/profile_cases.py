@@ -1,8 +1,9 @@
 """The profile cases (SV2 Stage A; its brief's acceptance checks 1 to 9, 11 and 12, with D2 to
 D9, D11, D13, D17 and D18; SV2 Stage B, checks 10 and 13 with check 9's photo requirement and
-checks 11 and 12 for the photo routes, with D9, D10, D17 and D19), each run through the HTTP
-endpoints with Django's test client on the
-disposable profile database, signed in through SV1's identity routes.
+checks 11 and 12 for the photo routes, with D9, D10, D17 and D19; SV2-R, its brief's acceptance
+checks 1 to 7 and 9 as ``"SV2-R <n>"``, in its own ``sv2r.`` cases, the last in the plan), each run
+through the HTTP endpoints with Django's test client on the disposable profile database, signed in
+through SV1's identity routes.
 
 Every case makes its own synthetic members. Settings are global: a case that publishes adds test
 values only (no launch value changes), and every case reads the catalog it acts on. Each case
@@ -68,8 +69,9 @@ class Case:
 CASES: list[Case] = []
 # The suite's case count, pinned (C2, finding 15): a case lost or added without this changing
 # fails the run before any case runs, and the offline tests. SV2 Stage B's correction C2 adds
-# two (a hold stopping the check's approval; migration 0008's constraints).
-CASE_COUNT = 69
+# two (a hold stopping the check's approval; migration 0008's constraints), and SV2-R eight, its
+# own ``sv2r.`` cases (OD-68; DM-93 ZZ4).
+CASE_COUNT = 77
 
 
 def case(
@@ -1393,9 +1395,13 @@ def completion_each(ctx: ProfileContext) -> str:
     seed_verified(member.account_id)
     stays(member, ["chart"], "the chart")
 
+    # SV2-R (R1; OD-68): identity verification is set aside. With the chart seeded and no
+    # verification, the profile completes, and the read never lists it.
     member = ctx.ready_member()
     seed_chart(member.account_id)
-    stays(member, ["identity_verification"], "identity verification")
+    expect(_edit(ctx, member)["visibility"] == "visible", "identity verification: set aside")
+    expect(ctx.missing(member) == [], "identity verification: never listed")
+    results.append("identity verification")
 
     member = ctx.ready_member()
     seed_chart(member.account_id)
@@ -1404,7 +1410,10 @@ def completion_each(ctx: ProfileContext) -> str:
     expect(edited["visibility"] == "incomplete", "an empty summary refuses completion")
     expect(ctx.missing(member) == ["profile_fields"], "the summary is a profile field")
     results.append("the summary")
-    return f"completion refused for each missing requirement: {len(results)} checks"
+    return (
+        f"completion refused for each missing requirement: {len(results)} checks, identity"
+        " verification set aside"
+    )
 
 
 @case("completion.needs_the_chart_and_identity_verification_seeded", "9", "D8", "D9", "D18")
@@ -1414,8 +1423,9 @@ def completion_seeded(ctx: ProfileContext) -> str:
     from glow_profiles.identity_verification import OrmIdentityVerification
 
     member = ctx.ready_member()
-    expect(ctx.missing(member) == ["chart", "identity_verification"], "both missing")
-    expect(_edit(ctx, member)["visibility"] == "incomplete", "refused without either")
+    # SV2-R (R1; OD-68): identity verification is set aside, so only the chart is missing.
+    expect(ctx.missing(member) == ["chart"], "only the chart is missing")
+    expect(_edit(ctx, member)["visibility"] == "incomplete", "refused without the chart")
     # No SV2 code writes either: the check's seam passes no one, and its port refuses.
     expect(FixtureIdentityCheck().request_check(member.account_id).status == "unavailable", "seam")
     from django.utils import timezone
@@ -1425,7 +1435,7 @@ def completion_seeded(ctx: ProfileContext) -> str:
     expect(not IdentityVerification.objects.filter(account_id=member.account_id).exists(), "none")
     expect(not EngineIdentity.objects.filter(account_id=member.account_id).exists(), "no mapping")
     seed_chart(member.account_id)
-    expect(_edit(ctx, member)["visibility"] == "incomplete", "refused without verification")
+    expect(_edit(ctx, member)["visibility"] == "visible", "visible without verification (OD-68)")
     seed_verified(member.account_id)
     expect(_edit(ctx, member)["visibility"] == "visible", "passes with both seeded in setup")
     # A resolved mapping is the chart only at the current revision (D8): one that points at an
@@ -1451,8 +1461,8 @@ def completion_seeded(ctx: ProfileContext) -> str:
     )
     expect(_edit(ctx, member)["visibility"] == "visible", "at the current revision it completes")
     return (
-        "completion refused without the chart or identity verification, or with a mapping at an"
-        " older revision; passes with both seeded"
+        "completion refused without the chart, or with a mapping at an older revision; passes"
+        " with the chart seeded, identity verification set aside"
     )
 
 
@@ -1542,12 +1552,13 @@ def staff_approval(ctx: ProfileContext) -> str:
     expect(
         IdentityVerification.objects.get(account_id=member.account_id).state == "unverified", "x"
     )
-    expect(_profile_row(member.account_id).state == "incomplete", "revoked: demoted")
+    # SV2-R (R1; OD-68): the revocation removes no requirement, so the profile stays as it was.
+    expect(_profile_row(member.account_id).state == "visible", "revoked: stays visible")
     member_refusal = staff.approve_without_id(
         member.account_id, staff_subject="member:someone", reason="x", request_id=uuid4()
     )
     expect(member_refusal.outcome == "refused", "only a staff subject approves")
-    return "refused while off; narrow; survives the switch-off; revoked, it demotes"
+    return "refused while off; narrow; survives the switch-off; revoked, the profile stays"
 
 
 EXPECTED_PROFILE_ROUTES = frozenset(
@@ -1760,6 +1771,12 @@ def completion_removals(ctx: ProfileContext) -> str:
                 )
                 expect(revoked.outcome == "applied", "revoked")
             state = _profile_row(member.account_id).state
+            if removal == "approval":
+                # SV2-R (R1; OD-68): a revoked approval removes no requirement, so the profile
+                # stays as it was, visible or paused.
+                kept = "paused" if paused else "visible"
+                expect(state == kept, f"{removal}: the profile stays as it was")
+                continue
             wanted = "paused" if paused else "incomplete"
             expect(state == wanted, f"{removal}: {'stays paused' if paused else 'demoted'}")
             demoted += 1
@@ -1785,7 +1802,10 @@ def completion_removals(ctx: ProfileContext) -> str:
     )
     ctx.refused(cleared, 400, "invalid_request", "a cleared area")
     expect(_profile_row(member.account_id).state == "visible", "a refused edit changes nothing")
-    return f"{demoted} removals demoted or left paused; four emptying edits refused"
+    return (
+        f"{demoted} removals demoted or left paused; a revoked approval leaves the profile as it"
+        " was; four emptying edits refused"
+    )
 
 
 # ---------------------------------------------------------------------------------------------
@@ -1914,7 +1934,9 @@ def recompute_completes(ctx: ProfileContext) -> str:
     member = ctx.ready_member()
     seed_chart(member.account_id)
     before = incomplete(member, "the staff approval")
-    expect(ctx.missing(member) == ["identity_verification"], "only verification is missing")
+    # SV2-R (R1; OD-68): verification is set aside, so the seed met the last requirement without
+    # a write, and the approval's recompute makes the profile visible, as the profile edit's does.
+    expect(ctx.missing(member) == [], "nothing is missing: verification is set aside")
     _switch_staff_approval(ctx, True)
     approved = staff.approve_without_id(
         member.account_id, staff_subject=STAFF, reason="SV2-proof", request_id=uuid4()
@@ -3277,6 +3299,8 @@ def media_path(ctx: ProfileContext) -> str:
     from glow_profiles import media
     from glow_profiles.media_fixtures import default_storage
 
+    # SV2-R (acceptance check 4): the check decides only with its toggle on.
+    ctx.photo_check(True)
     member = ctx.member()
     grant = ctx.request_upload(member)
     asset_id = UUID(grant["asset_id"])
@@ -3468,6 +3492,8 @@ def media_check(ctx: ProfileContext) -> str:
     from glow_persistence.models import StaffAudit
     from glow_profiles import media, staff
 
+    # SV2-R (acceptance check 4): the check decides only with its toggle on.
+    ctx.photo_check(True)
     member = ctx.member()
     asset_id = UUID(ctx.uploaded_photo(member))
     expect(media.review(asset_id).outcome == "applied", "reviewed")
@@ -3540,6 +3566,8 @@ def media_held(ctx: ProfileContext) -> str:
     from glow_profiles import media
     from glow_profiles.media_fixtures import default_storage
 
+    # SV2-R (acceptance check 4): the check decides only with its toggle on.
+    ctx.photo_check(True)
     member = ctx.ready_member(photo=False)
     seed_chart(member.account_id)
     seed_verified(member.account_id)
@@ -3780,7 +3808,16 @@ def media_inactive_owner(ctx: ProfileContext) -> str:
         quarantined = UUID(ctx.uploaded_photo(member))
         in_review = UUID(ctx.uploaded_photo(member))
         expect(media.review(in_review).outcome == "applied", "in review while active")
-        photo = UUID(ctx.approved_photo(member))
+        # SV2-R (acceptance check 5): the approved photo is approved while the photo check's
+        # toggle is off, so the recheck would take it, and the toggle is then on.
+        photo = UUID(ctx.uploaded_photo(member))
+        expect(media.review(photo).outcome == "applied", "reviewed while active")
+        ctx.photo_check(False)
+        expect(media.run_check(photo).outcome == "applied", "approved while the toggle is off")
+        ctx.photo_check(True)
+        expect(
+            str(photo) in media.awaiting_recheck(), "the read lists it while the owner is active"
+        )
         completion = ctx.put_photo(str(pending))
         expect(revoke(member.account_id).outcome == "applied", "glow_chat revoked the account")
         expect(_account(member.account_id).state == becomes, "the owner is not active")
@@ -3799,6 +3836,10 @@ def media_inactive_owner(ctx: ProfileContext) -> str:
         checked = media.run_check(in_review, ports=approving)
         expect(_inactive_refusal(checked), "run_check refuses an inactive owner")
         expect(approving.check.asked == [], "the check was never asked")
+        rechecked = media.recheck(photo, ports=approving)
+        expect(_inactive_refusal(rechecked), "the recheck refuses an inactive owner")
+        expect(approving.check.asked == [], "the check was never asked by the recheck")
+        expect(str(photo) not in media.awaiting_recheck(), "the read lists active owners' only")
         restricted = staff.restrict_media(
             photo, staff_subject=STAFF, reason="report-fixture", request_id=uuid4()
         )
@@ -3812,7 +3853,7 @@ def media_inactive_owner(ctx: ProfileContext) -> str:
             [(row.state, row.version) for row in map(_asset_row, map(str, (in_review, photo)))],
         )
         expect(after == before, "nothing changed for an inactive owner")
-        refused += 5
+        refused += 6
     return f"{refused} steps refused for a suspended and a deleting owner (account_not_active)"
 
 
@@ -3880,6 +3921,8 @@ def media_ownership(ctx: ProfileContext) -> str:
 def media_requirement(ctx: ProfileContext) -> str:
     from glow_profiles import media, staff
 
+    # SV2-R (acceptance check 4): the check decides only with its toggle on.
+    ctx.photo_check(True)
     shown: list[str] = []
     member = ctx.ready_member(photo=False)
     seed_chart(member.account_id)
@@ -4145,6 +4188,670 @@ def digests(ctx: ProfileContext) -> str:
     return (
         f"every stored digest ({checked}, of {len(operations)} kinds of command) is keyed: not the"
         " unkeyed SHA-256 and not another key's"
+    )
+
+
+# =============================================================================================
+# SV2-R (its brief's R1 to R4; OD-68; DM-84 section 5; DM-91 to DM-93): the identity requirement
+# set aside, and the photo check's toggle. SV2-R's own cases, under their own prefix, naming
+# SV2-R's acceptance checks as "SV2-R <n>" so that they never count as SV2's (DM-93 ZZ4).
+# =============================================================================================
+
+
+def _photo_in_review(ctx: ProfileContext, member: Any) -> UUID:
+    """A member's photo through quarantine and the system review step, waiting for approval."""
+    from glow_profiles import media
+
+    asset_id = UUID(ctx.uploaded_photo(member))
+    expect(media.review(asset_id).outcome == "applied", "the review step ran")
+    expect(_asset_row(str(asset_id)).state == "review_pending", "in review")
+    return asset_id
+
+
+def _approved_while_off(ctx: ProfileContext, member: Any) -> UUID:
+    """A photo approved by ``run_check``'s off branch, with the runtime's own ports."""
+    from glow_profiles import media
+
+    asset_id = _photo_in_review(ctx, member)
+    ctx.photo_check(False)
+    expect(media.run_check(asset_id).outcome == "applied", "approved while the toggle is off")
+    return asset_id
+
+
+def _photo_snapshot(asset_id: UUID, account_id: UUID) -> tuple[Any, ...]:
+    """What an approval, a rejection or a recheck could write for one photo and its profile."""
+    from glow_persistence.models import OutboxEvent, StaffAudit
+
+    row = _asset_row(str(asset_id))
+    profile = _profile_row(account_id)
+    return (
+        row.state,
+        row.version,
+        row.approved_variant_ref,
+        row.review_ref,
+        row.rejection_reason,
+        profile.state,
+        profile.version,
+        StaffAudit.objects.filter(object_id=asset_id).count(),
+        OutboxEvent.objects.filter(aggregate_id__in=[asset_id, profile.pk]).count(),
+    )
+
+
+def _ready_without_photo(ctx: ProfileContext) -> Any:
+    """A member missing only a photo: every requirement but it met, identity verification none."""
+    member = ctx.ready_member(photo=False)
+    seed_chart(member.account_id)
+    _edit(ctx, member)
+    expect(ctx.missing(member) == ["photo"], "only a photo is missing")
+    return member
+
+
+@case("sv2r.a_profile_completes_without_identity_verification", "SV2-R 1", "OD-68")
+def sv2r_completion(ctx: ProfileContext) -> str:
+    from glow_persistence.models import IdentityVerification
+
+    member = ctx.ready_member()
+    seed_chart(member.account_id)
+    expect(
+        not IdentityVerification.objects.filter(account_id=member.account_id).exists(),
+        "no verified or staff_approved record, nor any record",
+    )
+    profile = _profile_row(member.account_id)
+    expect(profile.state == "incomplete", "incomplete before the recompute")
+    completed = _events(profile.pk, "profile_completed")
+    expect(ctx.missing(member) == [], "nothing is missing without identity verification")
+    edited = _edit(ctx, member)
+    expect(edited["visibility"] == "visible", "the recompute makes the profile visible")
+    expect(_profile_row(member.account_id).state == "visible", "visible")
+    expect(_events(profile.pk, "profile_completed") == completed + 1, "profile_completed")
+    # The completion read never lists identity verification, whatever else is missing.
+    fresh = ctx.member()
+    expect(
+        ctx.missing(fresh)
+        == ["consent", "adult_check", "profile_fields", "area", "photo", "chart"],
+        "a new member misses every other requirement, and never identity verification",
+    )
+    expect(
+        ctx.get(member, COMPLETION, "own_completion")["visibility"] == "visible",
+        "the completion read reports the profile visible",
+    )
+    return "a profile with no identity verification becomes visible; the read never lists it"
+
+
+@case("sv2r.the_staff_approval_meets_nothing", "SV2-R 2", "D18", "OD-68")
+def sv2r_staff_approval(ctx: ProfileContext) -> str:
+    from glow_persistence.models import IdentityVerification, StaffAudit
+    from glow_profiles import events, staff
+
+    def approve(account_id: UUID) -> Any:
+        return staff.approve_without_id(
+            account_id, staff_subject=STAFF, reason="SV2-R-proof", request_id=uuid4()
+        )
+
+    def revoke(account_id: UUID) -> Any:
+        return staff.revoke_approval(
+            account_id, staff_subject=STAFF, reason="SV2-R-proof", request_id=uuid4()
+        )
+
+    # Gated by its setting, as before: refused while off, with nothing written.
+    _switch_staff_approval(ctx, False)
+    member = ctx.ready_member()
+    audits = StaffAudit.objects.count()
+    refused = approve(member.account_id)
+    expect(refused.outcome == "refused" and refused.code == "forbidden", "refused while off")
+    expect(not IdentityVerification.objects.filter(account_id=member.account_id).exists(), "none")
+    expect(StaffAudit.objects.count() == audits, "nothing audited while off")
+    _switch_staff_approval(ctx, True)
+    # An incomplete profile: the approval meets nothing, so the profile stays incomplete.
+    eligibility = _account(member.account_id).eligibility_version
+    version = _profile_row(member.account_id).version
+    expect(approve(member.account_id).outcome == "applied", "approved while on")
+    row = IdentityVerification.objects.get(account_id=member.account_id)
+    expect(row.state == "staff_approved", "staff_approved")
+    expect(
+        StaffAudit.objects.filter(object_id=row.pk, action="approve_without_id").exists(), "audited"
+    )
+    expect(_events(row.pk, events.IDENTITY_VERIFICATION_CHANGED) == 1, "its event")
+    expect(_account(member.account_id).eligibility_version > eligibility, "eligibility bumped")
+    expect(_profile_row(member.account_id).state == "incomplete", "the profile stays incomplete")
+    expect(_profile_row(member.account_id).version == version, "the profile is unchanged")
+    expect(ctx.missing(member) == ["chart"], "only the chart is missing, as before")
+    # A visible profile: the approval and the revocation each leave it visible.
+    shown = ctx.ready_member()
+    seed_chart(shown.account_id)
+    expect(_edit(ctx, shown)["visibility"] == "visible", "visible without any verification")
+    eligibility = _account(shown.account_id).eligibility_version
+    version = _profile_row(shown.account_id).version
+    expect(approve(shown.account_id).outcome == "applied", "approved")
+    expect(_account(shown.account_id).eligibility_version > eligibility, "eligibility bumped")
+    expect(_profile_row(shown.account_id).state == "visible", "the approval: still visible")
+    expect(_profile_row(shown.account_id).version == version, "the approval: profile unchanged")
+    _switch_staff_approval(ctx, False)
+    eligibility = _account(shown.account_id).eligibility_version
+    revoked = revoke(shown.account_id)
+    expect(revoked.outcome == "applied", "staff revoke it at any time")
+    expect(revoked.detail.get("demoted") is False, "the revocation demotes nothing")
+    verification = IdentityVerification.objects.get(account_id=shown.account_id)
+    expect(verification.state == "unverified", "back to unverified")
+    expect(
+        StaffAudit.objects.filter(object_id=verification.pk, action="revoke_approval").exists(),
+        "the revocation is audited",
+    )
+    expect(
+        _events(verification.pk, events.IDENTITY_VERIFICATION_CHANGED) == 2, "each has its event"
+    )
+    expect(_account(shown.account_id).eligibility_version > eligibility, "eligibility bumped")
+    expect(_profile_row(shown.account_id).state == "visible", "the revocation: still visible")
+    expect(_profile_row(shown.account_id).version == version, "the revocation: unchanged")
+    return "gated, audited and bumping eligibility; neither approval nor revocation moves a profile"
+
+
+@case("sv2r.toggle_off_approves_without_the_check", "SV2-R 3", "D9", "D10", "OD-68")
+def sv2r_toggle_off(ctx: ProfileContext) -> str:
+    from glow_domain import media as md
+    from glow_persistence.models import MediaObject, StaffAudit
+    from glow_profiles import media, staff
+
+    member = _ready_without_photo(ctx)
+    asset_id = _photo_in_review(ctx, member)
+    ctx.photo_check(False)
+    profile = _profile_row(member.account_id)
+    completed = _events(profile.pk, "profile_completed")
+    # A spy check that would reject, and a hold port that holds nothing.
+    spy, hold = DecidingCheck("reject", "fixture_reason"), RecordingHold()
+    approved = media.run_check(asset_id, ports=test_ports(check=spy, hold=hold))
+    expect(approved.outcome == "applied", "approved with the toggle off")
+    expect(spy.asked == [], "the check port was not called")
+    expect(hold.asked == [asset_id], "the hold port was asked first")
+    audit = StaffAudit.objects.get(object_id=asset_id, action="approve")
+    expect(audit.staff_subject == md.PHOTO_CHECK_OFF_SUBJECT, "under the toggle's own subject")
+    expect(audit.reason_code == md.PHOTO_CHECK_OFF, "under the toggle's own reason")
+    expect(
+        not StaffAudit.objects.filter(
+            object_id=asset_id, staff_subject=md.CHECK_SUBJECT, reason_code=md.APPROVED_BY_CHECK
+        ).exists(),
+        "never recorded as the check's approval",
+    )
+    expect(_asset_row(str(asset_id)).review_ref == audit.id, "its review reference is the toggle's")
+    lifecycle = _lifecycle(ctx, member, str(asset_id))
+    expect(lifecycle["state"] == "approved" and lifecycle["approved_delivery_ref"], "deliverable")
+    ctx.values.add(lifecycle["approved_delivery_ref"])
+    expect(approved.detail.get("profile") == "visible", "the recompute makes the profile visible")
+    expect(_events(profile.pk, "profile_completed") == completed + 1, "profile_completed")
+    # Correction C1 (the exact-head review's R2): the photo is approved, so run_check refuses it
+    # with the toggle off, asking neither port and writing nothing.
+    before = _photo_snapshot(asset_id, member.account_id)
+    spy, hold = DecidingCheck("reject", "fixture_reason"), RecordingHold()
+    again = media.run_check(asset_id, ports=test_ports(check=spy, hold=hold))
+    expect(
+        (again.outcome, again.reason) == ("no_change", "not_in_review"),
+        "off: an approved photo is not in review",
+    )
+    expect(spy.asked == [] and hold.asked == [], "off: no port asked for an approved photo")
+    expect(_photo_snapshot(asset_id, member.account_id) == before, "off: nothing written for it")
+    # With the runtime's own ports (the fixture check, which approves nothing): approved too.
+    runtime = _photo_in_review(ctx, member)
+    expect(media.run_check(runtime).outcome == "applied", "the runtime approves with it off")
+    expect(_asset_row(str(runtime)).state == "approved", "the runtime's photo is approved")
+    # A staff restriction: the toggle never clears it.
+    restricted = staff.restrict_media(
+        runtime, staff_subject=STAFF, reason="report-fixture", request_id=uuid4()
+    )
+    expect(restricted.outcome == "applied", "staff restricted it")
+    before = _photo_snapshot(runtime, member.account_id)
+    spy = DecidingCheck()
+    kept = media.run_check(runtime, ports=test_ports(check=spy))
+    expect(kept.outcome == "no_change" and kept.reason == "restricted", "a restriction stops it")
+    expect(spy.asked == [], "no check port call")
+    expect(_photo_snapshot(runtime, member.account_id) == before, "nothing changed")
+    # A held photo: no_change, with nothing written.
+    other = _ready_without_photo(ctx)
+    held_id = _photo_in_review(ctx, other)
+    before = _photo_snapshot(held_id, other.account_id)
+    hold = RecordingHold({held_id})
+    held = media.run_check(held_id, ports=test_ports(check=spy, hold=hold))
+    expect(held.outcome == "no_change" and held.reason == "held", "a held photo is no_change")
+    expect(hold.asked == [held_id] and spy.asked == [], "the hold port asked; no check port")
+    expect(_photo_snapshot(held_id, other.account_id) == before, "nothing written while held")
+    # A photo with no variant (the test's own setup removes its variant's row): refused.
+    bare = _photo_in_review(ctx, other)
+    MediaObject.objects.filter(asset_id=bare, role="variant").delete()
+    before = _photo_snapshot(bare, other.account_id)
+    refused = media.run_check(bare, ports=test_ports(check=spy))
+    expect(
+        (refused.outcome, refused.code, refused.reason)
+        == ("refused", "state_conflict", "no_variant"),
+        "a photo with no variant is refused",
+    )
+    expect(_photo_snapshot(bare, other.account_id) == before, "nothing written for it")
+    return (
+        "approved under the toggle's subject and reason with no check port call; a restriction,"
+        " a hold and a missing variant stop it; the recompute completes the profile"
+    )
+
+
+@case("sv2r.toggle_on_the_check_decides_as_before", "SV2-R 4", "D10", "OD-68")
+def sv2r_toggle_on(ctx: ProfileContext) -> str:
+    from glow_domain import media as md
+    from glow_persistence.models import StaffAudit
+    from glow_profiles import media
+
+    ctx.photo_check(True)
+    member = ctx.member()
+    asset_id = _photo_in_review(ctx, member)
+    runtime = media.run_check(asset_id)
+    expect(runtime.outcome == "no_change" and runtime.reason == "undecided", "the runtime waits")
+    expect(_asset_row(str(asset_id)).state == "review_pending", "still in review")
+    hold, spy = RecordingHold({asset_id}), DecidingCheck()
+    held = media.run_check(asset_id, ports=test_ports(check=spy, hold=hold))
+    expect(held.reason == "held" and spy.asked == [asset_id], "the check decided; the hold held")
+    spy = DecidingCheck()
+    approved = media.run_check(asset_id, ports=test_ports(check=spy))
+    expect(approved.outcome == "applied" and spy.asked == [asset_id], "the check approved it")
+    audit = StaffAudit.objects.get(object_id=asset_id, action="approve")
+    expect(
+        (audit.staff_subject, audit.reason_code) == (md.CHECK_SUBJECT, md.APPROVED_BY_CHECK),
+        "recorded as the check's approval",
+    )
+    expect(str(asset_id) not in media.awaiting_recheck(), "the check's approval needs no recheck")
+    # Correction C1 (the exact-head review's R2): the photo is approved, so run_check refuses it
+    # with the toggle on, whatever the check would decide, asking neither port and writing nothing.
+    # The member's profile is made first, through the member's route, so that the snapshot can
+    # read it.
+    ctx.data(ctx.profile(member), "own_profile", "the profile")
+    for rejecting in (True, False):
+        before = _photo_snapshot(asset_id, member.account_id)
+        spy = DecidingCheck("reject", "fixture_reason") if rejecting else DecidingCheck()
+        hold = RecordingHold()
+        again = media.run_check(asset_id, ports=test_ports(check=spy, hold=hold))
+        expect(
+            (again.outcome, again.reason) == ("no_change", "not_in_review"),
+            "on, a rejecting check: not in review"
+            if rejecting
+            else "on, an approving check: not in review",
+        )
+        expect(spy.asked == [] and hold.asked == [], "on: no port asked for an approved photo")
+        expect(_photo_snapshot(asset_id, member.account_id) == before, "on: nothing written")
+    rejected_id = _photo_in_review(ctx, member)
+    rejected = media.run_check(rejected_id, ports=test_ports(check=DecidingCheck("reject", "x_y")))
+    expect(rejected.outcome == "applied", "the check rejected it")
+    row = _asset_row(str(rejected_id))
+    expect(row.state == "rejected" and row.rejection_reason == "x_y", "rejected, with its reason")
+    return "with the toggle on, the check port decides: wait, hold, approval and rejection"
+
+
+@case("sv2r.the_recheck", "SV2-R 5", "D9", "D10", "OD-68")
+def sv2r_recheck(ctx: ProfileContext) -> str:
+    from glow_chat.contact import OrmContactPersistence
+    from glow_domain import media as md
+    from glow_persistence.models import StaffAudit
+    from glow_profiles import media, staff
+
+    # A visible member whose one photo was approved while the toggle was off.
+    member = _ready_without_photo(ctx)
+    photo = _approved_while_off(ctx, member)
+    expect(_profile_row(member.account_id).state == "visible", "visible")
+    expect(str(photo) in media.awaiting_recheck(), "the read lists it")
+    # The toggle off: no check port call, and nothing changes.
+    before = _photo_snapshot(photo, member.account_id)
+    spy = DecidingCheck("reject", "fixture_reason")
+    off = media.recheck(photo, ports=test_ports(check=spy))
+    expect(off.outcome == "no_change" and off.reason == "photo_check_off", "off: no_change")
+    expect(spy.asked == [], "off: no check port call")
+    expect(_photo_snapshot(photo, member.account_id) == before, "off: nothing changed")
+    ctx.photo_check(True)
+    # Undecided: nothing changes, and it is still listed.
+    undecided = media.recheck(photo, ports=test_ports(check=DecidingCheck("undecided")))
+    expect(undecided.reason == "undecided", "undecided: no_change")
+    expect(_photo_snapshot(photo, member.account_id) == before, "undecided: nothing changed")
+    expect(str(photo) in media.awaiting_recheck(), "undecided: still listed")
+    # Held: the check approves, the hold port holds it, and nothing is written.
+    spy, hold = DecidingCheck(), RecordingHold({photo})
+    held = media.recheck(photo, ports=test_ports(check=spy, hold=hold))
+    expect(held.outcome == "no_change" and held.reason == "held", "held: no_change")
+    expect(spy.asked == [photo] and hold.asked == [photo], "the check decided; the hold held")
+    expect(_photo_snapshot(photo, member.account_id) == before, "held: nothing written")
+    # Approved: it stays approved and shown, and the check's decision is recorded.
+    hold = RecordingHold()
+    approved = media.recheck(photo, ports=test_ports(check=DecidingCheck(), hold=hold))
+    expect(approved.outcome == "applied", "the check approved it")
+    expect(hold.asked == [photo], "the hold port was asked first")
+    row = _asset_row(str(photo))
+    audit = StaffAudit.objects.get(pk=row.review_ref)
+    expect(
+        (audit.action, audit.staff_subject, audit.reason_code)
+        == ("approve", md.CHECK_SUBJECT, md.APPROVED_BY_CHECK),
+        "the review reference moved to the check's decision",
+    )
+    expect(row.state == "approved" and row.approved_variant_ref, "still approved and deliverable")
+    lifecycle = _lifecycle(ctx, member, str(photo))
+    expect(lifecycle["approved_delivery_ref"], "its owner still sees its reference")
+    ctx.values.add(lifecycle["approved_delivery_ref"])
+    expect(str(photo) not in media.awaiting_recheck(), "the read no longer lists it")
+    again = media.recheck(photo, ports=test_ports(check=DecidingCheck("reject", "x_y")))
+    expect(again.reason == "not_awaiting_recheck", "the step no longer takes it")
+    expect(_profile_row(member.account_id).state == "visible", "the profile stays visible")
+    expect(_events(photo, "media_approved") == 2, "the approval is a recorded transition")
+    # Rejected: the photo leaves view, and the profile whose last approved photo it was demotes.
+    other = _ready_without_photo(ctx)
+    last = _approved_while_off(ctx, other)
+    ctx.photo_check(True)
+    profile = _profile_row(other.account_id)
+    expect(profile.state == "visible", "visible with one photo")
+    demotions = _events(profile.pk, "profile_demoted")
+    rejected = media.recheck(
+        last, ports=test_ports(check=DecidingCheck("reject", "fixture_reason"))
+    )
+    expect(rejected.outcome == "applied", "the check rejected it")
+    expect(rejected.detail.get("profile") == "incomplete", "the recompute demotes the profile")
+    row = _asset_row(str(last))
+    expect(row.state == "rejected" and row.approved_variant_ref is None, "delivery withheld")
+    expect(row.rejection_reason == "fixture_reason", "with the check's reason")
+    expect(media.delivery_reference(last).detail["delivery_ref"] is None, "no delivery")
+    expect(
+        StaffAudit.objects.filter(
+            object_id=last, action="reject", staff_subject=md.CHECK_SUBJECT
+        ).exists(),
+        "the check's rejection is recorded",
+    )
+    expect(_profile_row(other.account_id).state == "incomplete", "requirement_removed")
+    expect(_events(profile.pk, "profile_demoted") == demotions + 1, "profile_demoted")
+    expect(ctx.missing(other) == ["photo"], "the photo is missing again")
+    expect(str(last) not in media.awaiting_recheck(), "a rejected photo is not listed")
+    # Correction C1 (the exact-head review's R1): a photo approved while the toggle was off that
+    # is no longer approved, restricted by staff (back in review, its review reference kept) or
+    # removed by its owner, is not the recheck's: whatever the check would decide, no port is
+    # asked and nothing is written, and the read lists neither.
+    keeper = ctx.member()
+    ctx.data(ctx.profile(keeper), "own_profile", "the profile")
+    restricted = _approved_while_off(ctx, keeper)
+    expect(
+        staff.restrict_media(
+            restricted, staff_subject=STAFF, reason="report-fixture", request_id=uuid4()
+        ).outcome
+        == "applied",
+        "staff restricted a photo approved while off",
+    )
+    row = _asset_row(str(restricted))
+    expect(row.state == "review_pending", "restricted: back in review")
+    expect(
+        StaffAudit.objects.filter(
+            pk=row.review_ref, staff_subject=md.PHOTO_CHECK_OFF_SUBJECT
+        ).exists(),
+        "restricted: its review reference is still the toggle's approval",
+    )
+    removed = _approved_while_off(ctx, keeper)
+    gone = ctx.data(
+        ctx.command(keeper, MEDIA, ctx.media_intent(keeper, "remove", asset_id=str(removed))),
+        "media",
+        "removed by its owner",
+    )
+    expect(gone["state"] == "removal_pending", "removed: removal_pending")
+    expect(
+        StaffAudit.objects.filter(
+            pk=_asset_row(str(removed)).review_ref, staff_subject=md.PHOTO_CHECK_OFF_SUBJECT
+        ).exists(),
+        "removed: its review reference is still the toggle's approval",
+    )
+    ctx.photo_check(True)
+    for photo_id in (restricted, removed):
+        for rejecting in (True, False):
+            before = _photo_snapshot(photo_id, keeper.account_id)
+            spy = DecidingCheck("reject", "fixture_reason") if rejecting else DecidingCheck()
+            hold = RecordingHold()
+            kept = media.recheck(photo_id, ports=test_ports(check=spy, hold=hold))
+            expect(
+                (kept.outcome, kept.reason) == ("no_change", "not_awaiting_recheck"),
+                "restricted: not the recheck's"
+                if photo_id == restricted
+                else "removed: not the recheck's",
+            )
+            expect(spy.asked == [] and hold.asked == [], "no port asked for it")
+            expect(_photo_snapshot(photo_id, keeper.account_id) == before, "nothing written")
+        listed = media.awaiting_recheck()
+        expect(
+            str(photo_id) not in listed,
+            "restricted: not listed" if photo_id == restricted else "removed: not listed",
+        )
+    # An account that is not active: not listed, and refused with nothing written.
+    owner = ctx.member()
+    inactive = _approved_while_off(ctx, owner)
+    ctx.photo_check(True)
+    expect(str(inactive) in media.awaiting_recheck(), "listed while its owner is active")
+    suspended = OrmContactPersistence(provider="fixture").suspend(owner.account_id)
+    expect(suspended.outcome == "applied", "glow_chat suspended the owner")
+    expect(str(inactive) not in media.awaiting_recheck(), "the read lists active owners' only")
+    spy = DecidingCheck()
+    refused = media.recheck(inactive, ports=test_ports(check=spy))
+    expect(_inactive_refusal(refused), "an inactive owner's photo is refused")
+    expect(spy.asked == [], "no check port call for it")
+    expect(_asset_row(str(inactive)).state == "approved", "it is unchanged")
+    return (
+        "off: no call, no change; undecided and held: no change; approve: the check's decision"
+        " recorded and no longer listed; reject: withheld and the profile demoted; restricted or"
+        " removed: not the recheck's, no call and no change; inactive: refused"
+    )
+
+
+@case("sv2r.toggle_off_again_approves_under_its_reason", "SV2-R 6", "D10", "OD-68")
+def sv2r_toggle_off_again(ctx: ProfileContext) -> str:
+    from glow_domain import media as md
+    from glow_persistence.models import StaffAudit
+    from glow_profiles import media
+
+    ctx.photo_check(True)
+    member = ctx.member()
+    checked = _photo_in_review(ctx, member)
+    expect(
+        media.run_check(checked, ports=test_ports(check=DecidingCheck())).outcome == "applied",
+        "the check approved one photo",
+    )
+    waiting = _photo_in_review(ctx, member)
+    expect(media.run_check(waiting).reason == "undecided", "another waits for the check")
+    ctx.photo_check(False)
+    approved = media.run_check(waiting)
+    expect(approved.outcome == "applied", "turned off again, the waiting photo is approved")
+    audit = StaffAudit.objects.get(pk=_asset_row(str(waiting)).review_ref)
+    expect(
+        (audit.staff_subject, audit.reason_code)
+        == (md.PHOTO_CHECK_OFF_SUBJECT, md.PHOTO_CHECK_OFF),
+        "under the toggle's reason",
+    )
+    kept = StaffAudit.objects.get(pk=_asset_row(str(checked)).review_ref)
+    expect(
+        (kept.staff_subject, kept.reason_code) == (md.CHECK_SUBJECT, md.APPROVED_BY_CHECK),
+        "the photo the check approved stays as it is",
+    )
+    expect(_asset_row(str(checked)).state == "approved", "and stays approved")
+    listed = media.awaiting_recheck()
+    expect(str(waiting) in listed and str(checked) not in listed, "only the toggle's is listed")
+    return "turned off again: a waiting photo is approved under the toggle's reason"
+
+
+@case("sv2r.the_toggle_is_a_setting", "SV2-R 7", "D2", "OD-68")
+def sv2r_setting(ctx: ProfileContext) -> str:
+    from glow_domain import profile_settings as ps
+    from glow_persistence.models import SettingVersion, StaffAudit
+    from glow_profiles import settings_store
+
+    first = SettingVersion.objects.get(name=ps.PHOTO_CHECK, number=1)
+    expect(first.content == {"enabled": False}, "version 1 is off")
+    expect(first.staff_subject == "system:launch-default", "seeded by system:launch-default")
+    expect(first.reason == "OD-68", "with the reason OD-68")
+    seeded = StaffAudit.objects.get(object_id=first.pk, action="seed_launch_default")
+    expect(
+        (seeded.staff_subject, seeded.reason_code, seeded.scope, seeded.after_version)
+        == ("system:launch-default", "OD-68", "settings", 1),
+        "its seed's StaffAudit row",
+    )
+    # Its pointer, read through the store (the only code that names a pointer, D19).
+    pointer_id = settings_store.read_unlocked(ps.PHOTO_CHECK).pointer_id
+    before = _counts()
+    for content in ({"enabled": "yes"}, {"enabled": True, "extra": 1}, {}, [True]):
+        refused = ctx.publish(ps.PHOTO_CHECK, content)
+        expect(
+            refused.outcome == "refused" and refused.reason == "refused:schema",
+            "outside its closed schema: refused",
+        )
+    expect(_counts() == before, "nothing is written by a refusal")
+    current = settings_store.read_unlocked(ps.PHOTO_CHECK)
+    published_events = _events(pointer_id, "policy_published")
+    turned = {"enabled": not current.content["enabled"]}
+    published = ctx.publish(ps.PHOTO_CHECK, turned)
+    expect(published.outcome == "applied", "a publication")
+    row = SettingVersion.objects.get(name=ps.PHOTO_CHECK, number=current.number + 1)
+    expect(row.content == turned and row.staff_subject == STAFF, "the next version, by staff")
+    expect(
+        StaffAudit.objects.filter(object_id=row.pk, action="publish", staff_subject=STAFF).exists(),
+        "the publication writes StaffAudit",
+    )
+    expect(_events(pointer_id, "policy_published") == published_events + 1, "policy_published")
+    expect(
+        settings_store.read_unlocked(ps.PHOTO_CHECK).policy_version
+        == ps.policy_version(ps.PHOTO_CHECK, current.number + 1),
+        "the pointer names the new version",
+    )
+    ctx.photo_check(False)
+    return "version 1 off by system:launch-default and OD-68; closed schema; audited publications"
+
+
+def _hold_names(holds: list[tuple[Any, str]]) -> dict[int, list[str]]:
+    held: dict[int, list[str]] = {}
+    for transaction, held_name in holds:
+        held.setdefault(id(transaction), [])
+        if held_name not in held[id(transaction)]:
+            held[id(transaction)].append(held_name)
+    return held
+
+
+@case("sv2r.locks_serialize_on_the_toggles_pointer", "SV2-R 9", "D19", "OD-68")
+def sv2r_locks(ctx: ProfileContext) -> str:
+    from unittest import mock
+
+    from glow_domain import media as md
+    from glow_domain import profile_settings as ps
+    from glow_domain.chat import TransactionProbe
+    from glow_persistence.models import StaffAudit
+    from glow_profiles import media, settings_store
+
+    from glow_ordering_proof.concurrency import Hold, PidSlot, Worker
+    from glow_ordering_proof.observe import observe_lock_wait
+
+    def publishing(enabled: bool, probe: Any) -> Callable[[], Any]:
+        return lambda: settings_store.publish(
+            ps.PHOTO_CHECK,
+            {"enabled": enabled},
+            staff_subject=STAFF,
+            reason="SV2-R-proof",
+            request_id=uuid4(),
+            probe=probe,
+        )
+
+    member = ctx.member()
+    waits = []
+    # 1. A publication (off) holds the pointer; run_check waits on it, then reads the new version.
+    ctx.photo_check(True)
+    in_review = _photo_in_review(ctx, member)
+    holder, arriver = Worker("sv2r-publisher"), Worker("sv2r-check")
+    try:
+        hold, slot = Hold(), PidSlot()
+        publication = holder.submit(
+            publishing(False, TransactionProbe(on_begin=slot.set, before_commit=hold.point))
+        )
+        expect(hold.wait_held(), "the publication holds the toggle's pointer")
+        arriver_pid = arriver.run(_backend_pid)
+        checking = arriver.submit(lambda: media.run_check(in_review))
+        waits.append(observe_lock_wait(arriver_pid, holder_pid=slot.wait(), finished=checking.done))
+        hold.release.set()
+        published = publication.result(timeout=30)
+        checked = checking.result(timeout=30)
+    finally:
+        hold.release.set()
+        holder.close()
+        arriver.close()
+    expect(waits[-1].observed, "run_check waited on the publication's pointer lock")
+    expect(published.outcome == "applied", "the publication committed")
+    expect(checked.outcome == "applied", "run_check read the new version: the toggle off")
+    audit = StaffAudit.objects.get(pk=_asset_row(str(in_review)).review_ref)
+    expect(audit.staff_subject == md.PHOTO_CHECK_OFF_SUBJECT, "approved under the toggle's own")
+    # 2. A publication (on) holds the pointer; the recheck waits on it, then reads it on.
+    shown = _approved_while_off(ctx, member)
+    holder, arriver = Worker("sv2r-publisher"), Worker("sv2r-recheck")
+    try:
+        hold, slot = Hold(), PidSlot()
+        publication = holder.submit(
+            publishing(True, TransactionProbe(on_begin=slot.set, before_commit=hold.point))
+        )
+        expect(hold.wait_held(), "the publication holds the toggle's pointer again")
+        arriver_pid = arriver.run(_backend_pid)
+        rechecking = arriver.submit(
+            lambda: media.recheck(shown, ports=test_ports(check=DecidingCheck()))
+        )
+        waits.append(
+            observe_lock_wait(arriver_pid, holder_pid=slot.wait(), finished=rechecking.done)
+        )
+        hold.release.set()
+        published = publication.result(timeout=30)
+        rechecked = rechecking.result(timeout=30)
+    finally:
+        hold.release.set()
+        holder.close()
+        arriver.close()
+    expect(waits[-1].observed, "the recheck waited on the publication's pointer lock")
+    expect(published.outcome == "applied", "the second publication committed")
+    expect(rechecked.outcome == "applied", "the recheck read the toggle on, and the check decided")
+    # 3. The recheck holds the pointer FOR SHARE; a publication waits on it.
+    another = _approved_while_off(ctx, member)
+    ctx.photo_check(True)
+    holder, arriver = Worker("sv2r-recheck"), Worker("sv2r-publisher")
+    try:
+        hold, slot = Hold(), PidSlot()
+        rechecking = holder.submit(
+            lambda: media.recheck(
+                another,
+                ports=test_ports(check=DecidingCheck("undecided")),
+                probe=TransactionProbe(on_begin=slot.set, before_commit=hold.point),
+            )
+        )
+        expect(hold.wait_held(), "the recheck holds the toggle's pointer")
+        arriver_pid = arriver.run(_backend_pid)
+        publication = arriver.submit(publishing(False, None))
+        waits.append(
+            observe_lock_wait(arriver_pid, holder_pid=slot.wait(), finished=publication.done)
+        )
+        hold.release.set()
+        rechecked = rechecking.result(timeout=30)
+        published = publication.result(timeout=30)
+    finally:
+        hold.release.set()
+        holder.close()
+        arriver.close()
+    expect(waits[-1].observed, "the publication waited on the recheck's shared lock")
+    expect(rechecked.reason == "undecided" and published.outcome == "applied", "both completed")
+    # D19's order: run_check and the recheck lock consent.onboarding, the toggle, then the media
+    # policy, and a publication of the toggle locks its own pointer only.
+    holds: list[tuple[Any, str]] = []
+    original_hold = settings_store._hold
+
+    def holding(transaction: Any, held_name: str) -> None:
+        holds.append((transaction, held_name))
+        original_hold(transaction, held_name)
+
+    ordered = [ps.ONBOARDING_CONSENT, ps.PHOTO_CHECK, ps.MEDIA_POLICY]
+    with mock.patch.object(settings_store, "_hold", holding):
+        ctx.photo_check(True)
+        later = _photo_in_review(ctx, ctx.member())
+        expect(media.run_check(later, ports=test_ports(check=DecidingCheck())).ok, "run_check")
+        expect(media.recheck(another).ok, "the recheck")
+    found = list(_hold_names(holds).values())
+    expect([ps.PHOTO_CHECK] in found, "the publication locked its own pointer only")
+    steps = [names for names in found if ps.PHOTO_CHECK in names and len(names) > 1]
+    expect(len(steps) == 2, "run_check's and the recheck's transactions were seen")
+    expect(all(names == ordered for names in steps), "the toggle in its place in D19's order")
+    for names in found:
+        expect(names == sorted(names), "every transaction locked its pointers in name order")
+    return f"{len(waits)} lock waits on the toggle's pointer; " + "; ".join(
+        wait.summary() for wait in waits
     )
 
 

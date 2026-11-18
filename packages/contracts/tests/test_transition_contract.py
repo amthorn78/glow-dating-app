@@ -153,6 +153,49 @@ class FlowAcceptanceTests(unittest.TestCase):
             self.check("F05", "remove", state, "removal_pending", OWNER, "allowed")
         self.check("F05", "purged", "removal_pending", "removed", OWNER, "forbidden")
 
+    def test_sv2r_f05_system_transitions_out_of_approved(self):
+        # SV2-R (its brief's R2 and acceptance check 8; OD-68; DM-84 section 5; DM-91 4.3): the
+        # recheck's two transitions out of approved, the check's decision on a photo approved
+        # while its toggle was off, are the system's with A05; no member or staff makes them, and
+        # every other unlisted transition out of approved is still forbidden.
+        checked = replace(SYSTEM, policies=frozenset({"A05"}))
+        self.check("F05", "approve", "approved", "approved", checked, "allowed")
+        self.check("F05", "reject", "approved", "rejected", checked, "allowed")
+        for actor in (OWNER, STAFF, PARTICIPANT):
+            with self.subTest(actor=actor.role):
+                self.check("F05", "approve", "approved", "approved", actor, "forbidden")
+                self.check("F05", "reject", "approved", "rejected", actor, "forbidden")
+        self.check("F05", "approve", "approved", "approved", SYSTEM, "policy_unresolved")
+        self.check("F05", "reject", "approved", "rejected", SYSTEM, "policy_unresolved")
+        for event, after in (
+            ("approve", "rejected"),
+            ("reject", "approved"),
+            ("reject", "review_pending"),
+            ("approve", "review_pending"),
+            ("review", "review_pending"),
+            ("uploaded", "quarantined"),
+            ("purged", "removed"),
+        ):
+            with self.subTest(event=event, after=after):
+                self.check("F05", event, "approved", after, checked, "state_conflict")
+        out_of_approved = {
+            (rule["event"], rule["to"], rule["role"], tuple(rule["policies"]))
+            for flow in FLOWS_JSON["flows"]
+            if flow["id"] == "F05"
+            for rule in flow["transitions"]
+            if rule["from"] == "approved"
+        }
+        self.assertEqual(
+            out_of_approved,
+            {
+                ("reorder", "approved", "owner", ()),
+                ("remove", "removal_pending", "owner", ()),
+                ("restrict_media", "review_pending", "moderator", ("A05",)),
+                ("approve", "approved", "system", ("A05",)),
+                ("reject", "rejected", "system", ("A05",)),
+            },
+        )
+
     def test_f05_private_collection_requires_current_owner_session(self):
         self.assertEqual(read_projection("F05", "MediaCollection", OWNER), "allowed")
         for context in (
