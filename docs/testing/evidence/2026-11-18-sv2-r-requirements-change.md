@@ -421,3 +421,11 @@ Local results are this session's runs. The run of record is below.
 - **The manager's check** (App Manager 12, 22:34 UTC): run 44408183628 read with the GitHub tools, event `pull_request`, on `e9cc9ab`, conclusion `success`. The merge waits for the run and Codex's pass on PR54's final head, read with the same tools.
 - **The review's limits:** it read `profile_cases.py` only in the changed cases and their helpers, and did not read Codex's summary, the other jobs' logs, or the API job's test-count line in run 44402994154 (only the end of that log); its offline reversals ran against the affected test modules; it did not run `smoke.py`, `glow_persistence.static_check`, `generate.mjs --check` or the other suites locally, taking them from CI.
 - **Next:** the merge of PR54, after its run and Codex's pass on its final head; then the merge receipt.
+
+## Merge receipt (App Manager 12, 18 November 2026)
+
+- **PR54 merged into `main` at `6edae78`** (a merge commit, made with `expectedHeadSha` `115bc5a`; read back at 22:57 UTC: its parents are `15d54f6` and `115bc5a`, and its tree equals `115bc5a`'s).
+- **On the final head `115bc5a`,** read with the GitHub tools before the merge: run 44413105426 (`pull_request`), all eight jobs `success`, no retry step run, the gate's "Application checks passed"; Codex's summary complete on `115bc5a` with no findings; no review thread. PF02's revision 1.7 there equals `50a3e25`'s, so DM-91's read covered it (the review log's "Deferred conditions").
+- **The reviews:** the exact-head review of `f4703a1` (changes requested, for tests only), correction C1 (`f4c93ea`) and its delta review (approve with nits), each above.
+- **Pruned in this receipt** (each deletion condition met by the merge and this receipt), with every link to them pinned at `6edae78`: the DM-91, DM-92 and DM-93 consultations, and SV2-R's implementation, review, correction C1 and delta review prompts.
+- **SV2-R is done.**
