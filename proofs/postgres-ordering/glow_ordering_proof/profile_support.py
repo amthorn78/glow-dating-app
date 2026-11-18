@@ -8,10 +8,11 @@ mail's codes, and Django's test client. Then:
 - ``ValueLedger``: every member value the run sends that must appear in no output (coordinates,
   birth dates, times and places, own words, sensitive field values) and, since SV2 Stage B, the
   photos' values: grant and delivery references, every object key (the originals' and, since
-  correction C2, the variants'), the fixture store's upload credentials' tokens, and each
-  object's bytes as their hex and their ``repr`` (``add_bytes``; ``ObservedObjects``;
-  ``ProfileContext.hold_media``). It holds them only to show that none is ever logged, printed
-  or written; it never prints one.
+  correction C2, the variants'), the fixture store's upload credentials' tokens, and the start of
+  each object's bytes, their first 24, as their hex and their ``repr``, which any whole print of
+  either contains (``add_bytes``; ``ObservedObjects``; ``ProfileContext.hold_media``; SV2-R's
+  correction C1, the carried entry N-c). It holds them only to show that none is ever logged,
+  printed or written; it never prints one.
 - ``ProfileContext``: the member routes, each served body checked against its DTO with the
   contract's own schema (``schema_check.check_body``), so an extra field fails; and helpers that
   drive a member to each state through the routes.

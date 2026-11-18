@@ -500,6 +500,8 @@ class RouteTests(unittest.TestCase):
             for statement in [*body.body[: approving[0]], *branch.body[: guards[0]]]
         )
         later = "\n".join(ast.unparse(statement) for statement in branch.body[guards[0] + 1 :])
+        # SV2-R's correction C1 (the carried entry N-d): a queryset update, a bulk creation and an
+        # outbox event are writes too.
         for write in (
             "_decision_audit(",
             "transition(",
@@ -507,6 +509,9 @@ class RouteTests(unittest.TestCase):
             "recompute.recompute(",
             ".save(",
             ".create(",
+            ".update(",
+            "bulk_create",
+            "events.emit(",
         ):
             with self.subTest(step=step, write=write):
                 self.assertNotIn(write, earlier)

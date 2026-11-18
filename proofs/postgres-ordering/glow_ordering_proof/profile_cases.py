@@ -4378,6 +4378,17 @@ def sv2r_toggle_off(ctx: ProfileContext) -> str:
     ctx.values.add(lifecycle["approved_delivery_ref"])
     expect(approved.detail.get("profile") == "visible", "the recompute makes the profile visible")
     expect(_events(profile.pk, "profile_completed") == completed + 1, "profile_completed")
+    # Correction C1 (the exact-head review's R2): the photo is approved, so run_check refuses it
+    # with the toggle off, asking neither port and writing nothing.
+    before = _photo_snapshot(asset_id, member.account_id)
+    spy, hold = DecidingCheck("reject", "fixture_reason"), RecordingHold()
+    again = media.run_check(asset_id, ports=test_ports(check=spy, hold=hold))
+    expect(
+        (again.outcome, again.reason) == ("no_change", "not_in_review"),
+        "off: an approved photo is not in review",
+    )
+    expect(spy.asked == [] and hold.asked == [], "off: no port asked for an approved photo")
+    expect(_photo_snapshot(asset_id, member.account_id) == before, "off: nothing written for it")
     # With the runtime's own ports (the fixture check, which approves nothing): approved too.
     runtime = _photo_in_review(ctx, member)
     expect(media.run_check(runtime).outcome == "applied", "the runtime approves with it off")
@@ -4443,6 +4454,24 @@ def sv2r_toggle_on(ctx: ProfileContext) -> str:
         "recorded as the check's approval",
     )
     expect(str(asset_id) not in media.awaiting_recheck(), "the check's approval needs no recheck")
+    # Correction C1 (the exact-head review's R2): the photo is approved, so run_check refuses it
+    # with the toggle on, whatever the check would decide, asking neither port and writing nothing.
+    # The member's profile is made first, through the member's route, so that the snapshot can
+    # read it.
+    ctx.data(ctx.profile(member), "own_profile", "the profile")
+    for rejecting in (True, False):
+        before = _photo_snapshot(asset_id, member.account_id)
+        spy = DecidingCheck("reject", "fixture_reason") if rejecting else DecidingCheck()
+        hold = RecordingHold()
+        again = media.run_check(asset_id, ports=test_ports(check=spy, hold=hold))
+        expect(
+            (again.outcome, again.reason) == ("no_change", "not_in_review"),
+            "on, a rejecting check: not in review"
+            if rejecting
+            else "on, an approving check: not in review",
+        )
+        expect(spy.asked == [] and hold.asked == [], "on: no port asked for an approved photo")
+        expect(_photo_snapshot(asset_id, member.account_id) == before, "on: nothing written")
     rejected_id = _photo_in_review(ctx, member)
     rejected = media.run_check(rejected_id, ports=test_ports(check=DecidingCheck("reject", "x_y")))
     expect(rejected.outcome == "applied", "the check rejected it")
@@ -4456,7 +4485,7 @@ def sv2r_recheck(ctx: ProfileContext) -> str:
     from glow_chat.contact import OrmContactPersistence
     from glow_domain import media as md
     from glow_persistence.models import StaffAudit
-    from glow_profiles import media
+    from glow_profiles import media, staff
 
     # A visible member whose one photo was approved while the toggle was off.
     member = _ready_without_photo(ctx)
@@ -4529,6 +4558,61 @@ def sv2r_recheck(ctx: ProfileContext) -> str:
     expect(_events(profile.pk, "profile_demoted") == demotions + 1, "profile_demoted")
     expect(ctx.missing(other) == ["photo"], "the photo is missing again")
     expect(str(last) not in media.awaiting_recheck(), "a rejected photo is not listed")
+    # Correction C1 (the exact-head review's R1): a photo approved while the toggle was off that
+    # is no longer approved, restricted by staff (back in review, its review reference kept) or
+    # removed by its owner, is not the recheck's: whatever the check would decide, no port is
+    # asked and nothing is written, and the read lists neither.
+    keeper = ctx.member()
+    ctx.data(ctx.profile(keeper), "own_profile", "the profile")
+    restricted = _approved_while_off(ctx, keeper)
+    expect(
+        staff.restrict_media(
+            restricted, staff_subject=STAFF, reason="report-fixture", request_id=uuid4()
+        ).outcome
+        == "applied",
+        "staff restricted a photo approved while off",
+    )
+    row = _asset_row(str(restricted))
+    expect(row.state == "review_pending", "restricted: back in review")
+    expect(
+        StaffAudit.objects.filter(
+            pk=row.review_ref, staff_subject=md.PHOTO_CHECK_OFF_SUBJECT
+        ).exists(),
+        "restricted: its review reference is still the toggle's approval",
+    )
+    removed = _approved_while_off(ctx, keeper)
+    gone = ctx.data(
+        ctx.command(keeper, MEDIA, ctx.media_intent(keeper, "remove", asset_id=str(removed))),
+        "media",
+        "removed by its owner",
+    )
+    expect(gone["state"] == "removal_pending", "removed: removal_pending")
+    expect(
+        StaffAudit.objects.filter(
+            pk=_asset_row(str(removed)).review_ref, staff_subject=md.PHOTO_CHECK_OFF_SUBJECT
+        ).exists(),
+        "removed: its review reference is still the toggle's approval",
+    )
+    ctx.photo_check(True)
+    for photo_id in (restricted, removed):
+        for rejecting in (True, False):
+            before = _photo_snapshot(photo_id, keeper.account_id)
+            spy = DecidingCheck("reject", "fixture_reason") if rejecting else DecidingCheck()
+            hold = RecordingHold()
+            kept = media.recheck(photo_id, ports=test_ports(check=spy, hold=hold))
+            expect(
+                (kept.outcome, kept.reason) == ("no_change", "not_awaiting_recheck"),
+                "restricted: not the recheck's"
+                if photo_id == restricted
+                else "removed: not the recheck's",
+            )
+            expect(spy.asked == [] and hold.asked == [], "no port asked for it")
+            expect(_photo_snapshot(photo_id, keeper.account_id) == before, "nothing written")
+        listed = media.awaiting_recheck()
+        expect(
+            str(photo_id) not in listed,
+            "restricted: not listed" if photo_id == restricted else "removed: not listed",
+        )
     # An account that is not active: not listed, and refused with nothing written.
     owner = ctx.member()
     inactive = _approved_while_off(ctx, owner)
@@ -4544,8 +4628,8 @@ def sv2r_recheck(ctx: ProfileContext) -> str:
     expect(_asset_row(str(inactive)).state == "approved", "it is unchanged")
     return (
         "off: no call, no change; undecided and held: no change; approve: the check's decision"
-        " recorded and no longer listed; reject: withheld and the profile demoted; inactive:"
-        " refused"
+        " recorded and no longer listed; reject: withheld and the profile demoted; restricted or"
+        " removed: not the recheck's, no call and no change; inactive: refused"
     )
 
 

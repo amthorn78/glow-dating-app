@@ -132,7 +132,7 @@ Local results are this session's runs. The run of record is below.
 | Check | Tests | Result | Reversal and its failing output |
 |---|---|---|---|
 | **1** completion without identity verification | `test_sv2r_requirements.py` (AST, signature, behaviour under a dummy backend, the closed list, D18 kept, the docstring); `sv2r.a_profile_completes_without_identity_verification`; the R1 changes above | pass | **The identity check restored in `missing()`.** Offline: `FAIL: test_missing_reads_no_identity_verification ... AssertionError: 'IdentityVerification' unexpectedly found in 'def missing(...`, and `FAIL: test_with_every_other_requirement_met_nothing_is_missing`. On a local database: `[profile] cases: 68/77 passed`, with `FAIL sv2r.a_profile_completes_without_identity_verification ...: FAILED: nothing is missing without identity verification` and the five R1 cases each failing at their new assertion (for example `completion.refuses_each_missing_requirement ...: FAILED: identity verification: set aside`) |
-| **2** the staff approval unchanged | `sv2r.the_staff_approval_meets_nothing`; `staff.approval_gated_...`; `completion.removals_...`; `test_sv2r_requirements.test_d18_stays` | pass | Covered by check 1's reversal on the database: `FAIL sv2r.the_staff_approval_meets_nothing ...: FAILED: visible without any verification` |
+| **2** the staff approval unchanged: gated by its setting, audited and bumping `eligibility_version`; its approval and revocation move no profile whose state is current, and D9's recompute still catches up a profile a test left stale (`completion.every_requirement_writer…`, where the seed met the last requirement without a write and the approval's recompute makes the profile visible; the exact-head review's N1, corrected in correction C1) | `sv2r.the_staff_approval_meets_nothing`; `staff.approval_gated_...`; `completion.removals_...`; `test_sv2r_requirements.test_d18_stays` | pass | Covered by check 1's reversal on the database: `FAIL sv2r.the_staff_approval_meets_nothing ...: FAILED: visible without any verification` |
 | **3** toggle off | `PhotoCheckToggleTests` (off branch); `held_before_every_write`; `sv2r.toggle_off_approves_without_the_check` | pass | **Off branch calls the check port:** offline `AssertionError: 'adapters.check' unexpectedly found in 'decided = adapters.check.decide(...'`; on a local database `72/77`, `FAIL sv2r.toggle_off_approves_without_the_check ...: FAILED: the check port was not called`. **It records `system:photo-check` with `automated_check`:** offline `AssertionError: 'md.CHECK_SUBJECT' unexpectedly found ...`; on a local database `72/77`, `FAILED: under the toggle's own subject`. **It approves a restricted photo** (the guard removed): offline `ERROR: test_the_off_branch_calls_no_check_port...` (the restriction no longer precedes the branch). **It approves a held photo** (the port asked after the audit row, its answer ignored): offline `FAIL: test_a_hold_returns_before_the_approval_writes_anything ... AssertionError: 0 != 1` |
 | **4** toggle on | the four named media cases with the toggle on; `sv2r.toggle_on_the_check_decides_as_before` | pass, with nothing they assert changed | The off branch reversal above also fails `media.every_other_photo_step...`. With the toggle on, these cases are Stage B's own, with Stage B's reversals |
 | **5** the recheck | `PhotoCheckToggleTests` (recheck); `held_before_every_write`; `WRITERS`; `MEDIA_COMMANDS`; `sv2r.the_recheck`; `media.every_other_photo_step_refuses_an_inactive_owner` | pass | **Acts while off** (guard removed): offline `ERROR: test_the_recheck_changes_nothing_while_the_toggle_is_off`; local database `76/77`, `FAIL sv2r.the_recheck ...: FAILED: off: no_change`. **Approves a held photo** (hold guard removed): offline `FAIL: test_a_hold_returns_... AssertionError: 0 != 1`; local database `76/77`, `FAILED: held: no_change`. **Leaves the rejected photo's profile visible** (recompute removed): offline `FAIL: test_every_requirement_writer_ends_with_the_recompute (writer='recheck') ... recheck does not recompute`; local database `76/77`, `FAILED: the recompute demotes the profile`. **Skips the active-account gate** (`lock_account_any_state`): offline `AssertionError: 'lock_account_any_state(tx, account_id)' != 'lock_account(tx, account_id)'` (LockOrderTests, AccountStateTests) |
@@ -271,3 +271,122 @@ Local results are this session's runs. The run of record is below.
 - **Found by the manager while disposing of the review:** the carried entries N-a, N-c and N-d were due at SV2-R's changes to `test_profile_recompute.py`, `profile_support.py` and `test_profile_media.py`, and its brief did not take them up (AM12-26). Correction C1.4 takes them up.
 - **The review's limits:** it ran the identity, ordering, discovery and mobile suites only through their CI results; it did not read Codex's summary or `profile_cases.py` whole; a subagent extracted the CI log lines, which the review checked against this record.
 - **Next:** correction C1 (tests only), then a delta review and the merge.
+
+## Correction C1 (the correction session's record, 18 November 2026)
+
+- **The prompt:** SV2-R's correction C1 prompt, revision 1, from `1708b53c4f89b10c9d71325b7a2bdd32aff2fca9` of `claude/magical-wozniak-yfmmx2`, started by Nathan; the brief's revision 7, "Correction C1", is the specification. Tests only: **no code changed.**
+- **The branch:** `claude/modest-cerf-3acfed`, from `1708b53`. Its name matches `claude/**`, so the Foundation workflow runs on its pushes.
+- **The code commit:** `f4c93ea8ed17d26f29a01c5c7e75e910ab925b11` (**C1's code head**), one commit holding the five test and proof paths below. The records commit (this section) follows the run of record, as the push rule requires.
+
+### Start gate and environment
+
+- **The environment check, names only.**
+  - None of `DATABASE_URL`, `HD_API_KEY` or `GEO_API_KEY` was set, and no `STREAM_*` or `PG*` name.
+  - Present: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` and `AWS_CA_BUNDLE`, and the GitHub token names `GH_TOKEN` and `GITHUB_TOKEN`. None of their values was read, printed or passed to a command.
+  - Every repository command ran in a clean process environment (`env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8`, plus `GLOW_ENV=test` for the API). The proxy and CA variables were passed by reference to `pip` only.
+- **The toolchain:** CPython 3.12.14 (`python3.12`), Node v24.19.0, npm 11.9.0, Docker 29.10.0 (build `fdd4b8e`).
+- **The start gate**, each line as the prompt has it:
+  - fetched both branches; the live manager branch's head was `1708b53`, and `1708b53` is on it;
+  - `git rev-parse HEAD` printed `1708b53c4f89b10c9d71325b7a2bdd32aff2fca9`;
+  - `the reviewed code`: no non-Markdown path differs from `f4703a1`;
+  - no code, test, proof, contract, app or workflow path, nor the brief or this record, differs between `1708b53` and the live manager branch;
+  - `0` "Correction C1" sections; `77` `@case(` lines.
+
+### The items
+
+| Item | Files | Tests | Reversal and its failing output |
+|---|---|---|---|
+| **C1.1** the recheck's state condition (the review's R1) | `services/api/tests/test_sv2r_requirements.py`; `profile_cases.py`, `sv2r.the_recheck` | **Offline:** `StateRefusalTests.test_the_recheck_refuses_a_photo_that_is_not_approved`: the one `if` whose one statement returns `no_change` with `not_awaiting_recheck` tests `asset.state != md.APPROVED or not _approvals_while_off().filter(pk=asset.review_ref).exists()`, exactly those two disjuncts; nothing before it calls a port or writes (`adapters.`, `_decision_audit(`, `transition(`, `recompute.`, `.save(`, `.create(`, `.update(`, `bulk_create`, `events.emit(`, `delivery_reference(`); the check port comes after it; it is the step's only comparison on `asset.state`. **On PostgreSQL**, in `sv2r.the_recheck`, with the toggle on: a member's photo approved while the toggle was off and then restricted by staff (`review_pending`, its review reference still the toggle's approval row, asserted), and another approved while off and then removed by its owner through the member's route (`removal_pending`, its review reference still the toggle's, asserted); each rechecked once with a rejecting check and once with an approving one: `no_change` with `not_awaiting_recheck`, the spy check port and a recording hold port never asked, and `_photo_snapshot` unchanged (state, version, delivery reference, review reference, rejection reason, the profile's state and version, the photo's `StaffAudit` rows and the photo's and profile's outbox events); `awaiting_recheck()` lists neither | **Reversal B** (`asset.state != md.APPROVED or` removed, leaving `if not _approvals_while_off().filter(pk=asset.review_ref).exists():`). Offline, the full API suite: `Ran 645 tests`, `FAILED (failures=1)`: `FAIL: test_the_recheck_refuses_a_photo_that_is_not_approved ... AssertionError: <ast.UnaryOp object at 0x7f9c951755d0> is not an instance of <class 'ast.BoolOp'>`. On a local database: `[profile] cases: 76/77 passed`, `FAIL sv2r.the_recheck (SV2-R 5, D9, D10, OD-68) 2.9 s: FAILED: restricted: not the recheck's`, `PROFILE VERDICT: FAIL`. Restored: `cmp` with `f4703a1`'s `glow_profiles/media.py` identical |
+| **C1.2** `run_check` on an approved photo (R2) | `test_sv2r_requirements.py`; `profile_cases.py`, `sv2r.toggle_off_approves_without_the_check` and `sv2r.toggle_on_the_check_decides_as_before` | **Offline:** `StateRefusalTests.test_run_check_refuses_a_photo_that_is_not_in_review`: the one `if` returning `no_change` with `not_in_review` tests exactly `asset.state != md.REVIEW_PENDING`; nothing before it calls a port or writes; it comes before the `restricted` refusal and the `if checking:` branch; it is the step's only comparison on `asset.state`, and `md.APPROVED` is named nowhere in the step's body. **On PostgreSQL:** with the toggle off, right after the off branch approves the case's photo, `run_check` on it with a rejecting spy check and a recording hold: `no_change`, `not_in_review`, neither port asked, the snapshot unchanged. With the toggle on, after the check approves the case's photo, `run_check` on it with a rejecting check and with an approving one: the same each time | **Reversal A** (`if asset.state not in (md.REVIEW_PENDING, md.APPROVED):`). Offline, the full API suite: `Ran 645 tests`, `FAILED (failures=1)`: `FAIL: test_run_check_refuses_a_photo_that_is_not_in_review ... AssertionError: 'asset.state not in (md.REVIEW_PENDING, md.APPROVED)' != 'asset.state != md.REVIEW_PENDING'`. On a local database: `[profile] cases: 75/77 passed`, `FAIL sv2r.toggle_off_approves_without_the_check (SV2-R 3, D9, D10, OD-68) 1.2 s: FAILED: off: an approved photo is not in review` and `FAIL sv2r.toggle_on_the_check_decides_as_before (SV2-R 4, D10, OD-68) 0.7 s: FAILED: on, a rejecting check: not in review`, `PROFILE VERDICT: FAIL`. Restored: `cmp` identical |
+| **C1.3** the reversals | (none changed) | A and B above, each run offline (the full API suite) and on a local disposable database under D4 | Each edit made by a script that copied `media.py` aside, wrote the edit, ran the tests and copied the file back; after each, `cmp services/api/glow_profiles/media.py` against `git show f4703a1:services/api/glow_profiles/media.py` printed nothing (identical) |
+| **C1.4** the carried entries N-a, N-d and N-c | `test_profile_recompute.py` (the creation guard), `test_profile_media.py` (the held branch's write list), `profile_support.py` (the module docstring) | See "The carried entries" below | See below |
+| **C1.5** the record | this file | acceptance check 2's row now says that the approval's recompute moves no profile whose state is current, and that D9's recompute still catches up a profile a test left stale (`completion.every_requirement_writer…`); this section | (none: Markdown) |
+
+**No new case.** `CASE_COUNT` stays 77; `SV2R_CASES`, `LABEL_NAMES`, `LABEL_BINDINGS` and the proof README's count are unchanged, and `tests/test_profile_offline.py` passes unchanged (its label-binding pin included: no new line binds a name in `LABEL_NAMES`, and every new label is literal text or a choice between two literals). The new database checks sit inside the three existing cases named above, and each case's return line is unchanged but `sv2r.the_recheck`'s, which adds "restricted or removed: not the recheck's, no call and no change".
+
+### The carried entries
+
+- **N-a** (`services/api/tests/test_profile_recompute.py`, the creation guard only):
+  - `CREATING` gains `acreate`, `aget_or_create`, `aupdate_or_create` and `abulk_create` (with `bulk_create` as `BULK`, which `_creations_with_state` leaves out as before), and `_profile_creations` now uses `CREATING` (it had its own copy of the four synchronous names);
+  - a new `_clones`: an assignment of `None` to `pk` or `id` on any object, after which a save inserts a copy of the row, its state included, and any call given `force_insert`; `test_a_photo_is_created_only_upload_pending` asserts there are none in `glow_profiles` or the age port;
+  - `test_the_creation_guard_sees_each_spelling` also asserts that its tree has no clone, and a new `test_the_creation_guard_sees_each_async_and_clone_spelling` shows each new spelling seen by `_asset_creations`, `_profile_creations`, `_creations_with_state` and `_clones`.
+  - `abulk_create` is beyond the entry's words, as `bulk_create` already was in the set; a clone by `id = None`, or saved without `force_insert`, is seen by its assignment.
+  - **Reversals,** each a temporary function appended to `glow_profiles/media.py`, run against `tests.test_profile_recompute` with C1's file and with `1708b53`'s:
+
+    | Spelling | With C1 | Before C1 |
+    |---|---|---|
+    | `await MediaAsset.objects.acreate(account_id=account_id, state=md.APPROVED)` | `Ran 8 tests`, `FAILED (failures=1)`: `FAIL: test_a_photo_is_created_only_upload_pending ... AssertionError: Lists differ: [('gl[185 chars]NG)'), ('glow_profiles/media.py', '_c1_probe',[68 chars]D)')] != [('gl[185 chars]NG)')]` | `Ran 7 tests`, `OK` |
+    | `await MediaAsset.objects.aget_or_create(pk=asset_id, state=md.APPROVED)` | the same test, `Lists differ: ... '_c1_probe',[65 chars]D)')]` | `OK` |
+    | `await MediaAsset.objects.aupdate_or_create(pk=asset_id, state=md.APPROVED)` | the same test, `Lists differ: ... '_c1_probe',[68 chars]D)')]` | `OK` |
+    | `await MediaAsset.objects.abulk_create([asset])` | the same test, `Lists differ: ... '_c1_probe',[40 chars]])')]` | `OK` |
+    | `asset = MediaAsset.objects.get(pk=asset_id)`, `asset.pk = None`, `asset.save(force_insert=True)` | the same test, `AssertionError: Lists differ: [('glow_profiles/media.py', '_c1_probe', '[87 chars]e)')] != []` | `OK` |
+
+- **N-d** (`services/api/tests/test_profile_media.py`, `held_before_every_write`'s write list only): the list of writes nothing before the hold guard may hold also names `.update(`, `bulk_create` and `events.emit(`, for `run_check` and `recheck` alike. **Reversals,** each a statement inserted in `run_check`'s approval branch just before `if adapters.hold.held(asset.id):`, run against `tests.test_profile_media` with C1's file and with `1708b53`'s:
+
+  | Statement | With C1 | Before C1 |
+  |---|---|---|
+  | `MediaAsset.objects.filter(pk=asset.id).update(review_ref=None)` (the delta review's A3) | `Ran 28 tests`, `FAILED (failures=1)`: `FAIL: test_a_hold_returns_before_the_approval_writes_anything (...) (step='run_check', write='.update(')`, `AssertionError: '.update(' unexpectedly found in "lock_account(tx, account_id)\nfound = ...` | `Ran 28 tests`, `OK` |
+  | `MediaObject.objects.bulk_create([])` | the same test, `(step='run_check', write='bulk_create')` | `OK` |
+  | `events.emit(tx, events.MEDIA_APPROVED, aggregate_id=asset.id, aggregate_version=int(asset.version), payload_ref=asset.id, now=now)` | the same test, `(step='run_check', write='events.emit(')` | `OK` |
+
+- **N-c** (`proofs/postgres-ordering/glow_ordering_proof/profile_support.py`, the module docstring only): the ledger now reads as holding "the start of each object's bytes, their first 24, as their hex and their `repr`, which any whole print of either contains", as `add_bytes` does and the proof README already says. A docstring: no reversal.
+- After every reversal, `media.py` was restored and `cmp` with `f4703a1`'s file printed nothing; each swapped test file was copied back, and `git status` showed only C1's five paths.
+
+### The local checks
+
+- **API** (`services/api`):
+  - `python3.12 -m venv .venv`, then the hash-locked install, exit 0;
+  - `manage.py check`: no issues;
+  - `manage.py test tests --verbosity 2`: `Ran 645 tests`, `OK` (642 before C1, and three new: the two `StateRefusalTests` and `test_the_creation_guard_sees_each_async_and_clone_spelling`);
+  - `ruff check .`: all passed; `ruff format --check .`: 165 files formatted; `mypy`: no issues in 95 files.
+- **The contract tests:** `PYTHONPATH=. python -m unittest discover -s ../../packages/contracts/tests`: `Ran 53 tests`, `OK`.
+- **The proof** (`proofs/postgres-ordering`): the hash-locked install and `pip check` ("No broken requirements found"); the offline tests under `env -i`: `Ran 377 tests`, `OK`; Ruff all passed; `ruff format --check`: 71 files formatted; mypy: no issues in 71 files.
+- **A local database run** (iteration, not evidence), under D4:
+  - the CI job's pinned image `postgres@sha256:d74eeac9...`, on `127.0.0.1:5433`, with `track_commit_timestamp=on`; the session started `dockerd`, and Docker Hub served the pull at the first attempt;
+  - a generated superuser and role password, a non-superuser role, and for each run a new database with its own new marker as its comment and its own key files, in a mode-700 directory, nothing printed; a check of each run's log for its own secrets found 0;
+  - none of `DATABASE_URL`, `HD_API_KEY`, `GEO_API_KEY` or any `PG*` name present;
+  - the container, its volume, the secrets directory and the results files removed afterwards.
+
+  The first run of the new tests gave `75/77`, with `sv2r.toggle_on_the_check_decides_as_before` and `sv2r.the_recheck` each `ERROR: DoesNotExist`: my own setup, not the code. `_photo_snapshot` reads the member's profile row, and the two members those checks used (`ctx.member()`) had none yet. Each check now makes the member's profile first, through the member's route (`ctx.profile`), before its first snapshot. The run on the final tests: `[profile] cases: 77/77 passed in 150.7 s`, both scans clean (`1601 secrets held; 0 found`; `919 member values held ...; 0 found`), `PROFILE VERDICT: PASS`. Reversals A and B then ran on new databases in the same container (above).
+- **One offline test of mine failed while I wrote it,** before any commit: `_state_tests` began as a count of the text `asset.state` in each step's body, which also counts the `detail={'state': asset.state}` of each applied result (`AssertionError: 3 != 1` in both new tests). It now counts only comparisons on `asset.state`. The code was not the cause.
+
+### The run of record
+
+- **Run:** [44402994154](https://github.com/amthorn78/glow-dating-app/actions/runs/44402994154), Foundation #1344, event `push`, on `f4c93ea8ed17d26f29a01c5c7e75e910ab925b11`, attempt 1, read with the GitHub tools after it finished.
+- **Jobs**, each `success`:
+  - Change scope;
+  - API checks: `Ran 645 tests`, `OK (skipped=1)`; Ruff "All checks passed!", "165 files already formatted", mypy "no issues found in 95 source files"; the contract tests `Ran 53 tests`, `OK`;
+  - API mobile smoke;
+  - API artifact checks;
+  - Stream proof checks;
+  - Mobile checks;
+  - Database proof checks;
+  - Foundation gate: `Application checks passed`.
+- **Database proof checks:** started 21:35:24 and finished 21:46:53 UTC, **11 min 29 s** against its 30-minute timeout.
+  - The proof's offline tests: `Ran 377 tests`.
+  - **Ordering suite:** `[reference] cases: 56/56 passed`, `[adapter] cases: 115/115 passed`, `[read] cases: 62/62 passed in 14.3 s`, `== VERDICT: PASS ==`; a wrong marker and `dbshell` refused, and a second run refused on the used database.
+  - **Identity suite:** `[identity] cases: 49/49 passed in 34.7 s`, phase 35 s; `identity secret scan: clean (754 secrets held; 0 found ...)`; the job's secrets found in its output and JSON: 0 and 0; a second run refused.
+  - **Profile suite:** the profile database refused the other two markers, and the migrations applied from zero.
+    - `[profile] cases: 77/77 passed in 83.7 s`, phase **84 s**, `PROFILE VERDICT: PASS`.
+    - `profile secret scan: clean (1601 secrets held; 0 found in 978 log records, 190 writes and the results JSON)`.
+    - `profile value scan: clean (919 member values held: coordinates, birth dates, times and places, own words, sensitive values; 0 found in the same output)`.
+    - The job's check: "the job's secrets found in the profile suite's output: 0" and "... in the profile results JSON: 0".
+    - A second run refused ("a setting was published beyond its launch default"), exit status 1, with its counts `143 143 109 72 1746 1087` before and after. The artifact `sv2-profile-results` was saved.
+    - **The extended cases,** each `PASS`:
+      - `sv2r.toggle_off_approves_without_the_check (SV2-R 3, D9, D10, OD-68) 1.4 s`;
+      - `sv2r.toggle_on_the_check_decides_as_before (SV2-R 4, D10, OD-68) 0.4 s`;
+      - `sv2r.the_recheck (SV2-R 5, D9, D10, OD-68) 2.1 s: ... restricted or removed: not the recheck's, no call and no change; ...`.
+    - The other five `sv2r.` cases each `PASS`, unchanged.
+  - **Discovery suite:** `[discovery] cases: 66/66 passed in 157.9 s`, phase 159 s, `DISCOVERY VERDICT: PASS`; its secret scan (2495 held, 0 found) and value scan (1336 held, 0 found) clean; the job's check found 0 and 0; a second run refused.
+- **Toolchain retry:** none fired. In each job that has them, "Wait 60 s before the one retry of the Python install (DM-41)" and "Retry the Python install once (DM-41)" were `skipped`.
+- **No value in the log.** The Database proof checks job's log (2,677 lines, saved to my scratch directory and searched there, then deleted) holds none of the suites' fixed coordinates (`40.7123457`, `-74.0067891`, `40.735425`, `40.712`), the held birth time `04:13:27`, `BEGIN PRIVATE KEY` or `fixture-variant`: 0 hits each. Masked values show as `***` (3 lines). The suites' own scans report 0 found. The other jobs' logs were not searched for these values.
+
+### Deviations, limits and open questions
+
+- **No code changed,** and no new test failed against the code at `f4703a1`: neither stop applied. The two failures recorded under "The local checks" were my own test code before the commit, each corrected in the test, never in the code.
+- **N-a goes slightly beyond the entry's words:** `abulk_create` joins `CREATING` beside `bulk_create`; `_profile_creations` now reads `CREATING` rather than its own copy; and `_clones` also sees `id = None`, and a `force_insert` call with or without a cleared key. Each is a widening of the same guard, in the owned part of the file.
+- **The C1.1 and C1.2 database checks also pass a recording hold port** and assert it was not asked, beyond the brief's "check port not called". The case's own member in `sv2r.toggle_on_the_check_decides_as_before`, and the new member in `sv2r.the_recheck`, each get a profile through the member's route before the first snapshot, so that the snapshot can read it (see "The local checks").
+- **`test_sv2r_requirements.py`'s module docstring** gains a paragraph naming C1's tests. That is the new tests' own file.
+- **Not reversed on the database:** the N-a and N-d reversals, which are offline guards; the entry says the profile suite's `media.a_hold_stops_the_checks_approval` catches N-d's edit there.
+- **Limits:** the structural tests read `media.py`'s source as written: an equivalent refusal written another way (a helper, or the conditions split across statements) fails them, as the review's reversals A and B do; that is their purpose, and the database checks are the behavioural ones.
+- **Open questions:** none.
