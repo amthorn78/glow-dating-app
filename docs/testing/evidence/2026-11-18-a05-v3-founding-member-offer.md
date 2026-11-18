@@ -664,3 +664,10 @@ Against the brief's review plan (revision 2), on the session's head `362edb0` (f
 - **The corrected cell.** UST-23's "Asks of Glow" cell now quotes §1694.3(a)(2) and marks the correction, as UU3 asks, and section 5.1 records the old text.
 - **The counts** (the session's section 16). Section 1's Summary and the Contents still count 333 rows. By script at `362edb0`: 340 rows (Apple 69, Google Play 65, US federal 23, US states 67, UK 50, EU 66); 84 with no owner (unchanged); 95 whose State begins "Not applicable" (88 before; each new row does not apply now). The correction is outside the session's paths, and goes to the Dev Manager with the offer's decision message.
 - **The open questions** (section 16) stand, and the decision message carries them.
+- **After DM-89** (its section 4; 03:50 UTC). UST-23's "not re-fetched" reason above was incomplete: California's bulk file can be read by HTTP range requests, as the session read it. Done that way, from 03:49:24 to 03:50:18 UTC (the fetched files' own times):
+  - the zip's central directory, then `LAW_SECTION_TBL.dat` (the session's SHA-256, `a8f35d37…`);
+  - **UST-23:** `LAW_SECTION_TBL_24765.lob` (Civ. Code §1694.3; the session's SHA-256, `9afe6b35…`). The corrected cell's quotation, *"allocable to services that the buyer has not received"*, and §1694.3(a)(2)'s whole sentence are exact; (b)(2)'s online-service sentence is exact; "pro-rata" and "pro rata" do not appear.
+  - **UST-22:** `LAW_SECTION_TBL_24764.lob` (§1694.2; the session's SHA-256, `49d1b66b…`). The online exception and the life-measure clause are exact.
+  - **UST-28:** Colorado's online exception (§6-1-731(3)(d)) is exact in the title 6 PDF fetched at 03:13 UTC.
+  - **UST-24:** New York's $1,000 cap, two-year limit and online exception, in A428 fetched now, match after removing the bill's line numbers, as the session recorded (the page's hash differs from the session's).
+

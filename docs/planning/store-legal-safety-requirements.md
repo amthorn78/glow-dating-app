@@ -22,7 +22,7 @@
 1. [How to read this matrix](#1-how-to-read-this-matrix), with Glow's facts used and a summary
 2. [Apple App Store](#2-apple-app-store) (AP-01 to AP-69)
 3. [Google Play](#3-google-play) (GP-01 to GP-65)
-4. [United States](#4-united-states): [federal](#41-federal-law-and-regulators) (USF-01 to USF-22) and [states](#42-state-law) (UST-01 to UST-61)
+4. [United States](#4-united-states): [federal](#41-federal-law-and-regulators) (USF-01 to USF-23) and [states](#42-state-law) (UST-01 to UST-67)
 5. [United Kingdom](#5-united-kingdom) (UK-01 to UK-50)
 6. [European Union](#6-european-union) (EU-01 to EU-66)
 7. [Topic coverage](#7-topic-coverage) (PF01 §7's topics, each mapped to its rows)
@@ -63,7 +63,7 @@ These come from the repository at `f40f1d7`. Facts the repository does not recor
 
 ### Summary
 
-- **333 requirement rows:** Apple 69, Google Play 65, US federal 22, US states 61, UK 50, EU 66. Of these, 84 have **no owner** (wholly or for a named part) and 88 do **not apply now** (most bind only with paid features, social login, device location, a size threshold, or an EU size class Glow is below).
+- **340 requirement rows:** Apple 69, Google Play 65, US federal 23, US states 67, UK 50, EU 66. Of these, 84 have **no owner** (wholly or for a named part) and 95 do **not apply now** (most bind only with paid features, social login, device location, a size threshold, or an EU size class Glow is below).
 - **Child safety (T4) is a requirement in every candidate jurisdiction and on Google Play.** The US requires a CyberTipline report to NCMEC on actual knowledge (USF-01) and one-year preservation (USF-04); the UK requires reports to the National Crime Agency, with registration before the first report, since 7 April 2026 if Glow has UK links (UK-15 to UK-19); the EU requires prompt reports of threats to life or safety to national police (EU-11). Google Play requires published child-safety standards, an in-app report mechanism and a named child-safety contact for every Dating-category app (GP-18 to GP-23). No source read requires Glow to scan for CSAM at its size; EU law limits scanning of private messages (EU-26, EU-30). No item owns detection, reporting routes, registrations or contacts yet (gap G-02).
 - **In force now and unowned:** the US TAKE IT DOWN Act's 48-hour intimate-image removal process (since 19 May 2026; USF-08 to USF-10) and the UK's 48-hour intimate-image takedown (since 29 June 2026; UK-05) (gap G-03); state online-dating safety notices and fraud-ban notices (UST-01 to UST-21) (gap G-04); store age signals under Texas SB 2420 (enforceable since 4 June 2026) (gap G-01).
 - **Dated next:** the Romance Scam Prevention Act's fraud-ban notices (federal, from 20 October 2027; USF-18); California's age-signal law (1 January 2027; UST-35); Google's trader-status declaration (by 1 February 2027; GP-59) and zero-tap sign-in restoration (April 2027; GP-36). Section 10 lists every date.
