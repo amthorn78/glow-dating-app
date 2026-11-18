@@ -222,6 +222,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM12-25 | 18 Nov 2026 | follow-through | DM-91's disposition recorded the second `media_approved` event for the same photo as "noted for P11 (section 4.3), with no change here", but App Manager 12 wrote the note in no home: at `e2bacf7`, neither the P11 plan nor the carried-items file had it, nor the recheck's worker, and the disposition's "Where applied" named neither. Breaks PF02-R17 (the disposition lists each named requirement with where it is carried) | The SV2-R exact-head review (its N4) |
 | AM12-26 | 18 Nov 2026 | follow-through | SV2-R's brief did not take up three carried entries due at its changes: "Carried to the next change to SV2's profile guards and suite" says the next change to each file takes up its entry, and SV2-R changed `test_profile_recompute.py` (N-a), `test_profile_media.py` (N-d) and `profile_support.py` (N-c). Breaks PF02-R30; its fold-in proposes that R30 also reads the entries due at "the next change to" a file the brief's owned paths change | App Manager 12, disposing of SV2-R's exact-head review |
 | AM12-27 | 18 Nov 2026 | execution | Merging C1's session branch, App Manager 12 passed the merge message to `git merge -F -` from a here-document; `git merge` does not read a message from standard input ("could not read file '-'"), so nothing was merged. Caught by git's error; rerun with the message in a scratch file (`5d8fab8`); no effect | git, at the command |
+| AM12-28 | 18 Nov 2026 | follow-through | Updating Implementation Control after C1's verification, App Manager 12 wrote "listed with the GitHub tools … 22:05 UTC" for the branches before it had listed them; the listing, made next, ran at 22:04:42. Caught on reading the clock after the listing; Notion corrected to 22:04 within a minute and read back. Breaks PF02-R01 (a repeat of AM12-04, AM12-11, AM12-19, AM12-20 and AM12-23): a time written before the act it stamps, not from the clock at it | App Manager 12, reading the clock after the listing |
 
 ## App Manager 2
 
@@ -1170,6 +1171,14 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Prevention:** a sweep for a new rule searches for the action it forbids, by every name (here: re-run, rerun, delete, "goes to Nathan"), in every governing text, not only for the line it replaces.
 
 ## App Manager 12
+
+### AM12-28 — A listing's time written before the listing (follow-through)
+
+- **What happened:** updating Implementation Control's Branches bullet after correction C1's verification, App Manager 12 wrote "listed with the GitHub tools by App Manager 12, 18 November 2026, 22:05 UTC" before it had listed the branches. The listing, made next, ran at 22:04:42.
+- **Caught by:** App Manager 12, reading the clock after the listing.
+- **Effect:** Implementation Control carried "22:05" from about 22:04 to 22:04:54, when it was corrected to "22:04" and read back. The branches it named were right.
+- **Correction:** the bullet says 22:04.
+- **Prevention:** PF02-R01 as it stands (a repeat of AM12-04, AM12-11, AM12-19, AM12-20 and AM12-23): the act first, then its time from the clock read at it; never a time written ahead. It folds into R01's sources with PF02 1.8.
 
 ### AM12-26 — Carried entries due at SV2-R's files not taken up (follow-through)
 
