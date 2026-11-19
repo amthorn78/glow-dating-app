@@ -812,3 +812,13 @@ Each reversal edits the workflow in place, in one job only: the harness (`revers
 - **X12 before** already failed, on an earlier substring assertion, not on the line it removes. After C2 it fails on the `no_ledger=` line itself.
 - **The reversals ran on every offline test,** not only the workflow-reading classes. The harness and the comparison script stay in the session's scratch directory and are not committed.
 - **No stop** was hit, and nothing outside the prompt's paths changed.
+
+### Manager verification of A0-C2 (App Manager 12, 19 November 2026)
+
+- **The branch:** `claude/dazzling-feynman-cjl16t`, code head `5a2f137`, records head `a63e7ae`, both after the prompt's commit `7377c19`, which the branch starts at; the manager branch, still at `7377c19`, took both by fast-forward.
+- **The diff** from `7377c19` to the code head: the two test files only, 19 lines added and none removed; against `3bf55de`, nothing under `.github`, the proof's package, `services`, `apps`, `packages` or `scripts` changed. The added lines are the eight per test the prompt names, read in the diff.
+- **The trusted classifier,** `main`'s `scripts/change_scope.py` (`c2cffbe`), run outside the checkout with `python3 -I --base c2cffbe… --head 5a2f137… --merge-base`: `"full": true`, reason `behavior-or-empty`.
+- **Re-run by the manager** in a scratch export of the code head, in the proof's hash-locked virtual environment, under `env -i`: `Ran 383 tests … OK`; Ruff "All checks passed!" and "71 files already formatted"; mypy "Success: no issues found in 71 source files".
+- **Four reversals,** each on the export's workflow within its own job, restored after each (the copy compared equal to `3bf55de`'s workflow afterwards): X1 (the outside-relations failure removed) and X2 (`if [ -n "$refusal" ]; then` made `if true; then`), each in the profile and the discovery job. Each failed (`FAILED (failures=1)`).
+- **The sequences,** compared by the manager's own script, which reads the three test files with `ast` and maps the identity sequence's names to each suite's: each of the profile and discovery sequences has 26 lines and equals the mapped identity sequence.
+- **The run of record,** Foundation run 44601565801 (event `push`, head `5a2f137`), read with the GitHub tools: all eleven jobs succeeded, among them the four database jobs, and the gate's log ends "Application checks passed".
