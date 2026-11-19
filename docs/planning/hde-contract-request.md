@@ -1,6 +1,6 @@
 # HDE contract request: what the app needs from HDE's supported contract
 
-- **Status:** written on 25 September 2026 by App Manager 3, for Nathan to take into HDE's own process (OD-23). No delivery date is set yet. 26 October 2026: C30 to C35 added (M05 finding 45; DM-31 3.2), and Nathan told of them the same day (DM-31 item 3; OD-50).
+- **Status:** written on 25 September 2026 by App Manager 3, for Nathan to take into HDE's own process (OD-23). No delivery date is set yet. 26 October 2026: C30 to C35 added (M05 finding 45; DM-31 3.2), and Nathan told of them the same day (DM-31 item 3; OD-50). 19 November 2026: A01-R read HDE's canon against these questions ([its record](../testing/evidence/2026-11-19-a01-r-hde-canon-read.md), a snapshot at glow-docs `71a008f`); Nathan has said a birth time is required and the chart is calculated at sign-up (OD-61). HDE design decisions wait for a later integration process (OD-80).
 - **Who holds each role.** Nathan is the Product Owner, the HDE owner and the app's integration owner (OD-23): *"there is only one human involved in any of this, me"*.
   - He takes this request into HDE's own process, outside this repository and outside the app sessions' authority, and sets the delivery date there.
   - HDE's own sessions and canon produce the contract.

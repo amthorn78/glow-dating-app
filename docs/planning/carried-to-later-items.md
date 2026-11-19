@@ -274,3 +274,13 @@ M09, the independent project status review (OD-72), found code defects, follow-u
 - **P11B:** C-12, enumeration resistance with the real mail provider; C-18, a production-capable Stream harness and OD-45's drift check, before P11B.
 - **M07:** H-03, Stream's terms 12.5 and its Trust Center with the Stream line (its data-processing addendum goes to P08.1's processor list); H-13, a mail provider and a monitoring tool; D-16, the public site's domain and WordPress host; D-03's photo check and hash matching (OD-75).
 - **The next change to each file:** C-19's nits (`npm test`'s unquoted glob; the identity suite's unpinned case count; `scripts/*.py` and the contracts' Python not linted or typed in CI; `EligibilitySnapshot.verified`; a replayed like after an unmatch reporting the old match's ID); H-08's chat fixture `already`, PF01's optional wording (DM-44 item 8) and the identity support's docstring (DM-50 1.2, above, under SV4).
+
+## Routed by A01-R (19 November 2026; OD-80)
+
+A01-R read HDE's canon against the contract request ([its record](../testing/evidence/2026-11-19-a01-r-hde-canon-read.md), "Manager verification of A01-R"). Its proposals for HDE wait for a later integration process (OD-80). These are the app-side routes:
+
+- **The pre-integration plan (PF01 1.20):** refuse an unknown or missing birth time at sign-up (OD-61): `services/api/glow_domain/provider_contracts.py` still allows `TimePrecision.UNKNOWN` and `local_time=None`. Send the place as the member entered it, and convert nothing.
+- **The screens that show compatibility (AC3; the brand's DS-5):** no number or percentage is ever shown to a member, whatever an HDE reference suggests (PF01 §5; PF15, line 192).
+- **The Railway analysis item (OD-79):** PF07 §2.2 names `glow-backend-v4` (Railway, the same project and database) and `glow-frontend-v2` (Vercel) as Glow infrastructure beside HDE; retiring a component that HDE's canon names is for HDE's process (D08).
+- **The later integration process (OD-80):** A01-R's prototype list P-1 to P-6, its before-launch list, its decisions D-A to D-G, and the adapter's HDE-facing design (identifier, authentication, network path, test data, caching by `release_id`).
+

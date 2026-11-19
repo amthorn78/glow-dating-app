@@ -1,7 +1,7 @@
 # A01-R — HDE's canon read against the contract request
 
 - **Work ID:** A01-R (cross-cutting; research; M09's O3; PF01 1.19, §8 "The owner's track" and §10, A01).
-- **Status:** brief and prompt written; the prompt is with Nathan.
+- **Status: done.** The record is integrated (merge `44b48f4`), with "Manager verification of A01-R". Under OD-80 its proposals for HDE are inputs to a later integration process; no HDE design decision is made now.
 - **Owner:** Nathan Amthor, as HDE's owner and the app's integration owner (OD-23). **Manager:** App Manager 12. **Research:** one session, started by Nathan.
 - **Revision 1, 19 November 2026.**
 - **Starting point:** `main` at `d3273f3` (PR55), with the manager branch's records after it; the prompt names the exact commit.
@@ -74,3 +74,5 @@ Ordinary documentation: one Markdown file, outside any `.claude/` directory. No 
 ## Sessions
 
 - **Revision 1** (19 November 2026): the brief and the prompt, for `Glow App - No Stream`.
+- **The research session** (19 November 2026; branch `claude/fervent-sagan-afkke2`, head `835d393`; glow-docs read at `71a008f`): its record, `docs/testing/evidence/2026-11-19-a01-r-hde-canon-read.md`.
+- **Manager verification** (19 November 2026): five citations checked, all exact; dispositions under OD-80.

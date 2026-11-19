@@ -351,3 +351,35 @@ I did not read the canon whole: it is about 8.6 MB. The coverage was:
 - `git diff --name-only 06e8cec71c0b158bb5b50880e28061df277fa5ce HEAD` lists only this file.
 - Every question, C01 to C35, has a row in section 2.
 - The trusted classifier, `scripts/change_scope.py` taken from `origin/main` (`d3273f3`) into the scratchpad and run with `python3 -I … --base 06e8cec… --head <head> --merge-base`, printed `{"full": false, "reason": "ordinary-docs-only", "paths": ["docs/testing/evidence/2026-11-19-a01-r-hde-canon-read.md"]}` at this record's first commit `d9671a1`.
+
+## Manager verification of A01-R
+
+App Manager 12, 19 November 2026. The record was read whole.
+
+- **The branch:** `claude/fervent-sagan-afkke2`, head `835d393` (commits `d9671a1`, the record, and `835d393`, the classifier result). `git diff --name-only 06e8cec 835d393` lists only this record. Merged into the manager branch at `44b48f4`.
+- **Classification:** `scripts/change_scope.py` from `main` (`d3273f3`), run with `python3 -I`, full SHAs and `--merge-base` from `06e8cec` to `835d393`: `"full": false, "reason": "ordinary-docs-only"`, this one path.
+- **Citations checked by the manager** at glow-docs `71a008f` (fetched read-only; nothing written there), all exact:
+  - PF05, line 991: *"`bg:resolve --source=vendor --upsert` **must not** be used in prod until a Glow App user model exists and a future epic explicitly re-opens user-bound upsert flows."*;
+  - PF05, line 430: *"We must not create app-like user records in prod ahead of Glow App integration."*;
+  - PF05, line 4086: *"**Bands-only, no numerics.**"*;
+  - PF07, line 962: *"Production runs on one Postgres instance; staging/dev connect to the same physical instance"*;
+  - the app's own `services/api/glow_domain/provider_contracts.py`, lines 26, 34 and 55 to 56: `TimePrecision.UNKNOWN`, `local_time: time | None`, and *"Unknown time and supplied civil time must agree."*
+- **Limits, as the record states them:** the canon was not read whole (about 8.6 MB); PF05 was read by the session, the rest searched by five subagents and sampled. Accepted as the record's stated limit.
+- **A deviation, recorded:** glow-docs was not attached at the session's start. Before stopping, the session tried to attach it, and the permission check refused; it then stopped and reported, and attached it read-only after Nathan's instruction (section 1.1). Future prompts that need glow-docs say to stop and ask Nathan if it is missing, and to try nothing first.
+
+### Dispositions (OD-80: no design decision about HDE now)
+
+| Finding | Disposition |
+|---|---|
+| C01 to C35, answered and marked (section 2); the draft receipt (section 7) | **Accepted** as a dated snapshot of HDE's canon at `71a008f` (HDE is still under development, OD-79). The receipt stays a draft until HDE's contract is delivered |
+| The prototype list P-1 to P-6, the before-launch list, and the decisions D-A to D-G (sections 5.1 to 5.3) | **Recorded as inputs to the later integration process** (OD-80). None is decided, scheduled or put to Nathan now |
+| Conflict 1, OD-61's sign-up chart against HDE's production write ban | **Recorded** for the integration process (D-A). No app change |
+| Conflict 2, the app's code still allowing an unknown birth time | **Routed** to the pre-integration plan as app-side work: refuse `TimePrecision.UNKNOWN` and a missing time at sign-up (OD-61); no HDE decision is needed |
+| Conflict 3, the time zone | **Recorded** for the integration process. The app keeps its rule on its side: it sends what the member entered and converts nothing |
+| Conflict 4, PF15's "small percent" | **Routed** to the screens that show compatibility (AC3; the brand's DS-5): no number is ever shown to a member (PF01 §5) |
+| Conflicts 5 and 6, direction and identity | **Recorded** for the integration process (D-C; the narrative pair binding, D-G) |
+| Conflict 8, one shared database | **Recorded** for the integration process (D-D) |
+| Conflict 9, PF07 naming `glow-backend-v4` and `glow-frontend-v2` as Glow infrastructure | **Routed** to the Railway analysis item (OD-79) as an input; retiring a component that HDE's canon names is for HDE's process (D08) |
+| Conflict 10, inconsistencies inside HDE's canon | **Recorded** for HDE's process; nothing for the app |
+| The port mapping (section 6) | **Accepted** as input. Its app-side parts that need no HDE decision (the birth-time refusal; sending the place as entered) join the pre-integration plan; its HDE-facing parts wait for the integration process |
+
