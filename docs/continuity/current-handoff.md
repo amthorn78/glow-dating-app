@@ -10,22 +10,22 @@ This file only routes: the current item, what happens next and who waits on whom
 - **Dev Manager 5** (`session_01Q789u3CWg6s9pBGXerCQZt`; OD-65) holds `claude/dev-manager`. Nathan carries each consultation to it (OD-25). Its read of governing Markdown stays (OD-76).
 - **Never ask Nathan to perform a GitHub operation** (OD-58). A failure that seems to need a re-run goes to the Dev Manager first (OD-32).
 - **PR55 merged** at `d3273f3`: M09's record, PF01 1.19, PF02 1.8, and the D-06 and D-07 texts, now in force (DM-94). Under D-07 the Dev Manager reads a code item at its brief and before its merge; under D-06 one Markdown-only item may run beside a code item.
-- **M07 is done** ([its record](../testing/evidence/2026-11-19-m07-costed-list.md)). **OD-77:** no cost now; the legal entity (and with it the D-U-N-S number, the domain, Apple, Google Play and Stripe) deferred; Railway and WordPress hosting already available; Stream's Maker account assumed; Actions' line deferred while public. Technical buildout and the MVP prototype are the priority.
+- **M07 is done** ([its record](../testing/evidence/2026-11-19-m07-costed-list.md)). **OD-77:** no cost now; the legal entity and what needs it deferred; Railway and WordPress hosting available; Stream's Maker account assumed. **OD-78:** the MVP prototype, the priority, is the whole system working together (app, server, database and HDE, integrated); business set-up waits for it.
 - **The repository is public for now** (OD-51); before it goes private, an Actions line is approved (M07, Line 16).
 - **The order** (PF01 1.19): A01-R next; SV4 (two stages), SV5, SV2-L, AC1 to AC3, then P07 to P12. M09-R, the record corrections, may run beside a code item (D-06).
 - **Done:** P00 to P05 (fixture scope), M01 to M09, P06.1, P06.DB, P06.2, P09.3a, P06.2-F, P06.3, SV1 to SV3 and SV2-R.
-- **Owner directions:** OD-01 to OD-77. **Review log:** DM-01 to DM-94. **Linear (OD-29).** Every prompt names its environment (OD-36) and glow-docs as attached (OD-74).
+- **Owner directions:** OD-01 to OD-78. **Review log:** DM-01 to DM-94. **Linear (OD-29).** Every prompt names its environment (OD-36) and glow-docs as attached (OD-74).
 
-## Waiting checkpoint (19 November 2026, 01:45 UTC, App Manager 12)
+## Waiting checkpoint (19 November 2026, 01:46 UTC, App Manager 12)
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 12 | Nathan | What the MVP prototype must include (OD-77): the plan's journey in CI on the composed server, or a build he can use on a phone against a hosted server | SV4's brief is written meanwhile; A01-R beside it (D-06) |
+| Nathan | App Manager 12 | A01-R's prompt (HDE's canon against the contract request: the first step to HDE integrated) | — |
 
 ## Next actions (App Manager 12)
 
-1. **SV4's brief** (Stage A first), for the Dev Manager's read (D-07); **A01-R** beside it (D-06). The prototype's scope, once Nathan answers, may reorder AC1 to AC3 or bring a hosted prototype forward.
-2. **A01-R's brief and prompt** (HDE's canon in glow-docs read against the contract request; OD-75, D-01).
+1. **A01-R's brief and prompt** (OD-75, D-01; OD-78): HDE's canon read against the contract request, with the list of what HDE must build for the app.
+2. **PF01 1.20, the prototype milestone (OD-78):** the order revised so the integrated system comes first (SV4 Stage A, SV5, AC1 to AC3, then the database, the deployed server and the HDE adapter brought forward from P11), for the Dev Manager's read (DM-95); then SV4's brief.
 3. **Manager records:** PF02 1.9 (AM12-31, AM12-32); the status log's move (M09 (b)); R-07, R-10, R-26, R-28.
 
 **Carried follow-ups** live in their owning homes: [`carried-to-later-items.md`](../planning/carried-to-later-items.md) (with "Routed by M09"), the P11 plan, the review log's "Deferred conditions".
