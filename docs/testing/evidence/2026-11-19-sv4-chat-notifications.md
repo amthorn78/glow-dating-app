@@ -399,7 +399,7 @@ On `main`'s run 44416436012 the one shared job took 16 minutes 32 seconds. Here 
 
 - **The branch:** `claude/affectionate-curie-hzo99y`, code head `3bf55de`, records head `c77646b`, both after the prompt's commit `eac8443`, which the branch starts at; merged into the manager branch at `4dfb0ac`.
 - **The diff** from `eac8443` lists ten code and documentation paths, each one of A0's owned paths (the brief, revision 3), and the record.
-- **The trusted classifier,** `main`'s `scripts/change_scope.py` (`c2cffbe`), run outside the checkout with `python3 -I --base c2cffbe… --head 3bf55de… --merge-base`: `"full": true`, reason `behavior-or-empty`.
+- **The trusted classifier,** `main`'s `scripts/change_scope.py` (`c2cffbe`), extracted outside the checkout and run from it with `python3 -I --base c2cffbe… --head 3bf55de… --merge-base`: `"full": true`, reason `behavior-or-empty`.
 - **The workflow, read whole and compared step for step** (PyYAML over `eac8443`'s and `3bf55de`'s files):
   - the jobs `scope`, `api`, `smoke`, `artifact` and `proof`, the triggers, the permissions and the concurrency group are unchanged;
   - the four database jobs each take the old job's `needs: scope`, its condition, `runs-on`, defaults and permissions, with `timeout-minutes: 30`;
@@ -667,7 +667,7 @@ After the change all 58 reversals fail, each with an `AssertionError` and none w
 
 - **The branch:** `claude/awesome-brown-lmfi8e`, code head `c78f297`, records head `b407239`, both after the prompt's commit `e824e5f`, which the branch starts at; the manager branch, still at `e824e5f`, took both by fast-forward.
 - **The diff** from `e824e5f` to the code head lists the three offline test files only; to the records head, the record too. Against `3bf55de`, nothing under `.github`, the proof's package, `services`, `apps`, `packages` or `scripts` changed. Its only removed lines are the three module docstrings' (F6).
-- **The trusted classifier,** `main`'s `scripts/change_scope.py` (`c2cffbe`), run outside the checkout with `python3 -I --base c2cffbe… --head c78f297… --merge-base`: `"full": true`, reason `behavior-or-empty`.
+- **The trusted classifier,** `main`'s `scripts/change_scope.py` (`c2cffbe`), extracted outside the checkout and run from it with `python3 -I --base c2cffbe… --head c78f297… --merge-base`: `"full": true`, reason `behavior-or-empty`.
 - **The tests, read whole in the diff:** `IdentityWorkflowTests` (three tests) and the helpers `script_lines`, `writers` and `credentials_prelude` in `test_identity_offline.py`; the additions to `ProfileWorkflowTests` and `DiscoveryWorkflowTests` (each credentials and decoy-step test extended, a `dbshell` test each); the gate test's loop lines and its run of the gate's own script on 54 wrong results. No earlier assertion changed. The new blocks sit before the earlier assertions in the profile and discovery decoy-step tests, as the record says.
 - **Re-run by the manager** in a scratch export of the code head, in a `python3.12` virtual environment with the proof's hash-locked install, under `env -i`: `Ran 383 tests … OK`; Ruff "All checks passed!" and "71 files already formatted"; mypy "Success: no issues found in 71 source files".
 - **Four reversals of the manager's choosing,** each on the export's workflow, restored after each (the copy compared equal to `3bf55de`'s workflow afterwards), with the three test modules run: D2a in the identity job (`test "$fail" = 0` removed), D1b in the identity job (the decoy's comment bound to the identity marker), D4b in the profile job (the role password's mask removed) and D6a (the gate's loop over `jobs[:5]`). Each failed (`FAILED (failures=1)`).
@@ -817,8 +817,32 @@ Each reversal edits the workflow in place, in one job only: the harness (`revers
 
 - **The branch:** `claude/dazzling-feynman-cjl16t`, code head `5a2f137`, records head `a63e7ae`, both after the prompt's commit `7377c19`, which the branch starts at; the manager branch, still at `7377c19`, took both by fast-forward.
 - **The diff** from `7377c19` to the code head: the two test files only, 19 lines added and none removed; against `3bf55de`, nothing under `.github`, the proof's package, `services`, `apps`, `packages` or `scripts` changed. The added lines are the eight per test the prompt names, read in the diff.
-- **The trusted classifier,** `main`'s `scripts/change_scope.py` (`c2cffbe`), run outside the checkout with `python3 -I --base c2cffbe… --head 5a2f137… --merge-base`: `"full": true`, reason `behavior-or-empty`.
+- **The trusted classifier,** `main`'s `scripts/change_scope.py` (`c2cffbe`), extracted outside the checkout and run from it with `python3 -I --base c2cffbe… --head 5a2f137… --merge-base`: `"full": true`, reason `behavior-or-empty`.
 - **Re-run by the manager** in a scratch export of the code head, in the proof's hash-locked virtual environment, under `env -i`: `Ran 383 tests … OK`; Ruff "All checks passed!" and "71 files already formatted"; mypy "Success: no issues found in 71 source files".
 - **Four reversals,** each on the export's workflow within its own job, restored after each (the copy compared equal to `3bf55de`'s workflow afterwards): X1 (the outside-relations failure removed) and X2 (`if [ -n "$refusal" ]; then` made `if true; then`), each in the profile and the discovery job. Each failed (`FAILED (failures=1)`).
 - **The sequences,** compared by the manager's own script, which reads the three test files with `ast` and maps the identity sequence's names to each suite's: each of the profile and discovery sequences has 26 lines and equals the mapped identity sequence.
 - **The run of record,** Foundation run 44601565801 (event `push`, head `5a2f137`), read with the GitHub tools: all eleven jobs succeeded, among them the four database jobs, and the gate's log ends "Application checks passed".
+
+### Delta review of A0-C2 (19 November 2026)
+
+- **Session:** C2's delta review, started by Nathan from [its prompt](https://github.com/amthorn78/glow-dating-app/blob/f6f145e7c74cb67751864962000edaeabe63e4f9/docs/ephemeral/2026-11-19-sv4-a0-c2-delta-review-prompt.md), revision 1, from `f6f145e`; its report relayed to App Manager 12 on 19 November 2026.
+- **Its start gate, classification and environment check:** every check passed (`HEAD` `f6f145e`, also the live branch's head; one merge base `c2cffbe`; the code equal to `5a2f137`; no delta review recorded). `main`'s classifier, extracted outside the checkout and run from it with `python3 -I`, printed `"full": true`, reason `behavior-or-empty`. None of the three HDE names and no `STREAM_*`, `PG*`, `R2_*`, `CLOUDFLARE_*`, `CF_*` or `RAILWAY_*` name; the AWS and GitHub token names present and unread.
+- **Verdict: approve with nits.** No blocking or should-fix finding, and none in a correction class.
+- **What it verified:** R1 answered in both jobs (X1, X1b, X2, X10, X11 and X12 each fail at the sequence's missing-line assertion, `test_profile_offline.py:533` and `test_discovery_offline.py:409`); both sequences equal the identity sequence, 26 lines each, by its own `ast` comparison, and were unequal at `c78f297`; nothing weakened (only the two tests change, 9 and 10 lines added and none removed; every earlier assertion unchanged; no shadowed test); every record claim it checked holds, except N-B.
+- **Its checks,** in an export of `5a2f137` with a hash-locked install: `Ran 383 tests … OK`; Ruff and mypy clean (71 files); reversals in each of the identity, profile and discovery jobs: X1, X1b, X2, X10, X11, X12, X13 (the helper's database made `postgres`) and X16 (`makemigrations --check` removed) each fail; X14, X15 and X15b pass (N-A).
+- **The runs:** the run of record 44601565801 and PR57's run 44604039575 (event `pull_request`, head `f6f145e`): all eleven jobs succeeded in each, and each gate printed "Application checks passed". App Manager 12 read the PR run with the GitHub tools at about 20:16 UTC (no failed job; the gate's line at 20:06:26); Codex's code review of `f6f145e` completed with no findings, and the pull request had no review thread.
+
+**Its findings** (in its words, shortened):
+- **N-A — Nit, records only.** Three edits defeat a decoy-step check with every test passing, in all three jobs, the identity job included: X14, the refusal branch's `else` made `elif false; then` (`foundation.yml` lines 700, 1019, 1338), which disables the missing-refusal failure as X2 did; X15 and X15b, the `outside_pg` query made `SELECT 0` (lines 677, 996, 1315); and the `per_schema` query's definition, also unpinned. They predate C2, are of the carried N2 class, and C2's record does not overclaim. A2 should name them under "Substring pins, not semantics" beside X4, X5 and X9.
+- **N-B — Nit, records wording.** The manager's verifications say the classifier was "run outside the checkout"; run from outside, it prints `comparison-unavailable` (C1's delta review). The recorded `behavior-or-empty` shows the copy was outside and the checkout was the working directory. Its words: "extracted outside the checkout and run from it". PR57's body used the same phrase.
+
+**What it did not read or run:** logs other than the profile job's and the two gates'; what C2 does not change; the jobs on a local PostgreSQL; Codex and PR57's threads (not among its runs).
+
+**Disposition** (App Manager 12; the manager workflow's step 6, under D-07):
+
+| Finding | Disposition | Why |
+|---|---|---|
+| N-A | **Carried**, to SV4 A2 with N2 (the carried-items file, "Carried to SV4") | Edits outside the pinned lines, older than C2, the class already carried |
+| N-B | **Corrected:** each "Manager verification" here now says the classifier was extracted outside the checkout and run from it, and PR57's body likewise (AM12-45) | The manager's wording; no decision rested on it |
+
+With this review, A0's corrections are closed: no finding of any review is open in a correction class. Dev Manager 6's pre-merge read follows (DM-97).

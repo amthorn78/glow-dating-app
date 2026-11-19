@@ -1,4 +1,4 @@
-# Current handoff — App Manager 12 (19 November 2026; SV4 A0-C2 built and integrated; its delta review next)
+# Current handoff — App Manager 12 (19 November 2026; SV4 A0's reviews closed; DM-97, the pre-merge read, with Nathan)
 
 This file only routes: the current item, what happens next and who waits on whom. Each fact lives in one home, listed in the [documentation map](../README.md); earlier handoffs are in `docs/continuity/history/`, the last as [P06.2 to its merge](history/p06-2-handoff.md).
 
@@ -18,20 +18,20 @@ This file only routes: the current item, what happens next and who waits on whom
 - **Done:** P00 to P05 (fixture scope), M01 to M09, A01-R, P06.1, P06.DB, P06.2, P09.3a, P06.2-F, P06.3, SV1 to SV3 and SV2-R.
 - **Owner directions:** OD-01 to OD-82. **Review log:** DM-01 to DM-96. **Linear (OD-29).** Every prompt names its environment (OD-36) and glow-docs as attached (OD-74).
 
-## Waiting checkpoint (19 November 2026, 19:59 UTC, App Manager 12)
+## Waiting checkpoint (19 November 2026, 20:34 UTC, App Manager 12)
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 12 | GitHub, then Nathan | PR57's run and Codex on its head; then C2's delta review, run by Nathan; then Dev Manager 6's pre-merge read | It does not merge |
+| App Manager 12 | Nathan, then Dev Manager 6 | DM-97, A0's pre-merge read; then PR57's run and Codex on its final head | It does not merge |
 
 ## Next actions (App Manager 12)
 
-1. **SV4 A0** (integrated at `4dfb0ac`; its exact-head review asked for tests only; C1 at `b407239`; C2 at `a63e7ae`, verified): PR57's run and Codex; C2's delta review; Dev Manager 6's pre-merge read, with the CI policy's change, revision 3's additions, C1, F3 and F8; the merge; then A1's prompt.
-2. **Manager records:** PF02 1.9 (AM12-31 to AM12-44); the status log's move (M09 (b)); R-07, R-10, R-26, R-28.
+1. **SV4 A0** (integrated at `4dfb0ac`; its exact-head review asked for tests only; C1 at `b407239`; C2 at `a63e7ae`; every review closed, C2's delta review approving with nits): DM-97, Dev Manager 6's pre-merge read (the CI policy's change, revision 3's additions, C1 and C2, F3, F8); the merge; then A1's prompt.
+2. **Manager records:** PF02 1.9 (AM12-31 to AM12-45); the status log's move (M09 (b)); R-07, R-10, R-26, R-28.
 
 **Carried follow-ups** live in their owning homes: [`carried-to-later-items.md`](../planning/carried-to-later-items.md) (with "Routed by M09" and "Routed by A01-R"), the P11 plan, the review log's "Deferred conditions".
 
-## Branches and PRs (19 November 2026, 19:59 UTC; listed with `git ls-remote` at this time)
+## Branches and PRs (19 November 2026, 20:34 UTC; listed with `git ls-remote` at this time)
 
 - **Open PRs:** PR57, the manager branch into `main` (full scope). `main` is at `c2cffbe` (PR56).
 - **Remote branches, six:** `main`; the manager branch; `claude/dev-manager` (`a87a6c8`, merged); A0's `claude/affectionate-curie-hzo99y` (`c77646b`, merged); C1's `claude/awesome-brown-lmfi8e` (`b407239`) and C2's `claude/dazzling-feynman-cjl16t` (`a63e7ae`), each fast-forwarded.
