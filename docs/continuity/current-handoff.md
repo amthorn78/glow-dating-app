@@ -1,4 +1,4 @@
-# Current handoff — App Manager 12 (19 November 2026; PR56 merged; SV4's brief with the Dev Manager)
+# Current handoff — App Manager 12 (19 November 2026; SV4's brief approved in DM-96; A0's prompt with Nathan)
 
 This file only routes: the current item, what happens next and who waits on whom. Each fact lives in one home, listed in the [documentation map](../README.md); earlier handoffs are in `docs/continuity/history/`, the last as [P06.2 to its merge](history/p06-2-handoff.md).
 
@@ -18,16 +18,16 @@ This file only routes: the current item, what happens next and who waits on whom
 - **Done:** P00 to P05 (fixture scope), M01 to M09, A01-R, P06.1, P06.DB, P06.2, P09.3a, P06.2-F, P06.3, SV1 to SV3 and SV2-R.
 - **Owner directions:** OD-01 to OD-81. **Review log:** DM-01 to DM-96. **Linear (OD-29).** Every prompt names its environment (OD-36) and glow-docs as attached (OD-74).
 
-## Waiting checkpoint (19 November 2026, 03:27 UTC, App Manager 12)
+## Waiting checkpoint (19 November 2026, 04:12 UTC, App Manager 12)
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 12 | Nathan, then Dev Manager 5 | DM-96 carried ([the consultation](../ephemeral/2026-11-19-dm-96-sv4-stage-a-brief.md)), and the first read of [SV4's brief](../planning/sv4-chat-notifications.md), revision 1 (D-07) | No SV4 prompt is written |
+| App Manager 12 | Nathan, then A0's session | [A0's prompt](../ephemeral/2026-11-19-sv4-a0-ci-tooling-prompt.md) run (the CI tooling; [SV4's brief](../planning/sv4-chat-notifications.md), revision 3), and its report | Nothing else starts (OD-29) |
 
 ## Next actions (App Manager 12)
 
-1. **SV4 Stage A** (the brief, revision 1; DM-96): on the Dev Manager's answer, the disposition and the brief's revision 2, then A0's prompt (the CI tooling) for Nathan.
-2. **Manager records:** PF02 1.9 (AM12-31 to AM12-36); the status log's move (M09 (b)); R-07, R-10, R-26, R-28.
+1. **SV4 A0:** on its report, the verification, the pull request, the exact-head review (AG21), Codex, the Dev Manager's pre-merge read with its CI policy change and revision 3's additions, then the merge; then A1's prompt.
+2. **Manager records:** PF02 1.9 (AM12-31 to AM12-39); the status log's move (M09 (b)); R-07, R-10, R-26, R-28.
 
 **Carried follow-ups** live in their owning homes: [`carried-to-later-items.md`](../planning/carried-to-later-items.md) (with "Routed by M09" and "Routed by A01-R"), the P11 plan, the review log's "Deferred conditions".
 
