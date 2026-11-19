@@ -27,7 +27,7 @@ This file only routes: the current item, what happens next and who waits on whom
 ## Next actions (App Manager 12)
 
 1. **SV4 Stage A's brief,** then its consultation for the Dev Manager's first read under D-07; its prompt after the answer.
-2. **Manager records:** PF02 1.9 (AM12-31 to AM12-35); the status log's move (M09 (b)); R-07, R-10, R-26, R-28.
+2. **Manager records:** PF02 1.9 (AM12-31 to AM12-36); the status log's move (M09 (b)); R-07, R-10, R-26, R-28.
 
 **Carried follow-ups** live in their owning homes: [`carried-to-later-items.md`](../planning/carried-to-later-items.md) (with "Routed by M09" and "Routed by A01-R"), the P11 plan, the review log's "Deferred conditions".
 
