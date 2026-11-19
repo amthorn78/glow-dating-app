@@ -374,12 +374,12 @@ App Manager 12, 19 November 2026. The record was read whole.
 | C01 to C35, answered and marked (section 2); the draft receipt (section 7) | **Accepted** as a dated snapshot of HDE's canon at `71a008f` (HDE is still under development, OD-79). The receipt stays a draft until HDE's contract is delivered |
 | The prototype list P-1 to P-6, the before-launch list, and the decisions D-A to D-G (sections 5.1 to 5.3) | **Recorded as inputs to the later integration process** (OD-80). None is decided, scheduled or put to Nathan now |
 | Conflict 1, OD-61's sign-up chart against HDE's production write ban | **Recorded** for the integration process (D-A). No app change |
-| Conflict 2, the app's code still allowing an unknown birth time | **Routed** to the pre-integration plan as app-side work: refuse `TimePrecision.UNKNOWN` and a missing time at sign-up (OD-61); no HDE decision is needed |
+| Conflict 2, the app's code still allowing an unknown birth time | **Already met at sign-up:** SV2's D8 refuses an unknown or missing time (`save_birth_input`, `birth_time_required`; the profile suite's `birth.a_time_is_required_and_approximate_is_kept`), as OD-61 requires. The port's own type (`provider_contracts.py`) waits for the integration process (OD-80). No work is routed (DM-95) |
 | Conflict 3, the time zone | **Recorded** for the integration process. The app keeps its rule on its side: it sends what the member entered and converts nothing |
 | Conflict 4, PF15's "small percent" | **Routed** to the screens that show compatibility (AC3; the brand's DS-5): no number is ever shown to a member (PF01 §5) |
 | Conflicts 5 and 6, direction and identity | **Recorded** for the integration process (D-C; the narrative pair binding, D-G) |
 | Conflict 8, one shared database | **Recorded** for the integration process (D-D) |
 | Conflict 9, PF07 naming `glow-backend-v4` and `glow-frontend-v2` as Glow infrastructure | **Routed** to the Railway analysis item (OD-79) as an input; retiring a component that HDE's canon names is for HDE's process (D08) |
 | Conflict 10, inconsistencies inside HDE's canon | **Recorded** for HDE's process; nothing for the app |
-| The port mapping (section 6) | **Accepted** as input. Its app-side parts that need no HDE decision (the birth-time refusal; sending the place as entered) join the pre-integration plan; its HDE-facing parts wait for the integration process |
+| The port mapping (section 6) | **Accepted** as input. Its app-side parts need no new work: the birth-time refusal is SV2's D8, and the port already carries the place as entered with a civil time. Its HDE-facing parts wait for the integration process (DM-95) |
 
