@@ -228,7 +228,7 @@ Due with the first change to `scripts/branch_cleanup.py` after M04 merges ([the 
 
 ## Carried from DM-34's optional items (the CI policy's next change; the manager's next Notion batch)
 
-- **The CI policy's gate sentence** (DM-34 3.1): in "Documentation and agent-review policy", "require the gate as well when enforceable repository controls become available" reads as if no control were available; under OD-52 they are, and Nathan chose none. The report's wording: "require the gate as well only if Nathan chooses enforced controls (OD-52 chose none), after the change DM-33 6.2 names". Due with the CI policy's next change.
+- **Applied with DM-94's batch, for its read** (M09's R-21 and H-08). **The CI policy's gate sentence** (DM-34 3.1): in "Documentation and agent-review policy", "require the gate as well when enforceable repository controls become available" reads as if no control were available; under OD-52 they are, and Nathan chose none. The report's wording: "require the gate as well only if Nathan chooses enforced controls (OD-52 chose none), after the change DM-33 6.2 names". Due with the CI policy's next change.
 - **The superseded copy in Notion** (DM-34 section 5): Implementation Control's "Superseded: the full copy of the procedure" moves to a child page. It is most of the page, and it was the copy that drifted (M05 finding 30).
 
 ## Carried to P06.2-F (E11, the mobile hardening; from M06's exact-head review)

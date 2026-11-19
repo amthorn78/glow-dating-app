@@ -63,6 +63,8 @@ The Dev Manager does not replace the exact-head code and security reviews that N
 - a new work item's brief when its choices have architectural or procedural consequences;
 - any decision where the tradeoffs are unclear or several roles' views matter.
 
+**Two reads per code item** (Nathan, 19 November 2026; OD-75, M09's D-07): its brief, before the first prompt goes out, and the pre-merge read, before the merge. Between them the primary manager consults only on a case listed here, on a limit of the workflow's step 6, or on a CI failure that seems to call for a re-run; everything else the item settles goes on the pre-merge read's list.
+
 **Read before it takes effect** (DM-01 P1). The authority is Nathan's direction to *"incorporate the Dev Manager into the workflow wherever independent review or approval would materially reduce project risk"* (OD-15). DM-01 question 2 asks him to confirm or withdraw the rule; until he answers, it applies (DM-03 G1). These are Dev Manager reads, not code reviews, and Nathan's documentation exemption from CI stays as it is:
 
 - **Governing Markdown:** `AGENTS.md` or `CLAUDE.md` at any level, `docs/pf-canon/`, the manager workflow, this charter and the CI and review policy. The primary manager batches these per PR. The PR merges only after the review log records a disposition for them.

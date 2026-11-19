@@ -803,7 +803,7 @@ Key: **Done** = applied in the manager's batch with this section. **1.19** = in 
 | R-26 | Manager: differences 4, 8, 10 to 15 and 17 to 33, once PF01 1.19's read is known, since Notion follows the merged text |
 | R-27 | Routed to A01-R |
 | R-28 | Manager: one pruning batch, OD-45's link pinned first |
-| R-29 | DM-94 for §7's Media paragraph, now that D-03 is decided; the Billing row waits for P08.3's brief (DM-85) |
+| R-29 | No change to §7's Media paragraph: D-03 (a) puts the automated check before publication, which "moderate before publication" already says. The Billing row waits for P08.3's brief (DM-85) |
 | H-01, H-02 | Routed to SV4 Stage A |
 | H-03, H-13 | Routed to M07; the addendum to P08.1; tax and who writes the policies are D-12 |
 | H-04 | 1.19 (P09); the ADR routed to AC3 |

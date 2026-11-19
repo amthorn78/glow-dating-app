@@ -25,4 +25,4 @@ The full procedure is in `docs/planning/manager-workflow.md`.
 - never read, print or use those values;
 - run app commands only in a clean process environment.
 
-Create the API virtual environment with `python3.12`. Read the applicable nested `AGENTS.md` before touching a component. No external prompt library or Drive access is required.
+Create the API virtual environment with `python3.12`. Read the applicable nested `AGENTS.md` before touching a component. No external prompt library or Drive access is required. `amthorn78/glow-docs` is attached to every session (OD-74): HDE's canon under `docs/hde/pfcanon/` and the brand's design system under `docs/brand/`. It is read-only for app work: no app session writes there, reading it authorizes no call to HDE, and its prompt libraries and skills are not this application's workflow.

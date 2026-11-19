@@ -1,6 +1,6 @@
 # Glow Dating App — Manager Practice Rules
 
-**Identity:** GAPP-PF02 · **Revision:** 1.7 · **Recorded:** 18 November 2026
+**Identity:** GAPP-PF02 · **Revision:** 1.8 · **Recorded:** 19 November 2026
 **Scope:** the managers' practice in this application's manual relay. It does not govern the Glow HD engine or its canon.
 **Source:** the [managers' mistakes log](../continuity/manager-mistakes.md) at commit `553d9ed96bf3fb32e57e3ecf59d759eb3bcadf53`, from AM2-01 to AM11-29: 167 entries. Entries added after that commit are folded in under "Maintenance" below.
 
@@ -36,7 +36,7 @@ Each rule gives:
 
 - **Rule:** Every time written into a record, the handoff or a Notion page comes from a clock reading. A scorer request's send time is the one the scoring skill prints in its reading ("Sent …"), never typed. In a shell command, take it from `date -u` through a variable inside the same command that writes it. In a tool call (a Notion or GitHub write), take it from a clock read in an earlier call whose output the write uses. Never type a time, write it from memory, or read the clock in a call sent in parallel with the write.
 - **Check:** the clock's printed line comes before the write and equals the time written; the read-back shows the same time.
-- **Sources:** AM2-05, AM9-04, AM10-17, AM10-18, AM11-03, AM11-07, AM11-25, AM12-04, AM12-11, AM12-19, AM12-20.
+- **Sources:** AM2-05, AM9-04, AM10-17, AM10-18, AM11-03, AM11-07, AM11-25, AM12-04, AM12-11, AM12-19, AM12-20, AM12-23, AM12-28.
 - **Changed:** AM9-04 had the records script take the time as an argument. AM10-17 and AM10-18 moved the clock into the writing command, with no typed time. AM11-25 extended the rule to tool writes and excluded a clock read sent alongside the write. AM2-05's own step, printing the UTC time beside each scorer request, is now done by the scoring skill, which prints the send time in its reading (DM-76).
 - **Home:** PF02.
 
@@ -60,7 +60,7 @@ Each rule gives:
 
 - **Rule:** When a change alters a count or a list (application jobs, cases, routes), grep every record for the old figure and the list's other names, the manager's own governing sentences included (the CI policy, the P11 plan's entry, the handoff), and correct each before the integration commit. When a run of record or a result lands, search each record that names the item for its placeholder ("none yet", "not claimed", "pending").
 - **Check:** a grep for the old figure and for each placeholder returns no living document.
-- **Sources:** AM4-07, AM11-15, AM11-26, AM11-33.
+- **Sources:** AM4-07, AM11-15, AM11-26, AM11-33, AM12-30.
 - **Home:** PF02.
 
 #### PF02-R05 — Every listed branch head moves with the batch
@@ -136,9 +136,9 @@ Each rule gives:
 
 #### PF02-R14 — Read the code before naming a mechanism
 
-- **Rule:** Before a brief, consultation or proposal names an existing function, DTO, setting or reviewed rule as a mechanism, read its signature and docstring, the DTO's properties or the rule's text, and cite the line. Before proposing a change to stored data, read every DTO and read that returns it, the writers that compare its version and the model's checks on it. When a brief adds a screen or changes access, read how access is enforced at render (the layout's `Stack.Protected` lines), name that line in the owned paths and ask for a rendered test of it. A design that changes a reviewed rule says so.
-- **Check:** each named mechanism carries a file and line read at the brief's commit.
-- **Sources:** AM10-02, AM10-11, AM10-15.
+- **Rule:** Before a brief, consultation or proposal names an existing function, DTO, setting or reviewed rule as a mechanism, read its signature and docstring, the DTO's properties or the rule's text, and cite the line. Before proposing a change to stored data, read every DTO and read that returns it, the writers that compare its version and the model's checks on it. When a brief adds a screen or changes access, read how access is enforced at render (the layout's `Stack.Protected` lines), name that line in the owned paths and ask for a rendered test of it. A design that changes a reviewed rule says so. Before a brief says what earlier tests do, read the tests, the proof cases and the tests that pin their plan or count, by line number or count, for every behaviour, setting or case it changes or adds, name those expected to change, and name the records that state a count it changes.
+- **Check:** each named mechanism carries a file and line read at the brief's commit; each statement about earlier tests names the tests and pins read.
+- **Sources:** AM10-02, AM10-11, AM10-15, AM12-22, AM12-24.
 - **Home:** PF02.
 
 #### PF02-R15 — Prove a protected boundary on the protected thing
@@ -159,7 +159,7 @@ Each rule gives:
 
 - **Rule:** When disposing of a Dev Manager report, read its approval text as well as its conditions, and carry into the brief every setting, rule or requirement either names; one not carried goes back to the Dev Manager in the disposition and, as an item accepted with changes, to Nathan with the Dev Manager's own text. Before accepting a session's reading of a Dev Manager's words, read every place the brief and the code use the term at issue, and put the counter-reading beside it.
 - **Check:** the disposition lists each named setting or requirement with where it is carried.
-- **Sources:** AM10-06, AM10-14.
+- **Sources:** AM10-06, AM10-14, AM12-25.
 - **Home:** PF02, adding to the Dev Manager charter, "The relay", step 4.
 
 #### PF02-R18 — A disposition and its governing text agree, part by part
@@ -172,10 +172,11 @@ Each rule gives:
 
 #### PF02-R19 — Consult the Dev Manager before a fix that meets a step-6 trigger
 
-- **Rule (cited):** a fix goes to the Dev Manager before Nathan hears of it when the fix-or-carry rule does not decide, when the fix's design changes or departs from a Dev Manager condition, when it touches a security boundary, a contract, a dependency or an interface, or when a charter trigger applies. A fix that only makes code do what a condition says, in its words, and changes no design, interface, contract or dependency needs no consultation first, even on a security boundary. A defect in a stage's own code that misses an item of that stage's prompt, or falls in a correction class its review prompt names, is fixed before the merge.
+- **Rule (cited):** a fix goes to the Dev Manager before Nathan hears of it when the fix-or-carry rule does not decide, when the fix's design changes or departs from a Dev Manager condition, when it changes a security-boundary decision, a contract, a dependency or an interface, or when a charter trigger applies; any other fix is listed for the pre-merge read. A fix that only makes code do what a condition says, in its words, and changes no design, interface, contract or dependency needs no consultation first, even on a security boundary. A correction pass is commissioned only for a defect in application behaviour, a defect at a security boundary or a false claim a decision or the merge would rest on; within those, a defect in a stage's own code that misses an item of that stage's prompt, or falls in a correction class its review prompt names, is fixed before the merge. Anything else is written down as a limit and carried.
 - **Check:** before a correction prompt, read the triggers one by one against the fix, and name in the brief the condition whose words it applies, if any.
 - **Sources:** AM7-12, AM10-04.
-- **Home:** the manager workflow, step 6, "Fix or carry, by rule" (DM-45, section 16), and "Nothing unexplained goes to Nathan" (OD-32).
+- **Changed:** Nathan's direction of 19 November 2026 (OD-75, M09's D-07) narrowed the triggers from a fix that touches a security boundary to one that changes a security-boundary decision, sent every other fix to the pre-merge read's list, and limited correction passes to the three kinds above.
+- **Home:** the manager workflow, step 6, "Fix or carry, by rule" (DM-45, section 16) and "What a correction pass is for" (OD-75), and "Nothing unexplained goes to Nathan" (OD-32).
 
 ### 4.5 Prompts
 
@@ -251,9 +252,9 @@ Each rule gives:
 
 #### PF02-R30 — Settle the follow-ups due before a stage
 
-- **Rule:** Before a stage's first prompt, read the recorded follow-ups for any due "before" that stage (the brief's carried items, the carried-items file, the P11 plan) and decide or schedule each.
-- **Check:** each such follow-up has a recorded decision or schedule before the prompt's commit.
-- **Sources:** AM7-11.
+- **Rule:** Before a stage's first prompt, read the recorded follow-ups for any due "before" that stage (the brief's carried items, the carried-items file, the P11 plan) and decide or schedule each. They include those due at "the next change to" any file the brief's owned paths may change.
+- **Check:** each such follow-up, those due at the next change to an owned file included, has a recorded decision or schedule before the prompt's commit.
+- **Sources:** AM7-11, AM12-26.
 - **Changed:** AM7-11 read the handoff's follow-ups; follow-ups now live in their owning briefs or the carried-items file (the manager workflow, step 5, "Batching records").
 - **Home:** PF02.
 
@@ -380,7 +381,7 @@ Each rule gives:
 
 - **Rule:** Before a plain-language message goes to Nathan, check every count, comparison and duration in it against the record, line by line, and give each option what it is, what it costs, what it closes and what stays open.
 - **Check:** each option in the message carries the four lines; each figure traces to a record line.
-- **Sources:** AM7-05.
+- **Sources:** AM7-05, AM12-30.
 - **Home:** PF02, adding to the manager workflow, "Claims: a checklist" (counts, and *every*, *no* or *never*), and "Nothing unexplained goes to Nathan" (OD-32).
 
 #### PF02-R47 — Name a pending decision in plain words
@@ -489,9 +490,9 @@ Each rule gives:
 
 #### PF02-R61 — Report the branch state at each merge
 
-- **Rule (cited):** at each merge, list every remote branch with what is merged and what is kept and why, read the branch cleanup's summary, and link Notion only to `main`, a commit ID or the manager branch.
-- **Check:** the merge receipt's branch list against the remote.
-- **Sources:** AM5-24.
+- **Rule (cited):** at each merge, list every remote branch with what is merged and what is kept and why, read the branch cleanup's summary, and link Notion only to `main`, a commit ID or the manager branch. Before the merge receipt is committed, the manager branch takes `main`'s merge commit (DM-57, U11).
+- **Check:** the merge receipt's branch list against the remote; the receipt's parent includes `main`'s merge commit.
+- **Sources:** AM5-24, AM12-29.
 - **Home:** the manager workflow, step 7, "Report the branch state" and "Link Notion only to `main`, a commit ID or the manager branch" (OD-09, OD-39, OD-58).
 
 #### PF02-R62 — Record a promise when it is made
@@ -595,6 +596,7 @@ The mechanisms that recur across entries, with the rules that answer them. A cou
 | AM12-12 | A watch script was run once by a stray pipe while it was only being written; it made read-only requests, its output was discarded, and it stopped at once. Its own process check caught it, with no effect, and it has no section (the log's rule for a slip its own tool caught). |
 | AM12-13 | A uses-table row's Session value the table has no option for, refused on the first write; the reading was unchanged, since the script sends only the action text. The table's own validation caught it, with no effect, and it has no section. |
 | AM12-16 | Two empty Notion update calls, each refused by the tool before any write. Its own tool caught them, with no effect, and it has no section. |
+| AM12-27 | `git merge -F -` with a here-document read no message, so nothing was merged; rerun with the message in a scratch file. Git's own error caught it, with no effect, and it has no section. |
 
 ## 8. Maintenance
 
@@ -606,6 +608,7 @@ The mechanisms that recur across entries, with the rules that answer them. A cou
 - Entries added to the log after `553d9ed96bf3fb32e57e3ecf59d759eb3bcadf53` are folded in by the manager at integration, under this rule.
 - **Folded in at integration** (App Manager 12, 17 November 2026): AM11-30 into PF02-R68 (DM-76, HH12); AM11-31 into R12; AM11-32 into R20; AM11-33 into R04; AM12-01 into R38; AM12-02 into R53; AM12-03 into R13; AM12-04 into R01; AM12-05 into R37; AM12-06 into R18; AM12-07 into R02; AM12-08 into R60; AM12-09 into R57. R13, R18, R37, R38 and R53 gain the addition each entry's prevention sets; the others are repeats of their rule as it stands. No entry is retired, and none is an event with no standing rule.
 - **Folded in after PR48's merge** (App Manager 12, 17 November 2026): AM12-10 into PF02-R42, which gains the addition its prevention sets and a check line covering it; AM12-11 into R01, a repeat of the rule as it stands; AM12-12 into section 7, an event with no standing rule; after PR49's merge, AM12-13 into section 7 too, and AM12-14 into R09, which gains the addition its prevention sets and a check line covering it; after PR50's merge, AM12-15 into R54, a repeat of the rule as it stands; after PR51's merge, AM12-16 into section 7; after DM-86, AM12-17 into R59, a repeat of the rule as it stands; after PR52's merge, AM12-18 into R50 and AM12-19 into R01, each a repeat of its rule as it stands; after PR53's merge, AM12-20 into R01, a repeat of the rule as it stands, and AM12-21 into R42, which gains the addition its prevention sets and a check line covering it. The Dev Manager reads them before the pull request that carries them merges.
+- **Folded in for revision 1.8** (App Manager 12, 19 November 2026, after M09): AM12-22 and AM12-24 into PF02-R14, which gains a sentence on earlier tests, the tests that pin them and the records that state a count (DM-93 section 3.1); AM12-23 and AM12-28 into R01 as repeats; AM12-25 into R17 as a repeat of its check; AM12-26 into R30, which gains a sentence on entries due at the next change to an owned file; AM12-27 into section 7; AM12-29 into R61, which gains a sentence on taking `main`'s merge commit before the receipt; AM12-30 into R04 and R46 as repeats. R19 changes with Nathan's direction OD-75 (D-07). Each changed rule's check line covers its addition.
 
 ## 9. Revision history
 
@@ -624,3 +627,5 @@ The mechanisms that recur across entries, with the rules that answer them. A cou
 1.6 — AM12-18 folded into PF02-R50 and AM12-19 into R01, each as a repeat (App Manager 12, 17 November 2026, after PR52's merge at `d57da65`): an owner direction's row that went beyond his words, and a listing time not read from a clock. For the Dev Manager's read before its pull request merges.
 
 1.7 — AM12-20 folded into PF02-R01 as a repeat, and AM12-21 into R42, which gains a sentence on how a watch reads GitHub, keeps the scheduled wake-up as its only watch (DM-91), and gains a check line covering it (App Manager 12, 18 November 2026, after PR53's merge at `15d54f6`): two times written before the clock was read, and GitHub read by `curl` and `gh api` outside the GitHub tools. For the Dev Manager's read before its pull request merges.
+
+1.8 — The entries AM12-22 to AM12-30 folded in, as section 8 lists, and PF02-R19 changed for Nathan's direction of 19 November 2026 (OD-75, M09's D-07): a fix that changes a security-boundary decision goes to the Dev Manager first, any other fix goes on the pre-merge read's list, and a correction pass is only for a defect in application behaviour, at a security boundary, or a false claim (App Manager 12, 19 November 2026, after M09). R14, R30 and R61 gain the additions their entries set, with check lines covering them. Revision 1.8 was tabled by OD-72 and is folded into the D-07 change, as the manager recommendation Nathan accepted on 19 November proposed (OD-75). For the Dev Manager's read before its pull request merges (DM-94).
