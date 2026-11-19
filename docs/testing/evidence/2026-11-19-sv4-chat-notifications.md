@@ -475,3 +475,190 @@ Every job of both runs succeeded, and both gates printed "Application checks pas
 | F4 | **Recorded** (here, and in the limit above) | No false pass is possible; the documented limit is per address, and each job's runner pulls once |
 | F5 | **Corrected** in "Manager verification of A0" (AM12-42) | The manager's own count |
 | F8 | **Corrected** by the manager in the proof's README (Markdown), listed for the pre-merge read | The sentence now says one decoy marker per job |
+
+## A0-C1
+
+- **Session:** SV4 A0's correction session A0-C1, started by Nathan from the correction prompt, revision 1, from `e824e5f18ad8d53ecd7b7be1ecb18dc7f87d7418` of the manager branch `claude/magical-wozniak-yfmmx2`. Its report goes to App Manager 12 through Nathan.
+- **Branch:** `claude/awesome-brown-lmfi8e`, which the push filter's `claude/**` covers. It starts at `e824e5f`.
+- **Code head:** `c78f29747b1fe6e764dd3cb1afe5e6325941a6d2`. **Records head:** the commit that adds this section, pushed after the code head's run had finished.
+- **What C1 changed:** tests only, in `proofs/postgres-ordering/tests/test_identity_offline.py`, `test_profile_offline.py` and `test_discovery_offline.py`. No workflow, scan, setting, README, policy or application file changed.
+
+### The start gate and the environment check
+
+- **The environment** (names only):
+  - none of `DATABASE_URL`, `HD_API_KEY` or `GEO_API_KEY`;
+  - no `STREAM_*`, `PG*`, `R2_*`, `CLOUDFLARE_*`, `CF_*` or `RAILWAY_*` name;
+  - present, never read or passed to a command: `AWS_ACCESS_KEY_ID`, `AWS_CA_BUNDLE` and `AWS_SECRET_ACCESS_KEY` (OD-76), and `GH_TOKEN` and `GITHUB_TOKEN`;
+  - `python3.12 --version`: Python 3.12.14;
+  - every repository command ran under `env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8`. The one install also passed the proxy variables and the proxy's CA path.
+- **The start gate.** Every check passed:
+  - `git rev-parse HEAD` printed `e824e5f18ad8d53ecd7b7be1ecb18dc7f87d7418`, which was also the live manager branch's head;
+  - "this prompt's commit is on the live branch", "A0's code head" and "no code on the live branch after 3bf55de";
+  - `grep -c` printed `1` for "Exact-head review of A0" and `0` for "A0-C1".
+- **The workflow at `3bf55de`** was read whole: the four database jobs and the gate. Every assertion below passes against it unchanged, so no check was missing or misbound, and the session did not stop.
+
+### What was added, by item
+
+Every addition reads the workflow through the existing helpers (`workflow_job`, `workflow_steps`, `workflow_step`, `job_databases`). Three small helpers were added beside them in `test_identity_offline.py` and imported by the other two files:
+- `script_lines(step)`: a step's lines without their indentation, so that a whole line of its script is matched, not a substring of a longer or commented line;
+- `writers(step, name)`: each line of a credentials step that writes or appends to `"$dir/<name>"`;
+- `credentials_prelude(step)`: what a credentials step does before its first line that can print or write. That is each value it generates and each it masks, in order. Only `set +x`, `umask 077`, comments, the `secrets.token_hex` assignments and the masks may come first.
+
+No earlier assertion was changed, weakened or removed. `git diff` against `e824e5f` removes only the three docstring lines of item 5.
+
+1. **F1, the decoy's binding** (all three jobs):
+   - In each credentials test (`…_makes_its_database_the_decoy_and_its_own_keys`), `writers(step, "create-role.sql")` must equal one exact line: the whole `printf`, its format and its argument list. So the suite's database's comment takes the suite's marker variable, and the decoy's comment takes the decoy's: `"$role_password" "$identity_marker" "$marker"`, `"$role_password" "$profile_marker" "$identity_marker"` and `"$role_password" "$discovery_marker" "$profile_marker"`.
+   - Each marker file, the decoy's and the suite's, has exactly one writer, from its own variable (for example `printf '%s\n' "$marker" > "$dir/marker"` in the identity job), and each marker variable is assigned exactly once.
+   - In each decoy-step test (`…_refuses_the_decoys_marker_first`):
+     - the step's only `PROOF_DB_MARKER=` reads `"$(cat "$DIR/$1")"`, and its `PROOF_DB_NAME` is the suite's database;
+     - the step's `migrate` lines are exactly two, in order: the refused one, named the decoy's marker file (`identity marker …`, `profile identity-marker …`, `discovery profile-marker …`) and writing the wrong-marker log, then the suite's own.
+2. **F2, the identity job's new steps.** The new class `IdentityWorkflowTests` in `test_identity_offline.py`, the identity counterparts of the profile job's tests:
+   - `test_the_credentials_step_makes_its_database_the_decoy_and_its_own_keys`:
+     - the script's first line is `set +x`;
+     - the prelude generates and then masks `superuser_password`, `role_password`, `identity_marker`, `marker` and `identity_secret_key`, each masked after it is generated and before any output, and the step has exactly five masks;
+     - the distinctness test, as a whole line, comes before the role statement;
+     - the exact `printf` of item 1, which creates the decoy `glow_proof` with its own comment;
+     - the marker and `SECRET_KEY` files' single writers, the key's generation, the passfile's one database, and no `profile`, `discovery` or `wrong_marker` anywhere in the job.
+   - `test_the_migrations_step_refuses_the_decoys_marker_first`: item 1's checks, then these whole lines in order:
+     - the superuser's `psql` into `glow_identity_proof`;
+     - the decoy's existence query, its distinctness query, and the `if` that fails the step on either;
+     - the counts before; `set +e`; the refused `migrate`; `status=$?`; `set -e`; the counts after; the ledger check;
+     - the refusal's `grep`; `fail=0`; the exit-status check; the missing-refusal failure;
+     - the `cmp` and its `|| { … fail=1; }` on the next line; the outside-relations and ledger failures;
+     - `test "$fail" = 0`, then the suite's `migrate` and `makemigrations --check`.
+
+     There must be exactly one `set +e` and one `set -e` line, so `test "$fail" = 0` runs under `set -e`. The step must declare `shell: bash`.
+   - `test_the_dbshell_step_requires_a_failed_exit_and_the_refusal`: item 3's checks for the identity job.
+3. **F2, in all three jobs:**
+   - **`dbshell`:** a new test `test_the_dbshell_step_requires_a_failed_exit_and_the_refusal` in each of `IdentityWorkflowTests`, `ProfileWorkflowTests` and `DiscoveryWorkflowTests`. It requires these whole lines, in order:
+     - `set +e`;
+     - the `env -i` command with the suite's database, its marker file, its two key files and its settings module;
+     - `python -m django dbshell < /dev/null > "$DIR/<suite>-dbshell.log" 2>&1`, then `status=$?` on the next line, then `set -e`;
+     - the `grep -m 1 -F 'RefusedDatabase: refusing dbshell'`;
+     - `if [ "$status" -eq 0 ]; then echo "FAIL: dbshell exited 0"; exit 1; fi`;
+     - `if [ -z "$refusal" ]; then echo "FAIL: the dbshell refusal is missing (diagnostics withheld)"; exit 1; fi`.
+   - **The decoy's existence check:** in the profile and discovery decoy-step tests, the same sequence of whole lines as the identity test's (the `if [ "$decoy" != 1 ] || [ "$distinct" != t ]` line among them), added at the start of each test, before its earlier assertions, so that each reversal fails on an assertion rather than on `str.index`.
+   - **The masks:** the profile and discovery credentials tests gain the identity test's prelude check, with both passwords, so each of the five values is masked before any output.
+4. **F7's D6a, the gate's loop.** `DiscoveryWorkflowTests.test_the_gate_requires_each_suites_job` gains:
+   - one `jobs = (` in the gate, and the loop as two exact lines: `for job in jobs:` and its `assert`;
+   - the gate's own script, cut from the step and run with `sys.executable -I -c` on synthetic `RESULTS`:
+     - all nine jobs `success` on full scope must exit 0 and print "Application checks passed";
+     - all nine `skipped` on documentation must exit 0 and print "Ordinary documentation: application jobs intentionally skipped";
+     - for each of the nine jobs and each of the three other results (`success`, `failure`, `cancelled`, `skipped`, less the expected one), the script must exit non-zero with `AssertionError: Unexpected <job> result`. That is 54 subtests.
+5. **F6, the module docstrings.** Each says its cases "run in their own suite's job, "Database proof checks (identity)" ("(profile)", "(discovery)"), on its own disposable database". No other wording changed.
+
+### Reversals
+
+Each reversal edits the workflow in place, in one job only: the harness asserts that each edit's text occurs exactly once in that job. The harness then runs the seven classes that read the workflow and restores the file byte for byte (SHA-256 `ee42a4a1…`, checked after each). Only these classes read the workflow: `IdentityScanTests`, `IdentityUploadGateTests`, `IdentityWorkflowTests`, `ProfileScanTests`, `ProfileWorkflowTests`, `DiscoveryScanTests` and `DiscoveryWorkflowTests`. A0's search had found no other proof test that does. The same reversals were also run on a scratch worktree at `e824e5f`, which has the old tests and the same workflow ("before"). The worktree was removed afterwards.
+
+After every reversal, `git status` showed only the three test files, and `git diff --quiet 3bf55de… HEAD -- .github` held.
+
+**The reversals:**
+
+| ID | The edit, in the named job |
+|---|---|
+| F1a-swap | the `printf`'s two marker arguments swapped (the review's D1a and D1b) |
+| F1a-other | the decoy's comment bound to the suite's own marker variable |
+| F1b-other | the decoy's marker file written from the suite's marker variable |
+| F1b-again | a second line writing the decoy's marker file from the suite's variable |
+| F1c | the refused `migrate` given the suite's own marker file |
+| D2a | `test "$fail" = 0` removed |
+| D2c | the counts' `cmp` (both lines) removed |
+| D2d | the decoy marker's `migrate` removed |
+| D4a | the suite marker's mask removed (D4a-decoy: the decoy marker's) |
+| D4b | the role password's mask removed (D4b-superuser: the superuser password's) |
+| D4c | the markers' distinctness test removed |
+| D4d | the decoy not created: its two statements and its argument removed from the `printf` |
+| D3a | the `dbshell` step's exit-status check removed |
+| D3b | the `dbshell` step's empty-refusal failure removed (D3b-grep: its `grep` widened to `'refusing'`) |
+| D6b | `[ "$decoy" != 1 ] \|\|` removed from the decoy check (D6b-line: the whole check removed) |
+| D6a | the gate's loop over `jobs[:5]` |
+
+**The results.** "pass" means every test of the seven classes passed. "error" means the earlier test raised `ValueError` from `str.index`. Otherwise the cell gives the test that failed first, at `tests/test_<suite>_offline.py:<line>` of the code head: *cred* is the credentials test, *migr* the decoy-step test, *dbsh* the `dbshell` test.
+
+| ID | Identity: before → after | Profile: before → after | Discovery: before → after |
+|---|---|---|---|
+| F1a-swap | pass → *cred* :836 | pass → *cred* :452 | pass → *cred* :327 |
+| F1a-other | pass → *cred* :836 | pass → *cred* :452 | pass → *cred* :327 |
+| F1b-other | pass → *cred* :843 | fail → *cred* :405 | fail → *cred* :282 |
+| F1b-again | pass → *cred* :843 | pass → *cred* :462 | pass → *cred* :337 |
+| F1c | pass → *migr* :909 | error → *migr* :490 | error → *migr* :365 |
+| D2a | pass → *migr* :952 | fail → *migr* :524 | fail → *migr* :399 |
+| D2c | pass → *migr* :952 | fail → *migr* :524 | fail → *migr* :399 |
+| D2d | pass → *migr* :909 | error → *migr* :490 | error → *migr* :365 |
+| D4a | pass → *cred* :811 | fail → *cred* :405 | fail → *cred* :282 |
+| D4a-decoy | pass → *cred* :811 | fail → *cred* :405 | fail → *cred* :282 |
+| D4b | pass → *cred* :811 | pass → *cred* :434 | pass → *cred* :309 |
+| D4b-superuser | pass → *cred* :811 | pass → *cred* :434 | pass → *cred* :309 |
+| D4c | pass → *cred* :824 | fail → *cred* :413 | fail → *cred* :290 |
+| D4d | pass → *cred* :836 | fail → *cred* :410 | fail → *cred* :287 |
+| D3a | pass → *dbsh* :882 | pass → *dbsh* :581 | pass → *dbsh* :456 |
+| D3b | pass → *dbsh* :882 | pass → *dbsh* :581 | pass → *dbsh* :456 |
+| D3b-grep | pass → *dbsh* :882 | pass → *dbsh* :581 | pass → *dbsh* :456 |
+| D6b | pass → *migr* :952 | pass → *migr* :524 | pass → *migr* :399 |
+| D6b-line | pass → *migr* :952 | pass → *migr* :524 | pass → *migr* :399 |
+
+**D6a** (the gate): before, pass. After: `FAIL: DiscoveryWorkflowTests.test_the_gate_requires_each_suites_job` at `tests/test_discovery_offline.py:618`, with `AssertionError: '          for job in jobs:\n              assert results[job]["result"] == expected, …' not found in …`.
+
+After the change all 58 reversals fail, each with an `AssertionError` and none with an error. Every reversal the prompt names passed every offline test before, exactly where the review said it would. The ones the review did not list for the profile and discovery jobs (F1b-other, D2a, D2c, D4a, D4c and D4d, and F1c and D2d as errors) already failed before.
+
+**The assertion at each line:**
+- **Identity:**
+  - :811, the prelude's masked names, for example `Lists differ: ['superuser_password', 'role_password', 'marker', 'identity_secret_key'] != [… 'identity_marker' …]`;
+  - :824, `'test "$identity_marker" != "$marker" || { … }' not found`;
+  - :836, `Lists differ` on the `create-role.sql` writer;
+  - :843, `Lists differ` on the `marker` file's writers;
+  - :882, `Lists differ: ['<the missing dbshell line>'] != []`;
+  - :909, `Lists differ` on the step's `migrate` lines;
+  - :952, `Lists differ: ['<the missing decoy-step line>'] != []`.
+- **Profile and discovery, the lines this correction added:**
+  - :434 and :309, the masked names;
+  - :452 and :327, the `printf`;
+  - :462 and :337, the decoy's marker file's writers;
+  - :490 and :365, the `migrate` lines;
+  - :524 and :399, the decoy-step sequence;
+  - :581 and :456, the `dbshell` sequence.
+- **Profile and discovery, earlier assertions that fail first:** :405 and :282 (a mask or marker-file line, in a subtest), :410 and :287 (`CREATE DATABASE <decoy>`), and :413 and :290 (the distinctness test). For F1b-other and D4a, this correction's assertions fail after them (`failures=2`).
+
+**One probe beyond the list:** a line `jobs = jobs[:5]` inserted before the gate's loop. This leaves the loop's two lines and the one `jobs = (` intact. The gate test failed in its script run (`AssertionError: 0 == 0` in the subtests `full='true', job='database-ordering', result='failure'` and the rest). The workflow was restored with `git checkout`, and the `.github` diff against `3bf55de` was empty.
+
+### Commands and results
+
+- **The proof's checks**, in `proofs/postgres-ordering`, after `python -m pip install --require-hashes -r requirements-dev.lock` into a `python3.12` virtual environment, and `pip check` ("No broken requirements found"):
+  - `python -m unittest discover -s tests -t .`: `Ran 378 tests … OK` at `e824e5f`, and `Ran 383 tests … OK` at the code head (five tests added: the identity job's three and a `dbshell` test each for profile and discovery);
+  - `ruff check .` printed "All checks passed!", `ruff format --check .` "71 files already formatted", and `mypy` "Success: no issues found in 71 source files".
+- **The trusted classifier:**
+  - `main`'s `scripts/change_scope.py` (`c2cffbe`), extracted with `git show` to a scratch directory outside the checkout, SHA-256 `b564c62f…` (the copy A0 used);
+  - run as `python3 -I <copy>/change_scope.py --base c2cffbe6022637331d73e3558429ff70ab5aa5e3 --head c78f29747b1fe6e764dd3cb1afe5e6325941a6d2 --merge-base`, with the checkout as its working directory;
+  - it printed `"full": true`, reason `behavior-or-empty`.
+- **The diff:** `git diff --name-only e824e5f18ad8d53ecd7b7be1ecb18dc7f87d7418 c78f297` lists only the three test files. The records commit adds this section.
+- **No dependency** was added. No database, provider, HDE or external service was used. The only network use was PyPI, for the hash-locked install.
+
+### The run of record
+
+**Foundation run [44562701307](https://github.com/amthorn78/glow-dating-app/actions/runs/44562701307)** on `c78f29747b1fe6e764dd3cb1afe5e6325941a6d2` (a push run, attempt 1) concluded **success**. It was created at 16:08:26 UTC on 19 November 2026, and its gate finished at 16:15:48, 7 minutes 22 seconds in all. Nothing was pushed to the branch until it had finished. Read with the GitHub tools; durations are from the jobs' timestamps, in whole seconds.
+
+| Job | Conclusion | Duration |
+|---|---|---|
+| Change scope | success | 17 s |
+| API checks | success | 68 s |
+| Mobile checks | success | 413 s (Chromium's first install 22 s; the pause and the retry skipped) |
+| API mobile smoke | success | 75 s |
+| API artifact checks | success | 25 s |
+| Stream proof checks | success | 92 s |
+| **Database proof checks (ordering)** | success | 322 s |
+| **Database proof checks (identity)** | success | 106 s |
+| **Database proof checks (profile)** | success | 152 s |
+| **Database proof checks (discovery)** | success | 234 s |
+| Foundation gate | success; its log ends "Application checks passed" | 4 s |
+
+- **The offline tests in the database jobs:** each ran `python -m unittest discover -s tests -t . -v` (18 to 22 s). The identity job's log shows `Ran 383 tests` and the three `IdentityWorkflowTests` cases.
+- **The identity job's log**, quoted: `identity dbshell exit status: 1`; `decoy database glow_proof with a marker as its comment: 1; its comment differs from the identity database's: t`; `relations outside information_schema and the pg_ schemas: 0 before, 0 after`; `identity migrate with the decoy database's marker: exit status 1`; `identity secret scan: clean (754 secrets held; 0 found in 240 log records, 102 writes and the results JSON)`; `IDENTITY VERDICT: PASS`; `second identity run exit status: 1`; `no proof container remains`. The only `::add-mask::` text in it is the step's script as GitHub echoes it, with variable names, never a value.
+- The other jobs' logs were not read line by line; their steps all concluded success.
+
+### Limits and deviations
+
+- **Substring pins, not semantics.** The added assertions pin whole lines and their order, as the earlier tests pin substrings. A rewrite that keeps the same check in other words fails them, which is intended: such a rewrite is then reviewed. An edit that leaves every pinned line in place and defeats the check elsewhere could still pass. Examples are a new line that overwrites `$status` or `$fail`, or a `|| true` added to a pinned line's continuation. The gate is the exception: its script is also run, so the gate's behaviour is tested, not only its text.
+- **The three helpers** (`script_lines`, `writers`, `credentials_prelude`) are new module-level functions in `test_identity_offline.py`, beside the existing workflow helpers, and serve only the workflow-step tests. The prompt's owned lines are "their tests of the workflow's steps, new tests of the same kind". These helpers are read here as part of those tests.
+- **The reversals ran on the workflow-reading classes**, not on all 383 tests, for speed. No other proof test reads the workflow, so the other tests' results cannot depend on these edits.
+- **F7's D5** (`job_secret_files` reads only the `"$dir/<name>"` spelling) and **F6's scans' line 4** were carried by the manager's disposition and are not touched here.
