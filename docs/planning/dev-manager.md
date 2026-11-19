@@ -69,7 +69,7 @@ The Dev Manager does not replace the exact-head code and security reviews that N
 
 - **Governing Markdown:** `AGENTS.md` or `CLAUDE.md` at any level, `docs/pf-canon/`, the manager workflow, this charter and the CI and review policy. The primary manager batches these per PR. The PR merges only after the review log records a disposition for them.
 - **Prompts that authorize credential use or live provider actions:** read before Nathan runs them.
-- **A read covers one commit** (DM-03 G2). The review log names the commit each read covered. A governing change after that commit needs another read before the PR merges, except a change that only applies a Dev Manager finding's own text or instruction. The primary manager lists those changes in the disposition, and the next consultation or the close-out read confirms them.
+- **A read covers one commit** (DM-03 G2). The review log names the commit each read covered. A governing change after that commit needs another read before the PR merges, except a change that only applies a Dev Manager finding's own text or instruction. The primary manager lists those changes in the disposition and on the pre-merge read's list, and the next consultation or the pre-merge read confirms them. A change that applies the Dev Manager's own words takes no row of its own among the deferred conditions (M09, section 8.1).
 
 **Also:** a periodic process and build review whenever Nathan asks for one, based on a fresh [State of the App](../continuity/state-of-the-app.md).
 
