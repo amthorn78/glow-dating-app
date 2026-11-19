@@ -798,7 +798,7 @@ Key: **Done** = applied in the manager's batch with this section. **1.19** = in 
 | R-20 | M09-R for the count; the two slots to SV5 |
 | R-21, C-15 | DM-94 (the CI policy is governing) |
 | R-23 | M09-R for the two Markdown files; SV4 Stage A for the docstring in `models.py` |
-| R-24's `AWS_*` names | D-18, asked of Nathan |
+| R-24's `AWS_*` names | Answered: OD-76. The container sets them, not either environment's settings; they stay unread and unused. R-24's sentence for the environment inventory, in M09-R, states that |
 | R-25 | Done, with the brief's breakdown matched to its record |
 | R-26 | Manager: differences 4, 8, 10 to 15 and 17 to 33, once PF01 1.19's read is known, since Notion follows the merged text |
 | R-27 | Routed to A01-R |
@@ -830,11 +830,11 @@ Key: **Done** = applied in the manager's batch with this section. **1.19** = in 
 | D-04, D-05 | Wait for P08.3's brief; D-05 goes to the Dev Manager with it (DM-91) |
 | D-08 | With D-03 at P07.1 |
 | D-09 | Already settled: the offer follows launch, with advice before it is sold (OD-70, OD-71) |
-| D-10 | Asked of Nathan with the owner's track: the Maker application's status |
+| D-10 | Left open by Nathan (OD-76) |
 | D-11 | To the Dev Manager with P08.3's brief |
 | D-12, D-13, D-15 | Nathan's, due before P08.3 (D-12) and P11B (D-13, D-15) |
 | D-14 | Nathan's, before AC1 (O10) |
 | D-16 | A line of M07 |
 | D-17 | Standing: his authorization each time (`apps/mobile/AGENTS.md`) |
-| D-18 | Asked of Nathan |
+| D-18 | Answered (OD-76): the Dev Manager's read stays; no AWS usage is planned, and the names come from the container |
 | Section 8.1's two proposals | DM-94, with D-07: stop recording that a condition was applied; move the status log out of Implementation Control |

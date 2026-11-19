@@ -1219,7 +1219,7 @@ App Manager 10 read the report (`275afe1`, a read of `fea0508`) against the rela
 | Notion | Matches `fea0508`; optional: two older Implementation Control sentences (PR40) and Dev Manager 4's Sessions row | **Accepted;** both corrected, with this review log's Sessions row | — |
 | The environment | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` and `AWS_CA_BUNDLE` present, values unread | **Accepted:** reported to Nathan for his information; Stage B's prompt checks the three names, by name only, and runs app commands in a clean environment | Stage B's prompt |
 
-**The environment, in App Manager 10's session too:** the same three names are present, and their values were not read. The container's proxy notes (`/root/.ccr/README.md`) list `AWS_CA_BUNDLE` as a certificate setting; nothing seen explains the two key names.
+**The environment, in App Manager 10's session too:** the same three names are present, and their values were not read. The container's proxy notes (`/root/.ccr/README.md`) list `AWS_CA_BUNDLE` as a certificate setting; nothing seen explains the two key names. **Nathan, 19 November 2026 (OD-76):** he does not know them and plans no AWS usage. App Manager 12 found, by names only, that neither app environment's settings hold them, so the cloud container sets all three; they stay unread and unused.
 
 ### DM-56 (App Manager 10, 10 November 2026)
 
@@ -1759,7 +1759,7 @@ Nathan answered the Dev Manager directly in its session, and the Dev Manager rec
 
 **Eight of the ten questions were answered.** The Dev Manager put eight points to Nathan, and its relay message says all ten were answered. Two were not among them:
 
-- **DM-01 question 2** (the Dev Manager read). The read stays in force under OD-15, as DM-03 G1 set out, unless Nathan withdraws it.
+- **DM-01 question 2** (the Dev Manager read). The read stays in force under OD-15, as DM-03 G1 set out, unless Nathan withdraws it. **Answered on 19 November 2026:** Nathan keeps it (OD-76).
 - **DM-01 question 3** (the TypeSafe scorer). It is raised when the pre-registered ten-session comparison ends.
 
 Neither blocks anything, so neither is put to Nathan again now. DM-04 finding 12 corrects the Dev Manager's own files, which said all ten were answered.
