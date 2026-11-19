@@ -1,11 +1,11 @@
 # M07 — The costed list of completion's accounts and services
 
 - **Work ID:** M07 (cross-cutting; the owner's track, O1 in M09's order).
-- **Status:** the prompt is with Nathan (given at `f1653f1`, 19 November 2026).
+- **Status: done.** The record is integrated (merge `817ce5e`), with "Manager verification of M07". **Nathan approved no line** (OD-77, 19 November 2026): no cost now; the entity, and the accounts and domain that need it, deferred; Railway and WordPress hosting already available; Stream's Maker account assumed; the Actions line deferred while the repository is public.
 - **Owner:** Nathan Amthor approves each line (OD-50). **Manager:** App Manager 12. **Research:** one session, started by Nathan.
 - **Revision 1, 19 November 2026.**
 - **Starting point:** the manager-branch commit the prompt names. `main` is at `6edae78`.
-- **Prompt:** [`docs/ephemeral/2026-11-19-m07-costed-list-prompt.md`](../ephemeral/2026-11-19-m07-costed-list-prompt.md), revision 1 (TypeSafe v8.2: Opus 5.5 at medium).
+- **Prompt:** [`docs/ephemeral/2026-11-19-m07-costed-list-prompt.md`](https://github.com/amthorn78/glow-dating-app/blob/d3273f3eeb0ae947b33c479735fc2a3eb63e9f9f/docs/ephemeral/2026-11-19-m07-costed-list-prompt.md), revision 1, pruned after its record's integration (pinned at `d3273f3`) (TypeSafe v8.2: Opus 5.5 at medium).
 - **Evidence home:** `docs/testing/evidence/<the session's date>-m07-costed-list.md`, written by the session on its own branch. The manager adds "Manager verification of M07".
 
 ## Why
@@ -89,3 +89,5 @@ Ordinary documentation: one Markdown file, outside any `.claude/` directory. No 
 
 - **Revision 1** (19 November 2026): the brief and the prompt, written while the Dev Manager reads DM-94, for `Glow App - No Stream`.
 - **The prompt given** (19 November 2026): at Nathan's request (*"ok, give me the M07 handoff"*), before DM-94's answer, which it does not depend on; its start gate rechecked against the live branch first.
+- **The research session** (19 November 2026; branch `claude/sharp-keller-j1uvsv`, head `02b7a1f`, Foundation run 44437200417): its record, `docs/testing/evidence/2026-11-19-m07-costed-list.md`; 13 of 15 sampled prices matched by an independent reader, none differing, and the two it could not read (Wyoming's fees) matched from the state's PDF.
+- **Manager verification** (19 November 2026): the record's last section; the totals recomputed and three prices rechecked, all matching.

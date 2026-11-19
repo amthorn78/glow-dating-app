@@ -8,6 +8,10 @@ Work item: P01.1 — Assess legacy reuse and resource ownership
 
 The Railway placement and storage defaults of this P01 decision were superseded by Nathan during P03 on 23 September 2026. [ADR 0002](0002-same-project-application-services.md) places app services in the same project as HDE and records the preferred shared logical database with separate app schema/roles, pending ownership/dependency audit. Appropriate existing app structures may be reused after that audit; no legacy user data needs migration. This historical assessment records why no legacy code was copied into the foundation, not a permanent prohibition on reviewed reuse. HDE and actual dependencies remain protected. AP1-DBA-001 is a separate bounded catalog-audit exception; app runtime/migrations and database-dependent acceptance remain P11.
 
+## Later direction: `glow-frontend-v2` deprecated
+
+On 19 November 2026 Nathan recorded that `glow-frontend-v2` is a deprecated component (OD-81). Its "Preserve" disposition below, and the section "Existing frontend has consumers and a separate purpose to preserve", are history. The role of its business and legal landing page is now WordPress's: the public sales landing page and the public policy and support site (OD-19; PF01 §1). No app work depends on the repository or changes it. This note changes nothing in `glow-frontend-v2` or its Vercel deployment, and decides nothing about its retirement, which is separate work (PF01 §3).
+
 ## Decision
 
 Establish a new private repository at the selected location `amthorn78/glow-dating-app`, using the governing plan's Expo/React Native/TypeScript mobile client and modular Django/DRF API baseline. No code is copied from the assessed legacy repositories. Preserve the legacy repositories, applications, services and data.
