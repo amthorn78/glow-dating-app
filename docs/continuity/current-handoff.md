@@ -18,16 +18,17 @@ This file only routes: the current item, what happens next and who waits on whom
 - **Done:** P00 to P05 (fixture scope), M01 to M06, M08, M09, P06.1, P06.DB, P06.2, P09.3a, P06.2-F, P06.3, SV1 to SV3 and SV2-R.
 - **Owner directions:** OD-01 to OD-76 (OD-76: the Dev Manager's read stays; no AWS usage; Maker left open). **Review log:** DM-01 to DM-93. **Linear (OD-29).** Every prompt names its environment (OD-36) and glow-docs as attached (OD-74).
 
-## Waiting checkpoint (19 November 2026, 00:40 UTC, App Manager 12)
+## Waiting checkpoint (19 November 2026, 01:04 UTC, App Manager 12)
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 12 | Nathan, then Dev Manager 5 | DM-94 carried, and the Dev Manager's answer | No governing change merges; M07's brief is written meanwhile |
+| App Manager 12 | Nathan, then Dev Manager 5 | DM-94 carried, and the Dev Manager's answer | No governing change merges |
+| App Manager 12 | Nathan | M07's research session and its report ([the prompt](../ephemeral/2026-11-19-m07-costed-list-prompt.md), at `f1653f1`; given at his request before DM-94's answer) | No costed list; no line can be approved |
 
 ## Next actions (App Manager 12)
 
 1. **DM-94's answer:** its disposition, a records batch with its conditions, then one pull request of the manager branch into `main` (ordinary documentation), and Notion's "pending" markings removed.
-2. **M07,** the costed list: its [brief](../planning/m07-costed-list.md) and prompt are written; the prompt goes to Nathan after DM-94's answer, its start gate run first. Then **A01-R**; M09-R, the record corrections, beside a code item (D-06).
+2. **M07,** the costed list ([brief](../planning/m07-costed-list.md)): the prompt is with Nathan. On its report: verify a sample of prices and the totals, integrate, and send Nathan the list line by line, entity first. Then **A01-R**. Then **A01-R**; M09-R, the record corrections, beside a code item (D-06).
 3. **Manager records after DM-94:** the State of the App (R-07), the review log (R-15), SV2's brief (R-10), Notion (R-26), the pruning (R-28).
 
 **Carried follow-ups** live in their owning homes: [`carried-to-later-items.md`](../planning/carried-to-later-items.md) (with "Routed by M09"), the P11 plan, the review log's "Deferred conditions".

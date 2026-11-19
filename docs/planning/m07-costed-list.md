@@ -1,7 +1,7 @@
 # M07 — The costed list of completion's accounts and services
 
 - **Work ID:** M07 (cross-cutting; the owner's track, O1 in M09's order).
-- **Status:** the brief and the prompt are written; the prompt goes to Nathan after DM-94's answer.
+- **Status:** the prompt is with Nathan (given at `f1653f1`, 19 November 2026).
 - **Owner:** Nathan Amthor approves each line (OD-50). **Manager:** App Manager 12. **Research:** one session, started by Nathan.
 - **Revision 1, 19 November 2026.**
 - **Starting point:** the manager-branch commit the prompt names. `main` is at `6edae78`.
@@ -88,3 +88,4 @@ Ordinary documentation: one Markdown file, outside any `.claude/` directory. No 
 ## Sessions
 
 - **Revision 1** (19 November 2026): the brief and the prompt, written while the Dev Manager reads DM-94, for `Glow App - No Stream`.
+- **The prompt given** (19 November 2026): at Nathan's request (*"ok, give me the M07 handoff"*), before DM-94's answer, which it does not depend on; its start gate rechecked against the live branch first.
