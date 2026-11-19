@@ -1,4 +1,4 @@
-# Current handoff — App Manager 12 (18 November 2026; SV2-R reviewed; correction C1)
+# Current handoff — App Manager 12 (19 November 2026; M09 done; DM-94 answered; M07 with Nathan)
 
 This file only routes: the current item, what happens next and who waits on whom. Each fact lives in one home, listed in the [documentation map](../README.md); earlier handoffs are in `docs/continuity/history/`, the last as [P06.2 to its merge](history/p06-2-handoff.md).
 
@@ -6,34 +6,34 @@ This file only routes: the current item, what happens next and who waits on whom
 
 ## Now
 
-- **Manager: App Manager 12** ([OD-67](owner-directions.md)), created by App Manager 11 (OD-31), in `Glow App - No Stream`, on the manager branch `claude/magical-wozniak-yfmmx2` (its outcome branch; on the cleanup's keep-list). App Manager 11's handover commit is `69af405`.
+- **Manager: App Manager 12** ([OD-67](owner-directions.md)), in `Glow App - No Stream`, on the manager branch `claude/magical-wozniak-yfmmx2` (its outcome branch; on the cleanup's keep-list).
 - **Dev Manager 5** (`session_01Q789u3CWg6s9pBGXerCQZt`; OD-65) holds `claude/dev-manager`. Nathan carries each consultation to it (OD-25).
-- **Never ask Nathan to perform a GitHub operation** (OD-58; AM9-10). A failure that seems to need a re-run goes to the Dev Manager first (OD-32).
-- **SV3 is done** (OD-49; PR45 to PR47, `36a19f7`; [the brief](../planning/sv3-eligibility-discovery-interactions.md)). A block's direction is carried to SV4, before P11 (DM-75); F7 to before P11 (OD-64).
-- **M08 is done** (OD-66; PR48, `c7716e3`; PF02's revision 1.1 in PR49, `cf0ac60`; its [record](../testing/evidence/2026-11-16-m08-manager-practice-canon.md), sections 12 to 14).
-- **A05:** A05-V is done (PR50, `0a0c4fd`). **OD-68** set ID verification aside for the MVP; **OD-69** chose a paid plan with a free trial, staff grants and a Stripe link, and PF01 1.18 records it (PR51). A05-V2 is done (PR52, `d57da65`; its [record](../testing/evidence/2026-11-17-a05-v2-card-check-and-paid-trial.md)), and Nathan accepted its decision message (**OD-70**), adding a founding-member offer (up to 1,000 members, $100 for life, ideally Stripe only). A05-V3, the offer's research, is done (PR53, `15d54f6`; its [record](../testing/evidence/2026-11-18-a05-v3-founding-member-offer.md), sections 17 and 18), and Nathan answered the offer's decision message, all as recommended (**OD-71**). A05 stays open for its third message, before P07's brief.
-- **SV2-R,** the bounded change to SV2's requirements after OD-68 (DM-84 section 5; full scope; before P10): its [brief](../planning/sv2-r-od-68-requirements-change.md) and PF02 1.7 were approved in DM-91 to DM-93 (AM12-22, AM12-24). Built (code `f4703a1`) and merged; PR54 carries it with PF02 1.7. The exact-head review found the code right and two guards untested: correction C1 (the brief's revision 7) adds tests only and takes up three carried entries (AM12-26); P11 gets the recheck's notes (AM12-25). C1 is built (`f4c93ea`, run 44402994154 green) and merged; its delta review approved it with nits. Next: the merge.
-- **CI note:** a Chromium-install failure at Mobile checks follows DM-59 section 7.
-- **The repository is public for now** (OD-51); before it goes private, Nathan tells the manager (`'ccr-**'`, M07).
-- **The order** (OD-49): the server slices SV1 to SV4, then P07 to P12; P06.2-T and P07.2a where the Work Register places them, and M07, the costed list (OD-50), before P09 and P11B.
-- **Done:** P00 to P05 (fixture scope), M01 to M06, P06.1, P06.DB, P06.2, P09.3a, P06.2-F, P06.3, SV1, SV2, SV3 and M08.
-- **Owner directions:** OD-01 to OD-71. **Review log:** DM-01 to DM-93, with "Deferred conditions". **Linear (OD-29).** Every prompt names its environment (OD-36, OD-40, OD-43).
+- **Never ask Nathan to perform a GitHub operation** (OD-58). A failure that seems to need a re-run goes to the Dev Manager first (OD-32).
+- **M09 is done** (OD-72; [its record](../testing/evidence/2026-11-18-m09-project-status-review.md), merged at `c48b950`, with "Manager verification of M09"). Nathan's directions in and after it: **OD-73** (it wrote PF01 1.19, `b738529`, and the plan in Notion, marked pending), **OD-74** (`amthorn78/glow-docs` attached to every session, read-only) and **OD-75** (D-01, D-02, D-03, D-06, D-07 as recommended; D-04 and D-05 wait for P08.3's brief).
+- **DM-94 is answered** (Dev Manager 5, `221da6d`, merged at `f9595b4`): PF01 1.19, PF02 1.8, the D-06 and D-07 texts, `CLAUDE.md` for OD-74 and the CI policy approved, with AD1 to AD15 applied as given. They take effect when the pull request of the manager branch into `main` merges; Notion's M09 edits say "pending its merge" until then.
+- **SV3, M08, A05-V to A05-V3 and SV2-R are done** (PR45 to PR54). A05 stays open for its third message, before P07.1. The founding-member offer is "lifetime" meaning for as long as Glow runs the service (OD-71).
+- **CI note:** a Chromium-install failure is recorded in DM-59, item 7, written for PR44; its retry is routed to SV4 Stage A.
+- **The repository is public for now** (OD-51).
+- **The order** (PF01 1.19, pending): M07, then A01-R; SV4 (two stages), SV5, SV2-L, AC1 to AC3, then P07 to P12. Under D-06 a Markdown-only item may run beside a code item once DM-94 approves the text.
+- **Done:** P00 to P05 (fixture scope), M01 to M06, M08, M09, P06.1, P06.DB, P06.2, P09.3a, P06.2-F, P06.3, SV1 to SV3 and SV2-R.
+- **Owner directions:** OD-01 to OD-76 (OD-76: the Dev Manager's read stays; no AWS usage; Maker left open). **Review log:** DM-01 to DM-93. **Linear (OD-29).** Every prompt names its environment (OD-36) and glow-docs as attached (OD-74).
 
-## Waiting checkpoint (18 November 2026, 22:35 UTC, App Manager 12)
+## Waiting checkpoint (19 November 2026, 01:21 UTC, App Manager 12)
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 12 | GitHub | PR54's run and Codex's pass on its final head, read at a scheduled wake-up (PF02-R39, R42) | No merge |
+| Nathan | App Manager 12 | The records pull request merged, and the plain-words note on P09's and P10's acceptance (DM-94 item 1) | — |
+| App Manager 12 | Nathan | M07's research session and its report ([the prompt](../ephemeral/2026-11-19-m07-costed-list-prompt.md), at `f1653f1`; given at his request before DM-94's answer) | No costed list; no line can be approved |
 
 ## Next actions (App Manager 12)
 
-1. **PR54's merge,** which carries PF02 1.7 as DM-91 approved it (unchanged since `50a3e25`), once its run and Codex's pass on its final head are clean.
-2. **Then** the merge receipt and pruning; AM12-22 to AM12-28 into PF02 (1.8), for the Dev Manager's read.
-3. **Then** SV4, named to Nathan before it starts (OD-29).
+1. **The records pull request** (the manager branch into `main`, ordinary documentation): its checklist shows each governing file equal to `6bee2e9`'s text (the charter, `ebf84e3`'s) with AD1 to AD15; merge; `main` into the manager branch before the receipt; Notion's "pending" markings removed; Nathan told that P09's and P10's acceptance changed.
+2. **M07,** the costed list ([brief](../planning/m07-costed-list.md)): the prompt is with Nathan. On its report: verify a sample of prices and the totals, integrate, and send Nathan the list line by line, entity first. Then **A01-R**; M09-R, the record corrections, beside a code item (D-06).
+3. **Manager records after the merge:** PF02 1.9 (AM12-31, AM12-32); the status log's move (M09 (b)); R-07, R-10, R-26, R-28.
 
-**Carried follow-ups** live in their owning homes: the P06.2 brief's "Carried to later changes", the M02 brief, the P11 plan, [`carried-to-later-items.md`](../planning/carried-to-later-items.md) and the review log's "Deferred conditions".
+**Carried follow-ups** live in their owning homes: [`carried-to-later-items.md`](../planning/carried-to-later-items.md) (with "Routed by M09"), the P11 plan, the review log's "Deferred conditions".
 
-## Branches and PRs (18 November 2026, 22:35 UTC)
+## Branches and PRs (19 November 2026, 00:40 UTC; listed with the GitHub tools before this time)
 
-- **Open PRs:** PR54 (SV2-R). `main` is at `15d54f6` (PR53).
-- **Remote branches, five:** `main`; the manager branch; `claude/dev-manager` (`adb769d`, merged at `d8e76e2`); SV2-R's session branches (`587f4a2`, merged at `d996ef6`; C1's `038282e`, at `5d8fab8`).
+- **Open PRs:** none. `main` is at `6edae78` (PR54).
+- **Remote branches, four:** `main`; the manager branch; `claude/dev-manager` (`adb769d`); M09's `claude/nifty-euler-3v8sl7` (`20a0d99`, merged into the manager branch).
