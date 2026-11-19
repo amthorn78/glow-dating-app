@@ -445,7 +445,7 @@ Also unconfirmed and marked in the lines: Registered Agents Inc.'s billing perio
 | Check | Result |
 |---|---|
 | `git diff --name-only f1653f194efd7e5ae0e145552cf42d111ee5cc12 HEAD` | `docs/testing/evidence/2026-11-19-m07-costed-list.md` only |
-| The trusted classifier, `scripts/change_scope.py` taken from `origin/main` (`6edae78`) into the scratchpad, run with `python3 -I … --base f1653f1… --head <record commit> --merge-base` | `{"full": false, "reason": "ordinary-docs-only", "paths": ["docs/testing/evidence/2026-11-19-m07-costed-list.md"]}` (run on the record's first commit; this table was added after it, in the same file) |
+| The trusted classifier, `scripts/change_scope.py` taken from `origin/main` (`6edae78`) into the scratchpad, run with `python3 -I … --base f1653f1… --head <record commit> --merge-base` | `{"full": false, "reason": "ordinary-docs-only", "paths": ["docs/testing/evidence/2026-11-19-m07-costed-list.md"]}` (run on the record's commit and again after this table was added) |
 | The totals recomputed in a script from the lines | launch 479.15, 1,000 members 501.21, 10,000 members 647.05; with Maker 80.15 and 102.21; one-time 125 (Delaware 135); yearly 295.81 (Delaware 635.81); Delaware's monthly difference (400 − 60) / 12 = 28.33 |
 | The October Actions count, merged from the three segments' run lists, de-duplicated by run ID | 332 October runs; buckets and samples as in Line 16 |
 | Independent rechecks of the prices | 15 sampled: 13 matched, 0 differed, Wyoming's PDF extracted by me and matched; Google's fee table and GitHub's allowance rechecked separately and confirmed |
