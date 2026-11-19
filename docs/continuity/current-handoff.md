@@ -31,7 +31,7 @@ This file only routes: the current item, what happens next and who waits on whom
 
 **Carried follow-ups** live in their owning homes: [`carried-to-later-items.md`](../planning/carried-to-later-items.md) (with "Routed by M09" and "Routed by A01-R"), the P11 plan, the review log's "Deferred conditions".
 
-## Branches and PRs (19 November 2026, 03:08 UTC; listed with `git ls-remote` at this time)
+## Branches and PRs (19 November 2026, 04:12 UTC; listed with `git ls-remote` at this time)
 
 - **Open PRs:** none. `main` is at `c2cffbe` (PR56).
-- **Remote branches, three:** `main`; the manager branch; `claude/dev-manager` (`6a3811b`, merged at `19a086d`). The cleanup run 44449161323 deleted M07's and A01-R's merged branches.
+- **Remote branches, three:** `main`; the manager branch; `claude/dev-manager` (`15aa78d`, DM-96's report, merged at `d5ae831`).
