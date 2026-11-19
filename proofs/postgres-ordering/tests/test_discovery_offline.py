@@ -369,6 +369,8 @@ class DiscoveryWorkflowTests(unittest.TestCase):
         # F2: the decoy's existence and distinctness, the counts and their comparison, the
         # refusal, and the step's failure, each a whole line, in order, before the migrations.
         sequence = [
+            "docker exec \"$CONTAINER\" psql -X -q -At -F ' ' -v ON_ERROR_STOP=1 -U postgres"
+            ' -d glow_discovery_proof -c "$1"',
             'decoy=$(in_discovery_db "SELECT count(*) FROM pg_catalog.pg_database WHERE datname ='
             " 'glow_profile_proof' AND starts_with(shobj_description(oid, 'pg_database'),"
             " 'glow-ordering-proof:')\")",
@@ -379,22 +381,30 @@ class DiscoveryWorkflowTests(unittest.TestCase):
             'if [ "$decoy" != 1 ] || [ "$distinct" != t ]; then echo "FAIL: the decoy database'
             ' or its own marker is missing"; exit 1; fi',
             'in_discovery_db "$per_schema" > "$DIR/discovery-relations-before.txt"',
+            'outside_before=$(in_discovery_db "$outside_pg")',
             "set +e",
             refused_line,
             "status=$?",
             "set -e",
             'in_discovery_db "$per_schema" > "$DIR/discovery-relations-after.txt"',
+            'outside_after=$(in_discovery_db "$outside_pg")',
+            "no_ledger=$(in_discovery_db \"SELECT to_regclass('public.django_migrations') IS"
+            ' NULL")',
             "refusal=$(grep -m 1 -F 'RefusedDatabase: refusing this database'"
             ' "$DIR/discovery-wrong-marker.log" || true)',
             "fail=0",
             'if [ "$status" -eq 0 ]; then echo "FAIL: migrate with another database\'s marker'
             ' exited 0"; fail=1; fi',
+            'if [ -n "$refusal" ]; then',
             'echo "FAIL: the refusal message is missing (diagnostics withheld)"; fail=1',
             'cmp -s "$DIR/discovery-relations-before.txt" "$DIR/discovery-relations-after.txt" \\',
             '|| { echo "FAIL: a schema\'s relation count changed"; fail=1; }',
+            'if [ "$outside_before" != 0 ] || [ "$outside_after" != 0 ]; then',
+            'echo "FAIL: a relation exists outside information_schema and the pg_ schemas"; fail=1',
             'if [ "$no_ledger" != t ]; then echo "FAIL: django_migrations exists"; fail=1; fi',
             'test "$fail" = 0',
             migrate_line,
+            "discovery discovery-marker python -m django makemigrations --check --dry-run",
         ]
         self.assertEqual([line for line in sequence if line not in lines], [])
         at = [lines.index(line) for line in sequence]
