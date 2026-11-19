@@ -2,7 +2,8 @@
 
 No database: the key files' refusals, the identity settings' refusals and values, the schema
 check on constructed bodies, the case plan, the secret ledger and the output capture. The cases
-themselves run in the Database proof checks job, on the second disposable database.
+themselves run in their own suite's job, "Database proof checks (identity)", on its own
+disposable database.
 """
 
 from __future__ import annotations
@@ -522,6 +523,39 @@ def job_databases(job: str) -> list[str]:
     return re.findall(r"127\.0\.0\.1:5433:(\w+):glow_proof:%s", step)
 
 
+def script_lines(step: str) -> list[str]:
+    """A step's lines without their indentation, so that a whole line of its script is found."""
+    return [line.strip() for line in step.splitlines()]
+
+
+def writers(step: str, name: str) -> list[str]:
+    """Each line of a credentials step that writes or appends to the file in its directory."""
+    return [line for line in script_lines(step) if f'> "$dir/{name}"' in line]
+
+
+PRELUDE = re.compile(
+    r"(?P<generated>[a-z_]+)=\$\(python -c 'import secrets; print\(secrets\.token_hex\(\d+\)\)'\)"
+    r'|echo "::add-mask::\$(?P<masked>[a-z_]+)"'
+    r"|set \+x|umask 077|#.*"
+)
+
+
+def credentials_prelude(step: str) -> list[tuple[str, str]]:
+    """What a credentials step does before its first line that can print or write: each value it
+    generates ("generated", name) and each value it masks ("masked", name), in order (SV4 A0-C1).
+    Only `set +x`, `umask 077`, comments, the values' generation and their masks may come first."""
+    script = step.split("        run: |\n", 1)[1]
+    events: list[tuple[str, str]] = []
+    for line in script_lines(script):
+        found = PRELUDE.fullmatch(line)
+        if found is None:
+            break
+        for kind in ("generated", "masked"):
+            if found[kind]:
+                events.append((kind, found[kind]))
+    return events
+
+
 class JobDirectory:
     """A job directory as the identity job's credentials step writes it: every secret file it
     writes, read from the workflow (SV4 A0, D2), with synthetic values only."""
@@ -753,6 +787,176 @@ class IdentityUploadGateTests(unittest.TestCase):
         )
         self.assertNotIn("if: always()\n", step)
         self.assertIn("path: proofs/postgres-ordering/.work/identity-results.json", step)
+
+
+class IdentityWorkflowTests(unittest.TestCase):
+    """The identity suite's job's own steps (Database proof checks (identity), since SV4 A0), read
+    as the job runs them: its credentials, the decoy (DM-96 AG1), its dbshell refusal and its
+    refusal of the decoy's marker (SV4 A0-C1, the exact-head review's F1 and F2)."""
+
+    def test_the_credentials_step_makes_its_database_the_decoy_and_its_own_keys(self) -> None:
+        step = workflow_step(JobDirectory.JOB, "Generate the disposable database's credentials")
+        lines = script_lines(step.split("        run: |\n", 1)[1])
+        self.assertEqual(lines[0], "set +x")
+        # Every value is masked once it is generated and before any line that can print or write.
+        values = [
+            "superuser_password",
+            "role_password",
+            "identity_marker",
+            "marker",
+            "identity_secret_key",
+        ]
+        events = credentials_prelude(step)
+        self.assertEqual([name for kind, name in events if kind == "generated"], values)
+        self.assertEqual([name for kind, name in events if kind == "masked"], values)
+        for name in values:
+            with self.subTest(name=name):
+                self.assertLess(events.index(("generated", name)), events.index(("masked", name)))
+        self.assertEqual(step.count("::add-mask::"), len(values))
+        for name in values:
+            with self.subTest(name=name):
+                self.assertEqual(len(re.findall(rf"^ *{name}=", step, flags=re.MULTILINE)), 1)
+        # The markers are distinct before the role statement is written.
+        distinct = (
+            'test "$identity_marker" != "$marker"'
+            ' || { echo "the markers are not distinct; refusing"; exit 1; }'
+        )
+        self.assertIn(distinct, lines)
+        # F1: the identity database's comment takes the identity marker, and the decoy's (AG1:
+        # glow_proof, the ordering suite's name) the decoy's, in exactly this argument list.
+        role = (
+            "printf \"CREATE ROLE glow_proof LOGIN PASSWORD '%s' NOSUPERUSER NOCREATEDB"
+            " NOCREATEROLE;\\n"
+            "CREATE DATABASE glow_identity_proof OWNER glow_proof;\\n"
+            "COMMENT ON DATABASE glow_identity_proof IS 'glow-ordering-proof:%s';\\n"
+            "CREATE DATABASE glow_proof OWNER glow_proof;\\n"
+            "COMMENT ON DATABASE glow_proof IS 'glow-ordering-proof:%s';\\n\""
+            ' "$role_password" "$identity_marker" "$marker" > "$dir/create-role.sql"'
+        )
+        self.assertEqual(writers(step, "create-role.sql"), [role])
+        self.assertLess(lines.index(distinct), lines.index(role))
+        # Each marker file is written once, from its own database's marker.
+        self.assertEqual(
+            writers(step, "identity-marker"),
+            ['printf \'%s\\n\' "$identity_marker" > "$dir/identity-marker"'],
+        )
+        self.assertEqual(writers(step, "marker"), ['printf \'%s\\n\' "$marker" > "$dir/marker"'])
+        self.assertEqual(
+            writers(step, "identity-secret-key"),
+            ['printf \'%s\\n\' "$identity_secret_key" > "$dir/identity-secret-key"'],
+        )
+        self.assertIn("python - \"$dir/identity-jwt-key.pem\" <<'PYTHON'", lines)
+        self.assertEqual(job_databases(JobDirectory.JOB), ["glow_identity_proof"])
+        self.assertEqual(step.count("for path in sys.argv[1:]:"), 1)
+        # No other suite's key, marker or settings is in this job.
+        job = "\n".join(workflow_job(JobDirectory.JOB))
+        for other in ("profile", "discovery", "wrong_marker"):
+            with self.subTest(other=other):
+                self.assertNotIn(other, job)
+
+    def test_the_dbshell_step_requires_a_failed_exit_and_the_refusal(self) -> None:
+        step = workflow_step(JobDirectory.JOB, "SV1: show that dbshell is refused")
+        self.assertIn("        shell: bash\n", step)
+        lines = script_lines(step)
+        sequence = [
+            "set +e",
+            'env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8 \\',
+            "PROOF_DB_HOST=127.0.0.1 PROOF_DB_PORT=5433 PROOF_DB_NAME=glow_identity_proof"
+            " PROOF_DB_USER=glow_proof \\",
+            'PROOF_DB_PASSFILE="$DIR/passfile" PROOF_DB_MARKER="$(cat "$DIR/identity-marker")" \\',
+            'PROOF_IDENTITY_SECRET_KEY_FILE="$DIR/identity-secret-key" \\',
+            'PROOF_IDENTITY_JWT_KEY_FILE="$DIR/identity-jwt-key.pem" \\',
+            "DJANGO_SETTINGS_MODULE=glow_ordering_proof.identity_settings \\",
+            'python -m django dbshell < /dev/null > "$DIR/identity-dbshell.log" 2>&1',
+            "status=$?",
+            "set -e",
+            "refusal=$(grep -m 1 -F 'RefusedDatabase: refusing dbshell'"
+            ' "$DIR/identity-dbshell.log" || true)',
+            'rm -f "$DIR/identity-dbshell.log"',
+            'echo "identity dbshell exit status: $status"',
+            'if [ "$status" -eq 0 ]; then echo "FAIL: dbshell exited 0"; exit 1; fi',
+            'if [ -z "$refusal" ]; then echo "FAIL: the dbshell refusal is missing'
+            ' (diagnostics withheld)"; exit 1; fi',
+            'echo "refusal: $refusal"',
+        ]
+        self.assertEqual([line for line in sequence if line not in lines], [])
+        at = [lines.index(line) for line in sequence]
+        self.assertEqual(at, sorted(at))
+        self.assertEqual(at[8], at[7] + 1)  # the exit status is the dbshell command's
+
+    def test_the_migrations_step_refuses_the_decoys_marker_first(self) -> None:
+        step = workflow_step(
+            JobDirectory.JOB, "SV1: show the identity database refuses the decoy database's marker"
+        )
+        self.assertIn("        shell: bash\n", step)
+        lines = script_lines(step)
+        # F1: the function reads the marker file it is named, and the refused migrate is named
+        # the decoy's (marker), before the identity database's own migrate.
+        self.assertEqual(step.count("PROOF_DB_MARKER="), 1)
+        self.assertIn(
+            'PROOF_DB_PASSFILE="$DIR/passfile" PROOF_DB_MARKER="$(cat "$DIR/$1")" \\', lines
+        )
+        self.assertIn(
+            "PROOF_DB_HOST=127.0.0.1 PROOF_DB_PORT=5433 PROOF_DB_NAME=glow_identity_proof"
+            " PROOF_DB_USER=glow_proof \\",
+            lines,
+        )
+        refused = (
+            "identity marker python -m django migrate --verbosity 1"
+            ' > "$DIR/identity-wrong-marker.log" 2>&1'
+        )
+        migrate = "identity identity-marker python -m django migrate --verbosity 1"
+        self.assertEqual(
+            [line for line in lines if "python -m django migrate" in line], [refused, migrate]
+        )
+        # F2: the decoy's existence and distinctness, the counts before and after and their
+        # comparison, the refusal, and the step's failure, all before the migrations.
+        sequence = [
+            "docker exec \"$CONTAINER\" psql -X -q -At -F ' ' -v ON_ERROR_STOP=1 -U postgres"
+            ' -d glow_identity_proof -c "$1"',
+            'decoy=$(in_identity_db "SELECT count(*) FROM pg_catalog.pg_database WHERE datname ='
+            " 'glow_proof' AND starts_with(shobj_description(oid, 'pg_database'),"
+            " 'glow-ordering-proof:')\")",
+            'distinct=$(in_identity_db "SELECT shobj_description((SELECT oid FROM'
+            " pg_catalog.pg_database WHERE datname = 'glow_proof'), 'pg_database') IS DISTINCT"
+            " FROM shobj_description((SELECT oid FROM pg_catalog.pg_database WHERE datname ="
+            " 'glow_identity_proof'), 'pg_database')\")",
+            'if [ "$decoy" != 1 ] || [ "$distinct" != t ]; then echo "FAIL: the decoy database'
+            ' or its own marker is missing"; exit 1; fi',
+            'in_identity_db "$per_schema" > "$DIR/identity-relations-before.txt"',
+            'outside_before=$(in_identity_db "$outside_pg")',
+            "set +e",
+            refused,
+            "status=$?",
+            "set -e",
+            'in_identity_db "$per_schema" > "$DIR/identity-relations-after.txt"',
+            'outside_after=$(in_identity_db "$outside_pg")',
+            "no_ledger=$(in_identity_db \"SELECT to_regclass('public.django_migrations') IS"
+            ' NULL")',
+            "refusal=$(grep -m 1 -F 'RefusedDatabase: refusing this database'"
+            ' "$DIR/identity-wrong-marker.log" || true)',
+            "fail=0",
+            'if [ "$status" -eq 0 ]; then echo "FAIL: migrate with another database\'s marker'
+            ' exited 0"; fail=1; fi',
+            'if [ -n "$refusal" ]; then',
+            'echo "FAIL: the refusal message is missing (diagnostics withheld)"; fail=1',
+            'cmp -s "$DIR/identity-relations-before.txt" "$DIR/identity-relations-after.txt" \\',
+            '|| { echo "FAIL: a schema\'s relation count changed"; fail=1; }',
+            'if [ "$outside_before" != 0 ] || [ "$outside_after" != 0 ]; then',
+            'echo "FAIL: a relation exists outside information_schema and the pg_ schemas"; fail=1',
+            'if [ "$no_ledger" != t ]; then echo "FAIL: django_migrations exists"; fail=1; fi',
+            'test "$fail" = 0',
+            migrate,
+            "identity identity-marker python -m django makemigrations --check --dry-run",
+        ]
+        self.assertEqual([line for line in sequence if line not in lines], [])
+        at = [lines.index(line) for line in sequence]
+        self.assertEqual(at, sorted(at))
+        cmp = sequence.index('|| { echo "FAIL: a schema\'s relation count changed"; fail=1; }')
+        self.assertEqual(at[cmp], at[cmp - 1] + 1)
+        # The step fails under set -e at `test "$fail" = 0`: errors are not ignored again.
+        self.assertEqual(lines.count("set +e"), 1)
+        self.assertEqual(lines.count("set -e"), 1)
 
 
 if __name__ == "__main__":
