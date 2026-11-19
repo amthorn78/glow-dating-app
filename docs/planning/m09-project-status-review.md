@@ -1,7 +1,7 @@
 # M09 — Independent project status review: the app build's status and remaining work
 
 - **Work ID:** M09 (cross-cutting).
-- **Status:** the prompt is with Nathan.
+- **Status: done.** Its record is integrated (merge `c48b950`), with the manager's verification and a disposition for each finding. PF01 1.19, written under OD-73, waits for the Dev Manager's read (DM-94).
 - **Owner:** Nathan Amthor, by his direction of 18 November 2026 (OD-72). **Manager:** App Manager 12. **Reviewer:** one review session, started by Nathan.
 - **Revision 1, 18 November 2026.**
 - **Starting point:** `main` at `6edae78` (PR54's merge; SV2-R done), with the Markdown records of the manager branch `claude/magical-wozniak-yfmmx2` after it. The prompt names the exact commit the review reads.
@@ -62,3 +62,5 @@ The review's own change is ordinary documentation: one Markdown file, outside an
 ## Sessions
 
 - **Revision 1** (18 November 2026): the prompt is with Nathan, for `Glow App - No Stream`.
+- **The review session** (18 and 19 November 2026; `session_01Q789u3sgcTFsnzSKfNn85h`, Fable 5.2 at max): branch `claude/nifty-euler-3v8sl7`, final head `20a0d99`, Foundation run 44428764678. Under Nathan's in-session directions (OD-73, OD-74) it also wrote PF01 1.19 (`b738529`) and changed the plan in Notion, each change marked pending its merge.
+- **Manager verification** (19 November 2026): the record's section "Manager verification of M09". Nathan answered its decisions: "all as recommended" (OD-75).

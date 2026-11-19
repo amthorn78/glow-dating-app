@@ -249,7 +249,7 @@ The session ran on 25 September 2026, on branch `claude/compassionate-lamport-53
   - REST reads, WebSocket delivery, disconnect and reconnect. The environment's proxy passes Stream's WebSocket.
 - **Outcome 3, no client bypass: does not hold.** See S15 below.
   - A second channel, free text in typing events, was closed by turning typing events off.
-  - Of 85 cases, 68 hold with an attributable refusal. 4 hold because the result is filtered, and 3 because the change is not applied. 9 are inconclusive under the quality rule, and 1 fails.
+  - Of 85 cases, 65 hold with an attributable refusal and a successful control. Of the other 20, RT1 to RT3 hold under their own rules, 4 results are filtered and 3 changes are not applied, 9 are inconclusive under the quality rule, and 1 (S15) fails (its record, outcome 1, as corrected in P06.1-C1; M09's R-25).
 - **The application's configuration now,** kept for I2a and I2b:
   - guest user creation is disabled;
   - the `user`, `guest` and `anonymous` roles have no application grants;

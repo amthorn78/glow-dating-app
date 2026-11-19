@@ -757,3 +757,84 @@ Read on 18 November 2026, 23:19 to 23:36 UTC, before any change of mine. In ever
 | 33 | "How it works"; the consultation table | Managers listed only to App Manager 10; DM-64's row sits last, after DM-93 | Add App Managers 11 and 12; move the row |
 
 **Checked and clean:** no row's State contradicts the handoff; every item the repository names has one row, except the P11 stage names; all 122 links into the repository resolve; the register copy of the owner directions holds OD-01 to OD-72 with no cell different in substance.
+
+## Manager verification of M09
+
+App Manager 12, 19 November 2026. The record was read whole. Nathan answered the decisions on 19 November (OD-75).
+
+### Checks
+
+- **Classification.** `scripts/change_scope.py` from `main` at `6edae78`, extracted outside the checkout and run with `python3 -I` and `--base 4e01cd7 --head 20a0d99 --merge-base`: `"full": false, "reason": "ordinary-docs-only"`, over two paths, this record and GAPP-PF01. One merge base with `main` (`6edae78`).
+- **Acceptance check 1 is not met as written,** and the deviation is accepted. The brief expected only this record; the second path, PF01 1.19, was written under Nathan's in-session authorization (OD-73), as its own commit (`b738529`).
+- **CI**, read through the GitHub tools: Foundation runs 44426834603 (`f086f0d`), 44427277773 (`b738529`) and 44428764678 (`20a0d99`, the final head), each a success.
+- **Integration.** Merged into the manager branch at `c48b950`. **PF01 1.19 is not in force:** the Dev Manager reads it at `b738529` (DM-94), and no pull request carrying it merges into `main` before that read.
+- **Claims I checked in the code (CODE), all true:**
+  - the served runtime installs only `rest_framework`, has a dummy database and serves two health routes and a development-only route;
+  - `EngineIdentity` is only read (C-03);
+  - `block()` touches only `Match` (C-01);
+  - `MEDIA_TYPES = ("image/png",)` and `MEDIA_BYTES = 1_048_576` (C-06, `profile_settings.py:160-161`);
+  - the mobile stores' `sequence` counters start in memory (C-14);
+  - the contract test reads `production-contracts.md` (C-15, `test_transition_contract.py:699-707`);
+  - `README.md:3`, the CI policy's line 85, the State of the App's "As of", and P06.1's 68 against its record's 65 (R-02, R-08, R-21, R-07, R-25).
+- **Not rechecked:** the process measures and the sizes (sections 4.6 and 8.1), the session's own counts. Notion: the six new Work Register rows exist, Planned (A01-R, SV5, SV2-L, AC1, AC2, AC3); the 24 changed fields were not reread one by one.
+
+### Dispositions
+
+Key: **Done** = applied in the manager's batch with this section. **1.19** = in PF01 1.19, pending DM-94. **DM-94** = governing text, to the Dev Manager first. **Routed** = in the [carried-items file](../../planning/carried-to-later-items.md), "Routed by M09", unless another home is named. **M09-R** = a Markdown-only item that applies the record's exact corrections to files that are not the manager's; it is commissioned after DM-94 (D-06). **Manager** = the manager's own records, in a later batch.
+
+| Findings | Disposition |
+|---|---|
+| R-01 | Done: OD-73 and OD-74, with OD-75 for Nathan's answers |
+| R-02 | 1.19 for PF01 §2; M09-R for `README.md` |
+| R-03 to R-06 | 1.19 |
+| R-07 | Manager: the State of the App refreshed from this record after DM-94 |
+| R-08, R-11, R-12 (header and summary), R-13, R-14, R-18, R-22, R-24 (except the `AWS_*` names) | M09-R. R-12's state column goes to P07.1 (P-10) |
+| R-09 | Done: the SV2-R brief's status line and its "Why" sentence |
+| R-10 | Manager: notes under SV2's acceptance checks 9 and 10 and D9, D10 and D18 |
+| R-15 | Manager: the review log's stale rows |
+| R-16 | Done: revision 8; SV1's docstring entry moved to SV4; N-a, N-c and N-d closed; P06.2-F's entries removed |
+| R-17 | Done: the handoff's wording |
+| R-19 | M09-R for the two Markdown files; AC1 for `.env.example` (full scope) |
+| R-20 | M09-R for the count; the two slots to SV5 |
+| R-21, C-15 | DM-94 (the CI policy is governing) |
+| R-23 | M09-R for the two Markdown files; SV4 Stage A for the docstring in `models.py` |
+| R-24's `AWS_*` names | D-18, asked of Nathan |
+| R-25 | Done, with the brief's breakdown matched to its record |
+| R-26 | Manager: differences 4, 8, 10 to 15 and 17 to 33, once PF01 1.19's read is known, since Notion follows the merged text |
+| R-27 | Routed to A01-R |
+| R-28 | Manager: one pruning batch, OD-45's link pinned first |
+| R-29 | DM-94 for §7's Media paragraph, now that D-03 is decided; the Billing row waits for P08.3's brief (DM-85) |
+| H-01, H-02 | Routed to SV4 Stage A |
+| H-03, H-13 | Routed to M07; the addendum to P08.1; tax and who writes the policies are D-12 |
+| H-04 | 1.19 (P09); the ADR routed to AC3 |
+| H-05, H-14, H-15 | Routed to P09 |
+| H-06 | Routed to AC3 |
+| H-07 | 1.19 (SV2-L) |
+| H-08 | Routed, each with an owner: the retry to SV4 Stage A; the CI policy's gate sentence to DM-94 with R-21; the rest to the next change to each file |
+| H-09 | Finding 44 is R-28; the rest of finding 5 is in 1.19; findings 15 and 27 go with the next change to their files |
+| H-10, H-11 | Routed to SV5; the mail wording to AC1 with DS-7 |
+| H-12 | Routed to P10 |
+| H-16 | Routed to P07.1 |
+| C-01, C-02, C-08, C-09, C-16, C-17 | Routed to SV4 Stage A (C-09's P06.2-T fold) |
+| C-03 | Routed to A01-R; the HDE adapter |
+| C-04, C-07, C-13 | Routed to SV5 |
+| C-05 | Decided: D-03 (a), OD-75 |
+| C-06, C-11 | Routed to the photo processor with the R2 adapter |
+| C-10, C-14 | Routed to AC1 to AC3 |
+| C-12, C-18 | Routed to P11B |
+| C-19 | Routed to the next change to each file |
+| P-01 to P-09 | 1.19 places each; P-09 is A01-R |
+| P-10 | Routed to P07.1 |
+| K-01 to K-13 | Accepted as the risk register of record. Each retirement is a decision or an item above |
+| D-01, D-02, D-03, D-06, D-07 | Decided, option (a) each (OD-75). D-06 and D-07 change governing text: DM-94 |
+| D-04, D-05 | Wait for P08.3's brief; D-05 goes to the Dev Manager with it (DM-91) |
+| D-08 | With D-03 at P07.1 |
+| D-09 | Already settled: the offer follows launch, with advice before it is sold (OD-70, OD-71) |
+| D-10 | Asked of Nathan with the owner's track: the Maker application's status |
+| D-11 | To the Dev Manager with P08.3's brief |
+| D-12, D-13, D-15 | Nathan's, due before P08.3 (D-12) and P11B (D-13, D-15) |
+| D-14 | Nathan's, before AC1 (O10) |
+| D-16 | A line of M07 |
+| D-17 | Standing: his authorization each time (`apps/mobile/AGENTS.md`) |
+| D-18 | Asked of Nathan |
+| Section 8.1's two proposals | DM-94, with D-07: stop recording that a condition was applied; move the status log out of Implementation Control |
