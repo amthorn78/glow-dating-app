@@ -11,19 +11,69 @@ from unittest import TestCase
 ROOT = Path(__file__).resolve().parents[3]
 SCRIPT = "scripts/bootstrap-toolchain.sh"
 WORKFLOW = ".github/workflows/foundation.yml"
-PACKAGES = ("apps/mobile/package.json", "packages/contracts/package.json")
+# M05 finding 13 (SV4 A0, D7): the Stream proof's client pins Node and npm too.
+PACKAGES = (
+    "apps/mobile/package.json",
+    "packages/contracts/package.json",
+    "proofs/stream-chat/package.json",
+)
 
 # Workflow values may be single-quoted, double-quoted or bare YAML scalars.
 PYTHON_VERSION = r"(?<![\w-])python-version\s*:\s*['\"]?([^'\"\s#,}]+)"
 NODE_VERSION = r"(?<![\w-])node-version\s*:\s*['\"]?([^'\"\s#,}]+)"
 NPM_INSTALL = r"\bnpm\s+(?:install|i)\s+(?:--global|-g)\s+npm@([^'\"\s#]+)"
 
+# A line that opens a block scalar (`key: |`, `- key: >-`), after its own comment is removed.
+BLOCK_SCALAR = re.compile(r"^(\s*(?:-\s+)?)[^\s#][^:]*:\s*[|>][1-9+-]{0,2}\s*$")
+
 Pin = tuple[str, str]  # (repository-relative file, plus the field or line; version)
+
+
+def _without_comment(line: str) -> str:
+    """The line up to its YAML comment: a `#` at the start of the line or after whitespace,
+    outside single and double quotes. Anything the reading cannot place stays, so a pin is
+    never dropped by mistake: an unclosed quote keeps the rest of the line."""
+    quote = ""
+    for index, char in enumerate(line):
+        if quote:
+            if char == quote:
+                quote = ""
+        elif char in "'\"":
+            quote = char
+        elif char == "#" and (index == 0 or line[index - 1] in " \t"):
+            return line[:index].rstrip()
+    return line
+
+
+def strip_yaml_comments(text: str) -> str:
+    """The workflow without its YAML comments (M02's N2), one output line per input line so
+    line numbers hold. The lines of a block scalar (a `run: |` script) are its content, not
+    comments, and are kept as written."""
+    out: list[str] = []
+    block_indent: int | None = None  # the column a block scalar's content must exceed
+    for line in text.split("\n"):
+        indent = len(line) - len(line.lstrip(" "))
+        if block_indent is not None:
+            if not line.strip() or indent > block_indent:
+                out.append(line)
+                continue
+            block_indent = None
+        if line.lstrip(" ").startswith("#"):
+            out.append("")
+            continue
+        kept = _without_comment(line)
+        out.append(kept)
+        opened = BLOCK_SCALAR.match(kept)
+        if opened:
+            block_indent = len(opened.group(1))
+    return "\n".join(out)
 
 
 class ToolchainPinTests(TestCase):
     def read(self, path: str) -> str:
-        return (ROOT / path).read_text(encoding="utf-8")
+        text = (ROOT / path).read_text(encoding="utf-8")
+        # N2: a pin inside a YAML comment is not a pin, and is neither matched nor counted.
+        return strip_yaml_comments(text) if path == WORKFLOW else text
 
     def matches(self, path: str, pattern: str) -> list[Pin]:
         text = self.read(path)
