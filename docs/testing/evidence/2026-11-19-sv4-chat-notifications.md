@@ -699,3 +699,116 @@ After the change all 58 reversals fail, each with an `AssertionError` and none w
 | N1 (X3) | **Carried**, to SV4 A2 with F7's D5 | The reach of a test helper's spelling, as D5 |
 | N2 (X4, X9, X5) | **Carried**, to SV4 A2, and recorded as limits of "Substring pins, not semantics" | Edits outside a pinned step or line, older than A0 for X9; A2 adds a job the same way and extends these tests |
 | N3 | **Recorded** here: the gate's script is run; the step around it is not tested | A record's wording that misleads no decision |
+
+## A0-C2
+
+- **Session:** SV4 A0's correction session A0-C2, started by Nathan from the correction prompt, revision 1, from `7377c198af8382370e9463f8d18cc8e85e30ae06` of the manager branch `claude/magical-wozniak-yfmmx2`. Its report goes to App Manager 12 through Nathan.
+- **Branch:** `claude/dazzling-feynman-cjl16t`, which the push filter's `claude/**` covers. It starts at `7377c19`.
+- **Code head:** `5a2f137b464565f5da8ed52ce0bb53938b7587a1`. **Records head:** the commit that adds this section, pushed after the code head's run had finished.
+- **What C2 changed:** tests only, the `sequence` list of `ProfileWorkflowTests.test_the_migrations_step_refuses_the_decoys_marker_first` in `proofs/postgres-ordering/tests/test_profile_offline.py` and of `DiscoveryWorkflowTests.test_the_migrations_step_refuses_the_decoys_marker_first` in `test_discovery_offline.py`. No workflow, scan, setting, README, policy or application file changed, and no other test.
+
+### The start gate and the environment check
+
+- **The environment** (names only):
+  - none of `DATABASE_URL`, `HD_API_KEY` or `GEO_API_KEY`;
+  - no `STREAM_*`, `PG*`, `R2_*`, `CLOUDFLARE_*`, `CF_*` or `RAILWAY_*` name;
+  - present, never read or passed to a command: `AWS_ACCESS_KEY_ID`, `AWS_CA_BUNDLE` and `AWS_SECRET_ACCESS_KEY`, and `GH_TOKEN` and `GITHUB_TOKEN`;
+  - `python3.12 --version`: Python 3.12.14;
+  - every repository command ran under `env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8`. The one install also passed the proxy variables and the proxy's CA path.
+- **The start gate.** Every check passed:
+  - `git rev-parse HEAD` printed `7377c198af8382370e9463f8d18cc8e85e30ae06`, which was also the live manager branch's head;
+  - "this prompt's commit is on the live branch", "C1's code head" and "no code on the live branch after c78f297";
+  - `grep -c` printed `1` for "Delta review of A0-C1" and `0` for "A0-C2".
+- **The workflow** equalled `3bf55de`'s (`git diff --quiet 3bf55de… HEAD -- .github`; SHA-256 `ee42a4a1…`). Its profile and discovery decoy steps ("SV2: show the profile database refuses…", "SV3: show the discovery database refuses…") were read whole. Each of the eight lines below is in each step, in the order the identity sequence gives, so the session did not stop.
+
+### The lines added
+
+Each of the two `sequence` lists gains eight lines, so that it is the identity test's sequence line for line (26 lines each). With the profile suite's names (discovery: `in_discovery_db`, `glow_discovery_proof`, `discovery discovery-marker`):
+- **R1's five, which no assertion pinned before:**
+  - `outside_before=$(in_profile_db "$outside_pg")`, after the counts-before line;
+  - `outside_after=$(in_profile_db "$outside_pg")`, after the counts-after line;
+  - `if [ -n "$refusal" ]; then`, before the missing-refusal failure line;
+  - `if [ "$outside_before" != 0 ] || [ "$outside_after" != 0 ]; then`, after the `cmp` lines;
+  - `echo "FAIL: a relation exists outside information_schema and the pg_ schemas"; fail=1`, after it;
+- **three that earlier assertions pinned only as substrings:**
+  - `docker exec "$CONTAINER" psql -X -q -At -F ' ' -v ON_ERROR_STOP=1 -U postgres -d glow_profile_proof -c "$1"`, first;
+  - `no_ledger=$(in_profile_db "SELECT to_regclass('public.django_migrations') IS NULL")`, after `outside_after=`;
+  - `profile profile-marker python -m django makemigrations --check --dry-run`, last.
+
+No other line changed. `git diff 7377c19… 5a2f137` lists only the two test files and removes no line (19 lines added: the profile `no_ledger` string is one source line, as `ruff format` requires there; discovery's is two). The order check, the `cmp` adjacency check, the `set +e`/`set -e` counts and every earlier assertion stay as they were.
+
+**The mechanical comparison.** A script (`compare.py`, in the session's scratch directory, not committed) reads the three test files with `ast`, never importing or running them. It evaluates each test's `sequence` list from its string constants and the names bound earlier in the same test (`refused` and `migrate` in identity, `refused_line` and `migrate_line` in profile and discovery). It maps the identity list in one simultaneous regular-expression pass, longest token first: `glow_identity_proof` → the suite's database, `glow_proof` → the decoy's database, `identity-marker` → the suite's marker file, `identity` → the suite (so `in_identity_db` and `identity-…txt` too), and `marker` → the decoy's marker file only as the word after the suite's function at the start of a line (the refused `migrate`). The English word in "another database's marker exited 0" is not a name and is left as it is. It then requires list equality:
+- **at the code head:** identity 26 lines; profile 26, equal; discovery 26, equal;
+- **at C1's head `c78f297`:** profile 18 and discovery 18, not equal; the eight lines above are missing from each, and neither has a line the mapped identity sequence lacks.
+
+**The "A0-C1" section's claim.** Its item 3 says the profile and discovery decoy-step tests check "the same sequence of whole lines as the identity test's". That was not true of C1's head (18 of 26 lines, as the comparison shows), and is true of C2's code head.
+
+### Reversals
+
+Each reversal edits the workflow in place, in one job only: the harness (`reversals.py`, in the scratch directory) asserts that the edit's text occurs exactly once in that job. It then runs **every offline test** (`python -m unittest discover -s tests -t .`, 383 tests) and restores the workflow byte for byte, checking its SHA-256 after each. "Before" ran on the checkout at `7377c19` before the test edits; "after" ran on the edited tests, which the code head commits unchanged. After both runs, `git status` showed only the two test files (then nothing, after the commit), and `git diff --quiet 3bf55de… HEAD -- .github` held.
+
+| ID | The edit, in the named job |
+|---|---|
+| X1 | the outside-relations failure (its `if` line, its `FAIL` line and its `fi`) removed |
+| X2 | `if [ -n "$refusal" ]; then` replaced by `if true; then` |
+| X10 | the `outside_before=` line removed |
+| X11 | the `outside_after=` line removed |
+| X12 | the `no_ledger=` line replaced by `no_ledger=t` |
+
+| ID | Profile: before → after | Discovery: before → after |
+|---|---|---|
+| X1 | pass → fail :533 | pass → fail :409 |
+| X2 | pass → fail :533 | pass → fail :409 |
+| X10 | pass → fail :533 | pass → fail :409 |
+| X11 | pass → fail :533 | pass → fail :409 |
+| X12 | fail :545 → fail :533 | fail :420 → fail :409 |
+
+- **"pass"** means `Ran 383 tests … OK`. Every failure was `FAILED (failures=1)`, in the named job's decoy-step test, with an `AssertionError` and no error.
+- **Before:** X1 and X2 passed every test in both jobs, as the delta review found; so did X10 and X11. X12 already failed, in the earlier substring loop, at `tests/test_profile_offline.py:545` and `tests/test_discovery_offline.py:420` of the old files: `AssertionError: "SELECT to_regclass('public.django_migrations') IS NULL" not found in '      - name: "SV2: …'` (SV3 in discovery).
+- **After:** each fails at `tests/test_profile_offline.py:533` or `tests/test_discovery_offline.py:409` of the code head, the sequence's `self.assertEqual([line for line in sequence if line not in lines], [])`, naming the missing line:
+  - X1: `Lists differ: ['if [ "$outside_before" != 0 ] || [ "$out[110 chars]l=1'] != []` (its `if` and `FAIL` lines);
+  - X2: `Lists differ: ['if [ -n "$refusal" ]; then'] != []`;
+  - X10: `Lists differ: ['outside_before=$(in_profile_db "$outside_pg")'] != []` (discovery: `in_discovery_db`);
+  - X11: `Lists differ: ['outside_after=$(in_profile_db "$outside_pg")'] != []`;
+  - X12: `Lists differ: ['no_ledger=$(in_profile_db "SELECT to_reg[42 chars]L")'] != []` (discovery: `[44 chars]`).
+
+### Commands and results
+
+- **The proof's checks**, in `proofs/postgres-ordering`, after `python -m pip install --require-hashes -r requirements-dev.lock` into a `python3.12` virtual environment, and `pip check` ("No broken requirements found"):
+  - `python -m unittest discover -s tests -t .`: `Ran 383 tests … OK` at `7377c19`, and `Ran 383 tests … OK` at the code head (no test added);
+  - `ruff check .` printed "All checks passed!", `ruff format --check .` "71 files already formatted", and `mypy` "Success: no issues found in 71 source files". A first `ruff format --check` asked for the profile `no_ledger` string on one line; it was rewritten so before the commit.
+- **The trusted classifier:**
+  - `main`'s `scripts/change_scope.py` (`c2cffbe`), extracted with `git show` to a scratch directory outside the checkout, SHA-256 `b564c62f…` (the copy A0 and C1 used);
+  - run as `python3 -I <copy>/change_scope.py --base c2cffbe6022637331d73e3558429ff70ab5aa5e3 --head 5a2f137b464565f5da8ed52ce0bb53938b7587a1 --merge-base`, with the checkout as its working directory;
+  - it printed `"full": true`, reason `behavior-or-empty`.
+- **The diff:** `git diff --name-only 7377c198af8382370e9463f8d18cc8e85e30ae06 5a2f137` lists only the two test files; the records commit adds this section. The code diff removes no line.
+- **No dependency** was added. No database, provider, HDE or external service was used. The only network use was PyPI, for the hash-locked install.
+
+### The run of record
+
+**Foundation run [44601565801](https://github.com/amthorn78/glow-dating-app/actions/runs/44601565801)** on `5a2f137b464565f5da8ed52ce0bb53938b7587a1` (a push run, attempt 1) concluded **success**. It was created at 19:45:10 UTC on 19 November 2026, and its gate's step finished at 19:53:40, 8 minutes 30 seconds in all. Nothing was pushed to the branch until it had finished. Read with the GitHub tools; durations are from the jobs' timestamps, in whole seconds.
+
+| Job | Conclusion | Duration |
+|---|---|---|
+| Change scope | success | 16 s |
+| API checks | success | 70 s |
+| Mobile checks | success | 388 s (Chromium's first install 22 s; the pause and the retry skipped) |
+| API mobile smoke | success | 85 s |
+| API artifact checks | success | 28 s |
+| Stream proof checks | success | 96 s |
+| **Database proof checks (ordering)** | success | 482 s |
+| **Database proof checks (identity)** | success | 123 s |
+| **Database proof checks (profile)** | success | 153 s |
+| **Database proof checks (discovery)** | success | 230 s |
+| Foundation gate | success; its log ends "Application checks passed" | 3 s (to its step's end) |
+
+- **The profile job's log**, read for these lines only: `Ran 383 tests`, with `ProfileWorkflowTests`', `DiscoveryWorkflowTests`' and `IdentityWorkflowTests`' `test_the_migrations_step_refuses_the_decoys_marker_first … ok`; `decoy database glow_identity_proof with a marker as its comment: 1; its comment differs from the profile database's: t`; `relations outside information_schema and the pg_ schemas: 0 before, 0 after`; `to_regclass('public.django_migrations') IS NULL after: t`; `profile migrate with the decoy database's marker: exit status 1`; `the decoy database's marker was refused, and the profile database is unchanged and holds no table`; `PROFILE VERDICT: PASS`.
+- The other jobs' logs were not read line by line; their steps all concluded success.
+
+### Limits and deviations
+
+- **Substring pins, not semantics,** as the "A0-C1" section's limit says, with N2's X4, X9 and X5 carried to SV4 A2 by the disposition. C2 pins whole lines and their order. It does not close an edit that leaves every pinned line in place and defeats the check elsewhere.
+- **The comparison's one judgement:** `marker` is mapped only as the refused `migrate`'s marker-file argument; the English word in the `FAIL` message "another database's marker exited 0" is identical in all three tests and is not mapped. Any other mapping would make the comparison fail on a line the three tests share.
+- **X12 before** already failed, on an earlier substring assertion, not on the line it removes. After C2 it fails on the `no_ledger=` line itself.
+- **The reversals ran on every offline test,** not only the workflow-reading classes. The harness and the comparison script stay in the session's scratch directory and are not committed.
+- **No stop** was hit, and nothing outside the prompt's paths changed.
