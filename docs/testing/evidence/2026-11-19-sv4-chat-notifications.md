@@ -389,7 +389,7 @@ On `main`'s run 44416436012 the one shared job took 16 minutes 32 seconds. Here 
 - **The decoy check refuses one other suite's marker per job** (AG1's "one more database"), where the shared job's profile and discovery steps refused two and three. Each refusal is of a marker another database in the same server carries, which is the property AG1 keeps. It is stronger than before in one way: it also shows the suite's database unchanged, with no table.
 - **The `dbshell` refusal is new in the identity, profile and discovery jobs.** The shared job showed it once, under the ordering settings. Each suite's settings install the proof's own `dbshell`, and the local runs show each refusing.
 - **The ordering suite's job has no decoy database** (the prompt: its wrong-marker step already shows this) and no secret scan. Its results JSON is uploaded `if: always()`, as before: there was no scan to keep, and adding one is outside A0.
-- **Each run now pulls the PostgreSQL image four times**, once per job, where it pulled it once. Locally Docker Hub answered `429` to this sandbox's repeated pulls. Whether GitHub-hosted runners meet Docker Hub's pull limits was not checked. A `429` in CI would fail that job's start step, and would be a finding under OD-21.
+- **Each run now pulls the PostgreSQL image four times**, once per job, where it pulled it once. Locally Docker Hub answered `429` to this sandbox's repeated pulls. Whether GitHub-hosted runners meet Docker Hub's pull limits was not checked. (The exact-head review read Docker's page: unauthenticated users get "100 per IPv4 address or IPv6 /64 subnet" per 6 hours, and no Docker or GitHub page names an exemption for GitHub-hosted runners; F4.) A `429` in CI would fail that job's start step, and would be a finding under OD-21.
 - **Minutes:** each database job repeats the install, the offline tests, Ruff and mypy (about 40 s) and its own PostgreSQL start. Free while the repository is public (OD-51); M07's Actions line prices them once it is private.
 - **The name `Database proof checks` is gone**, replaced by four names. No check is required (OD-52), so no required check changes. The CI policy says so.
 - **Wording left as it was:** the three suites' offline test files' module docstrings still say the cases run "in the Database proof checks job, on the second (third, fourth) disposable database". The prompt allows only their tests of the workflow's steps and the scans' lists to change.
@@ -403,11 +403,11 @@ On `main`'s run 44416436012 the one shared job took 16 minutes 32 seconds. Here 
 - **The workflow, read whole and compared step for step** (PyYAML over `eac8443`'s and `3bf55de`'s files):
   - the jobs `scope`, `api`, `smoke`, `artifact` and `proof`, the triggers, the permissions and the concurrency group are unchanged;
   - the four database jobs each take the old job's `needs: scope`, its condition, `runs-on`, defaults and permissions, with `timeout-minutes: 30`;
-  - every one of the old job's 30 steps is in a new job: 22 byte for byte, and the other 8 changed only as the split needs (the credentials and role-and-database steps per job; the three marker-and-migrations steps, now refusing the decoy and counting relations before and after; the profile and discovery suite steps, whose comments alone change). The new steps are each job's `dbshell` refusal and decoy;
+  - every one of the old job's 30 steps is in a new job: 23 byte for byte, and the other 7 changed only as the split needs (corrected after the exact-head review's F5, which counted 23 and 7; this line first said 22 and 8; AM12-42) (the credentials and role-and-database steps per job; the three marker-and-migrations steps, now refusing the decoy and counting relations before and after; the profile and discovery suite steps, whose comments alone change). The new steps are each job's `dbshell` refusal and decoy;
   - the action pins and the PostgreSQL image's digest are the same set;
   - the gate's `needs` and its results loop name the four jobs, and nothing else in it changes;
   - Mobile checks gains exactly the carried Chromium retry (`id: chromium`, `continue-on-error: true`, `timeout-minutes: 10`; a 60-second pause and one retry with `timeout-minutes: 6`, each under `if: steps.chromium.outcome == 'failure'`, the retry without `continue-on-error`), and its other steps and settings are unchanged;
-  - each credentials step masks five values before anything prints, and its `echo` lines print a directory, a container name and a refusal only.
+  - the identity, profile and discovery credentials steps each mask five values, and the ordering job's four (F5), before anything prints, and each step's `echo` lines print a directory, a container name and a refusal only.
 - **The run of record,** Foundation run 44463105633 (event `push`, head `3bf55de`), read with the GitHub tools: all eleven jobs succeeded, among them the four database jobs, and the gate's log ends "Application checks passed".
 - **The scans:** each `VALUE_FILES` and `KEY_FILES` now names its own job's files only, the decoy's marker in the earlier suite's file name, as the CI policy's new paragraph says.
 - **For the exact-head review (AG21), noted, not decided here:**
@@ -415,3 +415,63 @@ On `main`'s run 44416436012 the one shared job took 16 minutes 32 seconds. Here 
   - four pulls of the PostgreSQL image per run, where there was one;
   - the decoy's marker is one the job generates in the earlier suite's form (`glow-ordering-proof:` for the identity job), not that suite's own marker, which only a shared PostgreSQL held; AG1's words are "carrying another suite's marker";
   - the three proof offline test files' module docstrings still describe the shared job, outside A0's owned lines.
+
+### Exact-head review of A0 (19 November 2026)
+
+- **Session:** the exact-head review, started by Nathan from [A0's review prompt](https://github.com/amthorn78/glow-dating-app/blob/7d04d1c2701f98f24575bd9298f4c0717df7872b/docs/ephemeral/2026-11-19-sv4-a0-review-prompt.md), revision 1, from `7d04d1c` (DM-96's AG21); its report relayed to App Manager 12 on 19 November 2026.
+- **Its start gate, classification and environment check:** every start-gate check passed (`HEAD` `7d04d1c`, one merge base `c2cffbe`, the prompt's commit on the live branch, whose head was `90a74e5`, three Markdown-only commits later; non-Markdown paths equal to `3bf55de` at `HEAD` and on the live branch; no review recorded). `main`'s classifier, run outside the tree with `python3 -I`, printed `"full": true`, reason `behavior-or-empty`. None of `DATABASE_URL`, `HD_API_KEY` or `GEO_API_KEY`, and no `STREAM_*`, `PG*`, `R2_*`, `CLOUDFLARE_*`, `CF_*` or `RAILWAY_*` name; the AWS and GitHub token names present and unread; every repository command under `env -i`.
+- **Verdict: changes requested, in tests only.** No blocking finding. It found no defect in the workflow, the scans, the gate, the Chromium retry or the pin test, and both runs pass. F1 and F2 are should-fix findings in a correction class; F3 to F8 are nits.
+
+**What it verified** (its section 3):
+- **Nothing lost:** of the old job's 30 steps, 23 are byte-identical in a new job and 7 changed only as the split needs; none was made conditional or reordered to prove less. Each new `dbshell` and decoy step adds a check.
+- **The decoy meets AG1.** AG1 says "in its own PostgreSQL", where another suite's real marker cannot exist, so a marker the job generates, on a database named as the other suite's, is the reading that fits. The marker check binds to the connected database's own comment (`current_database()`), which is what the shared job's refusal proved. A missing decoy, equal markers, an empty comment and a refusal for another cause each fail the step; both runs print the refusal's reason, "the database's comment is different".
+- **The secrets:** every value masked before any output; no step prints a value; each scan lists exactly its job's files; each upload gated on its job's check; each job removes its container, volume and directory; artifact names distinct.
+- **The gate:** each database job keeps `needs: scope` and the old condition; the gate's own script, on 22 synthetic results, fails a full-scope run with any database job `failure`, `cancelled`, `skipped` or missing, and a documentation run with any database job `success`.
+- **The Chromium retry** matches the carried form; its worst case is 24.4 minutes of the job's 25.
+- **The pin test:** no escape found; on `c2cffbe`'s test a commented pin fails the count, so M02's N2 was real.
+- **No dependency:** the same action pins and image digest; no lock, requirement, package or `Dockerfile` change; permissions and `persist-credentials: false` as before.
+- **The records:** the CI policy's and the README's claims hold, and the section "A0"'s step table, durations, counts and reversals hold, except F5, F6 and F8.
+
+**Its checks**, in a scratch copy of `3bf55de` with hash-locked installs:
+- the proof's offline tests (`Ran 378 tests … OK`), Ruff and mypy (71 files); the API's pin test (`Ran 3 tests … OK`); the workflow parsed with PyYAML 6.0.3;
+- the prompt's reversals R1a to R1d (a scan's list), R2a and R2b (the gate), R3a to R3c (a decoy step, an upload's condition) and R4a to R4e (the pins): each failed its test. The record's S4, S5, W2, W3, W6 and W7: each failed;
+- its own reversals D1a, D1b, D2a, D2c, D2d, D3a, D3b, D4a to D4d, D5, D6a and D6b **passed** every offline test (the findings below); D2b failed, as it should;
+- a local run of the identity job's own steps on a throwaway PostgreSQL under P06.DB's D4 passed; D1b's variant also passed. Everything it started was removed.
+
+**The runs:**
+
+| Job | Run of record 44463105633 (`push`, `3bf55de`) | PR run 44466377174 (`pull_request`, `90a74e5`) | Timeout |
+|---|---|---|---|
+| Database (ordering) | 539 s | 524 s | 30 min |
+| Database (identity) | 103 s | 100 s | 30 min |
+| Database (profile) | 151 s | 151 s | 30 min |
+| Database (discovery) | 190 s | 289 s | 30 min |
+| Mobile checks | 561 s (Chromium 187 s) | 466 s (Chromium 22 s) | 25 min |
+
+Every job of both runs succeeded, and both gates printed "Application checks passed". App Manager 12 read the PR run with the GitHub tools at about 06:02 UTC: eleven jobs, success; the Chromium install passed on its first attempt and the pause and the retry were skipped; the gate's line at 05:46:18. Codex's code review of `90a74e5` completed with no findings, and the pull request had no review thread.
+
+**Its findings** (in its words, shortened):
+- **F1 — Should fix: the decoy's binding to the refused marker is unpinned.** Class: "let a check pass for the wrong reason"; "let a test pass where it should fail". The `create-role.sql` `printf` (`foundation.yml` lines 561, 880, 1199) gives the decoy its comment, and no test asserts which value. Binding the decoy's comment to another value turns AG1's check into a plain wrong-marker check, silently: D1a (profile) and D1b (identity) pass all 159 offline tests, and D1b's decoy step passed on a local PostgreSQL. All three argument orders are right today; A2 copies the pattern. Fix: each credentials test asserts the exact `printf` argument list, and that the same variable writes the decoy's marker file.
+- **F2 — Should fix: the identity job's new steps have no content test.** Class: "let a test pass where it should fail". `test_identity_offline.py` has no credentials or decoy-step test, unlike `ProfileWorkflowTests` and `DiscoveryWorkflowTests`. These identity reversals pass every offline test: D2a, `test "$fail" = 0` removed (line 710; CI would pass with the check failing); D2c, the counts' `cmp` removed; D2d, the decoy marker's migrate removed; D4a, a mask line removed; D4c, the distinctness test removed; D4d, the decoy not created. In all three jobs: each new `dbshell` step's exit check and refusal check (lines 643, 962, 1281; D3a, D3b), the decoy step's existence check (lines 675, 994, 1313; D6b), and the password masks (D4b, a gap older than A0). Fix: the identity counterparts of the profile job's two tests, and each `dbshell` step's two checks.
+- **F3 — Nit: the Chromium timeout's outcome is undocumented, and the first attempt's margin is thin.** GitHub's documentation does not say whether a step killed by its own `timeout-minutes` has the outcome `failure` (it quotes `steps[*].timeout-minutes`, `continue-on-error` and `steps.<step_id>.outcome`, none of which says). Passing installs have taken 510 s (`main`'s run 44416436012) and 541 s against the first attempt's 600 s, so a slow install that passed before can now be killed, and a kill during `dpkg` may defeat the retry. No outcome gives a false pass. For the Dev Manager: accept as carried, establish the outcome empirically, or widen the job's timeout.
+- **F4 — Nit: four Docker Hub pulls per run.** Docker's page gives unauthenticated users "100 per IPv4 address or IPv6 /64 subnet" per 6 hours; no Docker or GitHub page names an exemption for GitHub-hosted runners. Each runner pulls once, so the count per address per job is unchanged; both runs pulled without a `429`, and a `429` would fail the job and the gate.
+- **F5 — Nit: the manager's verification miscounts:** 23 steps byte for byte and 7 changed, not 22 and 8; the ordering job's credentials step masks four values, not five.
+- **F6 — Nit: a stale job name in six docstrings:** the three scans' line 4 ("The Database proof checks job runs it…") and the three offline test modules' docstrings.
+- **F7 — Nit: drift limits in the tests.** `job_secret_files` (`test_identity_offline.py` line 516) reads only the `"$dir/<name>"` spelling (D5 passes). The gate test pins the job tuple and the `assert` line, not that the loop covers the whole tuple (`for job in jobs[:5]:`, D6a, passes).
+- **F8 — Nit: the README's "keeps".** `proofs/postgres-ordering/README.md` says the decoy step "keeps the shared job's check that each suite's database refused the other suites' markers"; it keeps it with one decoy marker per job, and only while F1's binding holds.
+
+**What it did not read or run:** the runner's source code (outside its network), so F3's outcome stays open; GitHub's changelog; the ordering, profile and discovery jobs locally (CI's two runs cover them); the full API suite, the contract tests and Mobile checks; the proof's README whole (its changed passages and their context).
+
+**Disposition** (App Manager 12; the manager workflow's step 6, "What a correction pass is for" and "Fix or carry, by rule", under D-07):
+
+| Finding | Disposition | Why |
+|---|---|---|
+| F1 | **Fixed before the merge**, by correction C1 (tests only) | A missing test of A0's own decoy check. A0's acceptance check rests on that check ("each with the checks it ran before"; AG1's decoy), so D-07 makes it a correction; it is in the review prompt's classes |
+| F2 | **Fixed before the merge**, by C1 | The identity job's decoy step, each job's `dbshell` refusal and the decoy's existence check are checks the same acceptance check rests on; the masks belong to the credentials steps A0 rewrote, and C1's identity test asserts every mask as the profile and discovery tests do |
+| F7, D6a (the gate's loop) | **Fixed before the merge**, by C1 | The review graded it a nit. The gate requiring each job is A0's acceptance check ("the gate requires each"), so a missing test of it is a correction under the same rule as F1 and F2: the manager's reading, listed for the Dev Manager's pre-merge read |
+| F7, D5 (the file-list spelling) | **Carried**, to SV4 A2 (the carried-items file, "Carried to SV4") | The reach of a test helper, not a check A0 makes; A2 adds a fifth job and scan the same way |
+| F6 | The three offline test modules' docstrings: **by C1**, which changes those modules. The three scans' line 4: **carried** with D5 | A record's wording that misleads no decision; the test modules are taken up because C1 changes them |
+| F3 | **For Dev Manager 6's pre-merge read** | The Chromium form, its timeouts included, is the carried text of DM-59 item 7, the Dev Manager's; no outcome gives a false pass. The manager recommends accepting it as carried, with the documentation's silence recorded here, and treating a Mobile run that fails at the Chromium step under OD-21 |
+| F4 | **Recorded** (here, and in the limit above) | No false pass is possible; the documented limit is per address, and each job's runner pulls once |
+| F5 | **Corrected** in "Manager verification of A0" (AM12-42) | The manager's own count |
+| F8 | **Corrected** by the manager in the proof's README (Markdown), listed for the pre-merge read | The sentence now says one decoy marker per job |

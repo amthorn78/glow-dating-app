@@ -121,6 +121,7 @@ The [store, legal and safety requirements matrix](store-legal-safety-requirement
 ## Carried to SV4 (chat's HTTP surface; OD-49)
 
 - **SV4's brief, revision 1** ([`sv4-chat-notifications.md`](sv4-chat-notifications.md), 19 November 2026), disposes of each entry below, of "Carried to P06.2-T" and of "Routed by M09"'s SV4 Stage A entries in its D12, for the Dev Manager's first read (DM-96). Each entry stays here until the stage that takes it merges, or until the brief moves it.
+- **From A0's exact-head review (F7's D5 and F6; the A0 record, "Exact-head review of A0"), for SV4 A2,** which adds a fifth database job and secret scan the same way: `job_secret_files` (`proofs/postgres-ordering/tests/test_identity_offline.py`) reads only the `"$dir/<name>"` spelling, so a secret file written as `"${dir}/<name>"`, or outside the credentials step, escapes the scan tests; and the three scans' module docstrings (`identity_scan.py`, `profile_scan.py`, `discovery_scan.py`, line 4) still name the shared "Database proof checks job". A2 takes both up if it changes these files; otherwise they move to the next change to the scans.
 - **From SV4's brief (DM-96; AG16), for Stage B:** D4's sameness for notifications: no notification tells a member a block from an unmatch.
 - **From P09.3a's matrix** ([the matrix](store-legal-safety-requirements.md), section 8; DM-37 2.1 and 2.3):
   - **G-04's records:** who received (and responded to) a member's messages, kept after unmatch and block, for fraud-ban notices.
