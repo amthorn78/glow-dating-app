@@ -16,15 +16,15 @@ This file only routes: the current item, what happens next and who waits on whom
 - **Done:** P00 to P05 (fixture scope), M01 to M09, P06.1, P06.DB, P06.2, P09.3a, P06.2-F, P06.3, SV1 to SV3 and SV2-R.
 - **Owner directions:** OD-01 to OD-78. **Review log:** DM-01 to DM-94. **Linear (OD-29).** Every prompt names its environment (OD-36) and glow-docs as attached (OD-74).
 
-## Waiting checkpoint (19 November 2026, 01:46 UTC, App Manager 12)
+## Waiting checkpoint (19 November 2026, 01:50 UTC, App Manager 12)
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| Nathan | App Manager 12 | A01-R's prompt (HDE's canon against the contract request: the first step to HDE integrated) | — |
+| App Manager 12 | Nathan | A01-R's research session and its report ([the brief](../planning/a01-r-hde-canon-read.md); [the prompt](../ephemeral/2026-11-19-a01-r-hde-canon-read-prompt.md)) | No HDE gap list; PF01 1.20 is drafted meanwhile |
 
 ## Next actions (App Manager 12)
 
-1. **A01-R's brief and prompt** (OD-75, D-01; OD-78): HDE's canon read against the contract request, with the list of what HDE must build for the app.
+1. **A01-R's report:** verify a sample of citations, integrate, and give Nathan the prototype list for HDE's process (OD-32).
 2. **PF01 1.20, the prototype milestone (OD-78):** the order revised so the integrated system comes first (SV4 Stage A, SV5, AC1 to AC3, then the database, the deployed server and the HDE adapter brought forward from P11), for the Dev Manager's read (DM-95); then SV4's brief.
 3. **Manager records:** PF02 1.9 (AM12-31, AM12-32); the status log's move (M09 (b)); R-07, R-10, R-26, R-28.
 
