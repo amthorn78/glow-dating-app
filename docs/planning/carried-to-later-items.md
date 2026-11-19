@@ -237,6 +237,8 @@ Due with the first change to `scripts/branch_cleanup.py` after M04 merges ([the 
 
 ## Carried to M07 (the costed list of completion's accounts and services; OD-50)
 
+- **Done:** M07's record (`docs/testing/evidence/2026-11-19-m07-costed-list.md`, merged at `817ce5e`) prices every line below. Its provider-choice lines go to the Dev Manager with the item that first needs each; Radar's change of 22 January 2027 and Google's 10% plus 5% go to P08.3's brief.
+
 - **What it is** (M05 E3; PF01 A04): before P09 and P11B, a list of each account and service completion needs (Apple and Google developer accounts, Railway app services, the Stream production plan, Cloudflare R2 for photos (OD-62) and any service that processes them, mail and push), each with its published price rechecked and dated.
 - **Research only:** no account is created and nothing is spent before Nathan approves its line, when its phase needs it; OD-12's $0 stands until then (DM-31, on N2).
 - **The Stream line** depends on the Maker application, pending since 25 September 2026 (OD-22; confirmed pending in OD-50).

@@ -838,3 +838,12 @@ Key: **Done** = applied in the manager's batch with this section. **1.19** = in 
 | D-17 | Standing: his authorization each time (`apps/mobile/AGENTS.md`) |
 | D-18 | Answered (OD-76): the Dev Manager's read stays; no AWS usage is planned, and the names come from the container |
 | Section 8.1's two proposals | DM-94, with D-07: stop recording that a condition was applied; move the status log out of Implementation Control |
+
+## Merge receipt
+
+- **PR55** (the manager branch into `main`, ordinary documentation) merged at `d3273f3` on 19 November 2026, on its final head `e9c3c34`: PR run 44437119697 passed, the gate printing "Ordinary documentation: application jobs intentionally skipped"; Codex's code review completed on `e9c3c34` with no findings. Dev Manager 5's DM-94 read (`221da6d`) stands as the pre-merge read: each governing file at `e9c3c34` equals `6bee2e9`'s text (the charter, `ebf84e3`'s) with AD1 to AD15, by script.
+- **PF01 1.19, PF02 1.8, and the D-06 and D-07 texts are in force** from that merge.
+- **`main`'s push run** 44437542753 on `d3273f3` passed. The branch cleanup (run 44437542722) deleted M09's merged session branch, `claude/nifty-euler-3v8sl7`.
+- **The manager branch** took `main`'s merge commit by a fast-forward to `d3273f3` before this receipt (AM12-29).
+- **Pruned,** each link pinned at `d3273f3`: M09's prompt, DM-94's consultation and M07's prompt.
+

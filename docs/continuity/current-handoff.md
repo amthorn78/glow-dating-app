@@ -1,4 +1,4 @@
-# Current handoff — App Manager 12 (19 November 2026; M09 done; DM-94 answered; M07 with Nathan)
+# Current handoff — App Manager 12 (19 November 2026; PR55 merged; M07 done; the first approvals with Nathan)
 
 This file only routes: the current item, what happens next and who waits on whom. Each fact lives in one home, listed in the [documentation map](../README.md); earlier handoffs are in `docs/continuity/history/`, the last as [P06.2 to its merge](history/p06-2-handoff.md).
 
@@ -7,33 +7,31 @@ This file only routes: the current item, what happens next and who waits on whom
 ## Now
 
 - **Manager: App Manager 12** ([OD-67](owner-directions.md)), in `Glow App - No Stream`, on the manager branch `claude/magical-wozniak-yfmmx2` (its outcome branch; on the cleanup's keep-list).
-- **Dev Manager 5** (`session_01Q789u3CWg6s9pBGXerCQZt`; OD-65) holds `claude/dev-manager`. Nathan carries each consultation to it (OD-25).
+- **Dev Manager 5** (`session_01Q789u3CWg6s9pBGXerCQZt`; OD-65) holds `claude/dev-manager`. Nathan carries each consultation to it (OD-25). Its read of governing Markdown stays (OD-76).
 - **Never ask Nathan to perform a GitHub operation** (OD-58). A failure that seems to need a re-run goes to the Dev Manager first (OD-32).
-- **M09 is done** (OD-72; [its record](../testing/evidence/2026-11-18-m09-project-status-review.md), merged at `c48b950`, with "Manager verification of M09"). Nathan's directions in and after it: **OD-73** (it wrote PF01 1.19, `b738529`, and the plan in Notion, marked pending), **OD-74** (`amthorn78/glow-docs` attached to every session, read-only) and **OD-75** (D-01, D-02, D-03, D-06, D-07 as recommended; D-04 and D-05 wait for P08.3's brief).
-- **DM-94 is answered** (Dev Manager 5, `221da6d`, merged at `f9595b4`): PF01 1.19, PF02 1.8, the D-06 and D-07 texts, `CLAUDE.md` for OD-74 and the CI policy approved, with AD1 to AD15 applied as given. They take effect when the pull request of the manager branch into `main` merges; Notion's M09 edits say "pending its merge" until then.
-- **SV3, M08, A05-V to A05-V3 and SV2-R are done** (PR45 to PR54). A05 stays open for its third message, before P07.1. The founding-member offer is "lifetime" meaning for as long as Glow runs the service (OD-71).
-- **CI note:** a Chromium-install failure is recorded in DM-59, item 7, written for PR44; its retry is routed to SV4 Stage A.
-- **The repository is public for now** (OD-51).
-- **The order** (PF01 1.19, pending): M07, then A01-R; SV4 (two stages), SV5, SV2-L, AC1 to AC3, then P07 to P12. Under D-06 a Markdown-only item may run beside a code item once DM-94 approves the text.
-- **Done:** P00 to P05 (fixture scope), M01 to M06, M08, M09, P06.1, P06.DB, P06.2, P09.3a, P06.2-F, P06.3, SV1 to SV3 and SV2-R.
-- **Owner directions:** OD-01 to OD-76 (OD-76: the Dev Manager's read stays; no AWS usage; Maker left open). **Review log:** DM-01 to DM-93. **Linear (OD-29).** Every prompt names its environment (OD-36) and glow-docs as attached (OD-74).
+- **PR55 merged** at `d3273f3`: M09's record, PF01 1.19, PF02 1.8, and the D-06 and D-07 texts, now in force (DM-94). Under D-07 the Dev Manager reads a code item at its brief and before its merge; under D-06 one Markdown-only item may run beside a code item.
+- **M07 is done** ([its record](../testing/evidence/2026-11-19-m07-costed-list.md)): about $125 one-time, about $296 a year, and about $479 a month at launch, $399 of it Stream's plan unless the Maker application is approved. The first three approvals are with Nathan: the entity (state and agent), the D-U-N-S number and the domain. Nothing is spent before he approves a line (OD-12, OD-50).
+- **The repository is public for now** (OD-51); before it goes private, an Actions line is approved (M07, Line 16).
+- **The order** (PF01 1.19): A01-R next; SV4 (two stages), SV5, SV2-L, AC1 to AC3, then P07 to P12. M09-R, the record corrections, may run beside a code item (D-06).
+- **Done:** P00 to P05 (fixture scope), M01 to M09, P06.1, P06.DB, P06.2, P09.3a, P06.2-F, P06.3, SV1 to SV3 and SV2-R.
+- **Owner directions:** OD-01 to OD-76. **Review log:** DM-01 to DM-94. **Linear (OD-29).** Every prompt names its environment (OD-36) and glow-docs as attached (OD-74).
 
-## Waiting checkpoint (19 November 2026, 01:21 UTC, App Manager 12)
+## Waiting checkpoint (19 November 2026, 01:34 UTC, App Manager 12)
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| Nathan | App Manager 12 | The records pull request merged, and the plain-words note on P09's and P10's acceptance (DM-94 item 1) | — |
-| App Manager 12 | Nathan | M07's research session and its report ([the prompt](../ephemeral/2026-11-19-m07-costed-list-prompt.md), at `f1653f1`; given at his request before DM-94's answer) | No costed list; no line can be approved |
+| App Manager 12 | Nathan | His answers on the first approvals (the entity's state and agent, the D-U-N-S number, the domain) | No account is opened; A01-R's brief is written meanwhile |
 
 ## Next actions (App Manager 12)
 
-1. **The records pull request** (the manager branch into `main`, ordinary documentation): its checklist shows each governing file equal to `6bee2e9`'s text (the charter, `ebf84e3`'s) with AD1 to AD15; merge; `main` into the manager branch before the receipt; Notion's "pending" markings removed; Nathan told that P09's and P10's acceptance changed.
-2. **M07,** the costed list ([brief](../planning/m07-costed-list.md)): the prompt is with Nathan. On its report: verify a sample of prices and the totals, integrate, and send Nathan the list line by line, entity first. Then **A01-R**; M09-R, the record corrections, beside a code item (D-06).
-3. **Manager records after the merge:** PF02 1.9 (AM12-31, AM12-32); the status log's move (M09 (b)); R-07, R-10, R-26, R-28.
+1. **Nathan's approvals:** record each as an owner direction; the matrix rows of each account are rechecked before he opens it.
+2. **A01-R:** its brief and prompt (HDE's canon in glow-docs read against the contract request; OD-75, D-01).
+3. **Notion after PR55:** M09's "pending its merge" markings removed and the six new rows' Plan Reference moved to `main`.
+4. **Manager records:** PF02 1.9 (AM12-31, AM12-32); the status log's move (M09 (b)); R-07, R-10, R-26, R-28.
 
 **Carried follow-ups** live in their owning homes: [`carried-to-later-items.md`](../planning/carried-to-later-items.md) (with "Routed by M09"), the P11 plan, the review log's "Deferred conditions".
 
-## Branches and PRs (19 November 2026, 00:40 UTC; listed with the GitHub tools before this time)
+## Branches and PRs (19 November 2026, 01:34 UTC; listed with the GitHub tools before this time)
 
-- **Open PRs:** none. `main` is at `6edae78` (PR54).
-- **Remote branches, four:** `main`; the manager branch; `claude/dev-manager` (`adb769d`); M09's `claude/nifty-euler-3v8sl7` (`20a0d99`, merged into the manager branch).
+- **Open PRs:** none. `main` is at `d3273f3` (PR55).
+- **Remote branches, four:** `main`; the manager branch; `claude/dev-manager` (`221da6d`, merged at `f9595b4`); M07's `claude/sharp-keller-j1uvsv` (`02b7a1f`, merged into the manager branch at `817ce5e`).

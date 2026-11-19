@@ -453,3 +453,27 @@ Also unconfirmed and marked in the lines: Registered Agents Inc.'s billing perio
 ## 8. Boundary
 
 Only this record was written, on `claude/sharp-keller-j1uvsv`. On GitHub, only reads through the GitHub tools (workflow and run listings and job lists); no pull request, comment, review, re-run, dispatch or setting. Nothing in Notion. No account opened, no trial, form or contact; no credential, `AWS_*` value or token read; no provider API, HDE, Railway or Cloudflare call; no database; no `playwright install`, `eas`, native build or `migrate`. No legal or tax advice: published prices and terms only.
+
+## Manager verification of M07
+
+App Manager 12, 19 November 2026. The record was read whole.
+
+- **The branch:** `claude/sharp-keller-j1uvsv`, head `02b7a1f` (commits `1af744e`, the record, and `02b7a1f`, the classifier note). `git diff --name-only f1653f1 02b7a1f` lists only this record. Merged into the manager branch at `817ce5e`.
+- **Classification:** `scripts/change_scope.py` from `main`, run with `python3 -I`, full SHAs and `--merge-base` from `f1653f1` to `02b7a1f`: `"full": false, "reason": "ordinary-docs-only"`, this one path.
+- **CI:** Foundation run 44437200417 on `02b7a1f`, a success (the run on `1af744e` was cancelled by the newer push, as the CI policy's concurrency rule does).
+- **The totals,** recomputed by hand from section 4's lines: launch 30.50 + 399.00 + 25.00 + 24.65 = 479.15; 1,000 members 32.50 + 399.00 + 0.06 + 20.00 + 25.00 + 24.65 = 501.21; 10,000 members 125.00 + 406.00 + 9.15 + 11.25 + 20.00 + 26.00 + 25.00 + 24.65 = 647.05; yearly 99 + 60 + 125 + 11.81 = 295.81, or 24.65 a month; with Maker 80.15 and 102.21; Delaware's difference (400 − 60) / 12 = 28.33. Railway at 10,000 (80 + 20 + 25 = 125), R2 at 10,000 (1.95 + 7.20 = 9.15) and the photo check at 10,000 (15,000 × 0.75 / 1,000 = 11.25) also agree. All match.
+- **Prices rechecked by the manager,** fetched as public pages on 19 November 2026 and read as text: Apple, "The Apple Developer Program is 99 USD per membership year" (Line 3); Google Play, "There is a US$25 one-time registration fee" (Line 4); GitHub, "$0.006 USD per minute" on a standard Linux runner (Line 16). All three match. Delaware's tax page refused a plain fetch, so it was not rechecked here; the session's independent reader and the state's fee schedule cover Line 1.
+- **What the record leaves open, as it says:** the home state (not in the records), so a home-state formation and any foreign registration are unpriced; legal advice; review times for Stripe, Apple, Google and Stream's Maker.
+
+### Dispositions
+
+| Finding | Disposition |
+|---|---|
+| The costed list, its totals and the order of approvals | **Accepted.** The first three approvals go to Nathan in OD-32's form after this integration: the entity (state and registered agent), the D-U-N-S number and the domain. Nothing is spent before he approves a line (OD-12, OD-50) |
+| Lines 8 to 14 imply provider choices (mail, the photo check, hash matching, monitoring, hosting, the database) | **Routed:** each goes to the Dev Manager with the item that first needs it, before it is settled (the charter: provider choices). M07 chooses none |
+| Stripe's new Radar pricing from 22 January 2027; the US-only card rule needs Radar Plus or Pro | **Routed** to P08.3's brief, with OD-71's line |
+| Google Play's 15% now 10% plus a 5% billing fee | **Routed** to P08.3's brief (the stores' billing) |
+| October's Actions use about 3,200 to 3,400 minutes against 2,000 free | **Recorded** for OD-51: before the repository goes private, Nathan approves an Actions line (Line 16) |
+| Apple's organization enrolment needs a working website on the company's own domain | **Accepted** as approval 3; the public site itself stays P07.3's |
+| The unpriced items (section 6) | **Recorded;** each is priced when its line is approved or its item's brief needs it |
+
