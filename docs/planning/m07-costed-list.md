@@ -1,7 +1,7 @@
 # M07 — The costed list of completion's accounts and services
 
 - **Work ID:** M07 (cross-cutting; the owner's track, O1 in M09's order).
-- **Status: done.** The record is integrated (merge `817ce5e`), with "Manager verification of M07". The approvals go to Nathan line by line, the entity first.
+- **Status: done.** The record is integrated (merge `817ce5e`), with "Manager verification of M07". **Nathan approved no line** (OD-77, 19 November 2026): no cost now; the entity, and the accounts and domain that need it, deferred; Railway and WordPress hosting already available; Stream's Maker account assumed; the Actions line deferred while the repository is public.
 - **Owner:** Nathan Amthor approves each line (OD-50). **Manager:** App Manager 12. **Research:** one session, started by Nathan.
 - **Revision 1, 19 November 2026.**
 - **Starting point:** the manager-branch commit the prompt names. `main` is at `6edae78`.
