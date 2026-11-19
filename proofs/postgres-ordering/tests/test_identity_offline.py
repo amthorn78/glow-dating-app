@@ -15,6 +15,7 @@ import io
 import json
 import logging
 import os
+import re
 import secrets
 import stat
 import subprocess
@@ -467,24 +468,86 @@ class ClockAheadTests(unittest.TestCase):
         self.assertIs(ratelimit.time, time)
 
 
+WORKFLOW = REPO_ROOT / ".github" / "workflows" / "foundation.yml"
+
+
+def workflow_job(job: str) -> list[str]:
+    """The lines of the workflow's job with this ID, from its key to the next job's (SV4 A0: one
+    database job per suite)."""
+    lines = WORKFLOW.read_text(encoding="utf-8").splitlines()
+    keys = [i for i, line in enumerate(lines) if re.fullmatch(r"  [a-z][a-z0-9-]*:", line)]
+    for index, start in enumerate(keys):
+        if lines[start] == f"  {job}:":
+            end = keys[index + 1] if index + 1 < len(keys) else len(lines)
+            return lines[start:end]
+    raise AssertionError(f"no job {job!r}")
+
+
+def workflow_steps(job: str) -> list[str]:
+    """The text of each of the job's steps, in order, without the comment lines between steps."""
+    lines = workflow_job(job)
+    starts = [i for i, line in enumerate(lines) if line.startswith("      - ")]
+    steps = []
+    for index, start in enumerate(starts):
+        end = starts[index + 1] if index + 1 < len(starts) else len(lines)
+        steps.append("\n".join(line for line in lines[start:end] if not line.startswith("      #")))
+    return steps
+
+
+def step_name(step: str) -> str:
+    """A step's name as the workflow writes it, unquoted; empty for a step with no name."""
+    found = re.search(r"^      [- ] name: (.*)$", step, flags=re.MULTILINE)
+    return found.group(1).strip('"') if found else ""
+
+
+def workflow_step(job: str, name_prefix: str) -> str:
+    """The text of the job's step whose name, quoted or not, starts with the prefix."""
+    for step in workflow_steps(job):
+        if step_name(step).startswith(name_prefix):
+            return step
+    raise AssertionError(f"no step named {name_prefix!r} in {job!r}")
+
+
+def job_secret_files(job: str) -> set[str]:
+    """Every file the job's credentials step writes into its protected directory (SV4 A0, D2),
+    but the role statement, which the next step removes once it has run; its values are the
+    passfile's password and the marker files'."""
+    step = workflow_step(job, "Generate the disposable database's credentials")
+    return set(re.findall(r'"\$dir/([A-Za-z0-9._-]+)"', step)) - {"create-role.sql"}
+
+
+def job_databases(job: str) -> list[str]:
+    """The databases the job's passfile names, as its credentials step writes it."""
+    step = workflow_step(job, "Generate the disposable database's credentials")
+    return re.findall(r"127\.0\.0\.1:5433:(\w+):glow_proof:%s", step)
+
+
 class JobDirectory:
-    """A job directory as the credentials step writes it, with synthetic values only."""
+    """A job directory as the identity job's credentials step writes it: every secret file it
+    writes, read from the workflow (SV4 A0, D2), with synthetic values only."""
+
+    JOB = "database-identity"
 
     def __init__(self) -> None:
         self.directory = tempfile.TemporaryDirectory()
         self.root = Path(self.directory.name)
+        files = job_secret_files(self.JOB)
+        keys = sorted(name for name in files if name.endswith(".pem"))
         self.values: dict[str, str] = {}
-        for name in identity_scan.VALUE_FILES:
+        for name in sorted(files - {identity_scan.PASSFILE, *keys}):
             self.values[name] = secrets.token_hex(24)
             self.write(name, self.values[name] + "\n")
         self.role_password = secrets.token_hex(24)
         self.write(
             identity_scan.PASSFILE,
-            f"127.0.0.1:5433:glow_proof:glow_proof:{self.role_password}\n"
-            f"127.0.0.1:5433:glow_identity_proof:glow_proof:{self.role_password}\n",
+            "".join(
+                f"127.0.0.1:5433:{database}:glow_proof:{self.role_password}\n"
+                for database in job_databases(self.JOB)
+            ),
         )
+        (key,) = keys
         self.pem = pem(rsa.generate_private_key(public_exponent=65537, key_size=2048))
-        self.write(identity_scan.JWT_KEY_FILE, self.pem)
+        self.write(key, self.pem)
         self.pem_line = [line for line in self.pem.splitlines() if not line.startswith("---")][3]
         self.log = self.write("identity.log", "[identity] PASS a.case\n")
         self.results = self.root / "identity-results.json"
@@ -530,6 +593,20 @@ class IdentityScanTests(unittest.TestCase):
             self.assertNotIn(value, printed)
 
     def test_the_values_are_the_job_files(self) -> None:
+        # SV4 A0 (D2): the check lists every secret file its own job writes, and no other.
+        listed = {*identity_scan.VALUE_FILES, identity_scan.PASSFILE, identity_scan.JWT_KEY_FILE}
+        self.assertEqual(
+            listed,
+            {
+                "identity-secret-key",
+                "identity-marker",
+                "marker",
+                "superuser-password",
+                "passfile",
+                "identity-jwt-key.pem",
+            },
+        )
+        self.assertEqual(listed, job_secret_files(JobDirectory.JOB))
         values = identity_scan.job_values(self.job.root)
         for value in self.job.every_value():
             self.assertIn(value, values)
@@ -611,22 +688,12 @@ class IdentityScanTests(unittest.TestCase):
         )
 
 
-def workflow_step(name_prefix: str) -> str:
-    """The text of the Database proof checks job's step whose name starts with the prefix."""
-    lines = (REPO_ROOT / ".github" / "workflows" / "foundation.yml").read_text().splitlines()
-    starts = [i for i, line in enumerate(lines) if line.startswith("      - ")]
-    for index, start in enumerate(starts):
-        if f'name: "{name_prefix}' in lines[start]:
-            end = starts[index + 1] if index + 1 < len(starts) else len(lines)
-            return "\n".join(lines[start:end])
-    raise AssertionError(f"no step named {name_prefix!r}")
-
-
 class IdentityUploadGateTests(unittest.TestCase):
-    """Correction C1: the results JSON is uploaded only after the job's check has passed."""
+    """Correction C1: the results JSON is uploaded only after the job's check has passed, in the
+    identity suite's own job since SV4 A0."""
 
     def test_the_suite_step_runs_the_check_and_sets_the_output_only_on_a_pass(self) -> None:
-        step = workflow_step("SV1: run the identity suite")
+        step = workflow_step(JobDirectory.JOB, "SV1: run the identity suite")
         self.assertIn("        id: identity\n", step)
         self.assertIn(
             'python -m glow_ordering_proof.identity_scan "$DIR" "$DIR/identity.log"'
@@ -642,7 +709,7 @@ class IdentityUploadGateTests(unittest.TestCase):
     def test_after_a_failed_check_the_step_prints_counts_only(self) -> None:
         # Correction C2 (F-4; D10, DM-48 C2.6): the failed branch shows counts only, never a
         # line of the suite's output. The branch is run as the step has it, on a synthetic log.
-        step = workflow_step("SV1: run the identity suite")
+        step = workflow_step(JobDirectory.JOB, "SV1: run the identity suite")
         lines = step.splitlines()
         start = lines.index('          if [ "$scan" -eq 0 ]; then')
         withheld = lines.index("          else", start)
@@ -680,7 +747,7 @@ class IdentityUploadGateTests(unittest.TestCase):
         self.assertIn("case lines: 2 passed, 1 failed", printed)
 
     def test_the_upload_waits_for_the_check(self) -> None:
-        step = workflow_step("SV1: save the identity suite's results JSON")
+        step = workflow_step(JobDirectory.JOB, "SV1: save the identity suite's results JSON")
         self.assertIn(
             "        if: ${{ always() && steps.identity.outputs.scan == 'passed' }}\n", step
         )

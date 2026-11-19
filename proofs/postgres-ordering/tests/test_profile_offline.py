@@ -38,22 +38,19 @@ from glow_ordering_proof import (
 )
 from glow_ordering_proof.profile_support import ObservedObjects, ValueLedger, synthetic_png
 from tests.fakes import FakeConnection
-from tests.test_identity_offline import KeyFiles, pem, workflow_step
+from tests.test_identity_offline import (
+    KeyFiles,
+    job_databases,
+    job_secret_files,
+    pem,
+    workflow_job,
+    workflow_step,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 API_ROOT = REPO_ROOT / "services" / "api"
 PROFILE_SETTINGS = "glow_ordering_proof.profile_settings"
-
-
-def unquoted_step(name_prefix: str) -> str:
-    """``workflow_step`` for a step whose name the workflow does not quote."""
-    lines = (REPO_ROOT / ".github" / "workflows" / "foundation.yml").read_text().splitlines()
-    starts = [i for i, line in enumerate(lines) if line.startswith("      - ")]
-    for index, start in enumerate(starts):
-        if lines[start].startswith(f"      - name: {name_prefix}"):
-            end = starts[index + 1] if index + 1 < len(starts) else len(lines)
-            return "\n".join(lines[start:end])
-    raise AssertionError(f"no step named {name_prefix!r}")
+JOB = "database-profile"  # the profile suite's own job (SV4 A0)
 
 
 GOOD = {
@@ -169,13 +166,16 @@ SUITE_LINES = {
 
 
 class ProfileJobDirectory:
-    """A job directory as the credentials step writes it, with synthetic values only."""
+    """A job directory as the profile job's credentials step writes it: every secret file it
+    writes, read from the workflow (SV4 A0, D2), with synthetic values only."""
 
     def __init__(self) -> None:
         self.directory = tempfile.TemporaryDirectory()
         self.root = Path(self.directory.name)
+        files = job_secret_files(JOB)
+        keys = sorted(name for name in files if name.endswith(".pem"))
         self.values: dict[str, str] = {}
-        for name in profile_scan.VALUE_FILES:
+        for name in sorted(files - {profile_scan.PASSFILE, *keys}):
             self.values[name] = secrets.token_hex(24)
             self.write(name, self.values[name] + "\n")
         self.role_password = secrets.token_hex(24)
@@ -183,11 +183,11 @@ class ProfileJobDirectory:
             profile_scan.PASSFILE,
             "".join(
                 f"127.0.0.1:5433:{database}:glow_proof:{self.role_password}\n"
-                for database in ("glow_proof", "glow_identity_proof", "glow_profile_proof")
+                for database in job_databases(JOB)
             ),
         )
         self.pem_lines: list[str] = []
-        for name in profile_scan.KEY_FILES:
+        for name in keys:
             text = pem(rsa.generate_private_key(public_exponent=65537, key_size=2048))
             self.write(name, text)
             self.pem_lines.append(
@@ -235,19 +235,16 @@ class ProfileScanTests(unittest.TestCase):
             self.assertNotIn(value, printed)
 
     def test_the_values_are_every_secret_file_of_the_job(self) -> None:
+        # SV4 A0 (D2): the check lists every secret file its own job writes (its keys, its
+        # marker, the decoy database's marker, the passwords), and no other.
         self.assertEqual(
             set(profile_scan.VALUE_FILES),
-            {
-                "profile-secret-key",
-                "profile-marker",
-                "identity-secret-key",
-                "identity-marker",
-                "marker",
-                "superuser-password",
-            },
+            {"profile-secret-key", "profile-marker", "identity-marker", "superuser-password"},
         )
+        self.assertEqual(set(profile_scan.KEY_FILES), {"profile-jwt-key.pem"})
         self.assertEqual(
-            set(profile_scan.KEY_FILES), {"profile-jwt-key.pem", "identity-jwt-key.pem"}
+            {*profile_scan.VALUE_FILES, profile_scan.PASSFILE, *profile_scan.KEY_FILES},
+            job_secret_files(JOB),
         )
         values = profile_scan.job_values(self.job.root)
         for value in self.job.every_value():
@@ -386,31 +383,58 @@ class ProfileScanTests(unittest.TestCase):
 
 
 class ProfileWorkflowTests(unittest.TestCase):
-    """The Database proof checks job's SV2 steps, read as the job runs them."""
+    """The profile suite's job's steps (Database proof checks (profile), since SV4 A0), read as
+    the job runs them."""
 
-    def test_the_credentials_step_makes_the_third_database_and_its_own_keys(self) -> None:
-        step = unquoted_step("Generate the disposable database's credentials")
+    def test_the_credentials_step_makes_its_database_the_decoy_and_its_own_keys(self) -> None:
+        step = workflow_step(JOB, "Generate the disposable database's credentials")
         for line in (
             'echo "::add-mask::$profile_marker"',
+            'echo "::add-mask::$identity_marker"',
             'echo "::add-mask::$profile_secret_key"',
             'printf \'%s\\n\' "$profile_marker" > "$dir/profile-marker"',
+            'printf \'%s\\n\' "$identity_marker" > "$dir/identity-marker"',
             'printf \'%s\\n\' "$profile_secret_key" > "$dir/profile-secret-key"',
-            'python - "$dir/identity-jwt-key.pem" "$dir/profile-jwt-key.pem" <<\'PYTHON\'',
+            "python - \"$dir/profile-jwt-key.pem\" <<'PYTHON'",
         ):
             with self.subTest(line=line):
                 self.assertIn(line, step)
         self.assertIn("CREATE DATABASE glow_profile_proof OWNER glow_proof;", step)
         self.assertIn("COMMENT ON DATABASE glow_profile_proof IS 'glow-ordering-proof:%s';", step)
-        self.assertIn("127.0.0.1:5433:glow_profile_proof:glow_proof:%s", step)
+        # AG1: the decoy, in this job's PostgreSQL, carries the identity database's name and a
+        # marker of its own; the passfile names only the profile database.
+        self.assertIn("CREATE DATABASE glow_identity_proof OWNER glow_proof;", step)
+        self.assertIn("COMMENT ON DATABASE glow_identity_proof IS 'glow-ordering-proof:%s';", step)
+        self.assertEqual(job_databases(JOB), ["glow_profile_proof"])
         self.assertIn('test "$profile_marker" != "$identity_marker"', step)
         # Each key is generated, never copied: one key per path, in a loop.
-        self.assertIn("for path in sys.argv[1:]:", step)
+        self.assertEqual(step.count("for path in sys.argv[1:]:"), 1)
+        # No other suite's key, marker or settings is in this job.
+        job = "\n".join(workflow_job(JOB))
+        for other in ("identity-secret-key", "identity-jwt-key.pem", "discovery", "wrong_marker"):
+            with self.subTest(other=other):
+                self.assertNotIn(other, job)
 
-    def test_the_migrations_step_refuses_both_other_markers_first(self) -> None:
-        step = workflow_step("SV2: show the profile database refuses the other markers")
-        loop = step.index("for other in marker identity-marker; do")
+    def test_the_migrations_step_refuses_the_decoys_marker_first(self) -> None:
+        step = workflow_step(
+            JOB, "SV2: show the profile database refuses the decoy database's marker"
+        )
+        decoy = step.index("datname = 'glow_identity_proof'")
+        before = step.index('in_profile_db "$per_schema" > "$DIR/profile-relations-before.txt"')
+        refused = step.index("profile identity-marker python -m django migrate --verbosity 1")
+        after = step.index('in_profile_db "$per_schema" > "$DIR/profile-relations-after.txt"')
         migrate = step.index("profile profile-marker python -m django migrate --verbosity 1")
-        self.assertLess(loop, migrate)
+        self.assertTrue(decoy < before < refused < after < migrate)
+        for line in (
+            "grep -m 1 -F 'RefusedDatabase: refusing this database'",
+            'cmp -s "$DIR/profile-relations-before.txt" "$DIR/profile-relations-after.txt"',
+            "SELECT to_regclass('public.django_migrations') IS NULL",
+            "-U postgres -d glow_profile_proof",
+            'test "$fail" = 0',
+        ):
+            with self.subTest(line=line):
+                self.assertIn(line, step)
+        self.assertLess(step.index('test "$fail" = 0'), migrate)
         self.assertIn(
             "profile profile-marker python -m django makemigrations --check --dry-run", step
         )
@@ -419,7 +443,7 @@ class ProfileWorkflowTests(unittest.TestCase):
         self.assertIn("DJANGO_SETTINGS_MODULE=glow_ordering_proof.profile_settings", step)
 
     def test_the_suite_step_runs_the_check_and_sets_the_output_only_on_a_pass(self) -> None:
-        step = workflow_step("SV2: run the profile suite")
+        step = workflow_step(JOB, "SV2: run the profile suite")
         self.assertIn("        id: profile\n", step)
         self.assertIn(
             'python -m glow_ordering_proof.profile_scan "$DIR" "$DIR/profile.log"'
@@ -434,7 +458,7 @@ class ProfileWorkflowTests(unittest.TestCase):
         self.assertIn('echo "profile phase: $((finished - started)) s', step)
 
     def test_after_a_failed_check_the_step_prints_counts_only(self) -> None:
-        step = workflow_step("SV2: run the profile suite")
+        step = workflow_step(JOB, "SV2: run the profile suite")
         lines = step.splitlines()
         start = lines.index('          if [ "$scan" -eq 0 ]; then')
         withheld = lines.index("          else", start)
@@ -472,7 +496,7 @@ class ProfileWorkflowTests(unittest.TestCase):
         self.assertIn("case lines: 2 passed, 1 failed", printed)
 
     def test_the_second_run_step_counts_rows_and_requires_the_refusal(self) -> None:
-        step = workflow_step("SV2: show that a second profile run on the used database")
+        step = workflow_step(JOB, "SV2: show that a second profile run on the used database")
         self.assertIn("-d glow_profile_proof", step)
         for table in (
             "auth_user",
@@ -488,7 +512,7 @@ class ProfileWorkflowTests(unittest.TestCase):
         self.assertIn('if [ "$before" != "$after" ]; then', step)
 
     def test_the_upload_waits_for_the_check(self) -> None:
-        step = workflow_step("SV2: save the profile suite's results JSON")
+        step = workflow_step(JOB, "SV2: save the profile suite's results JSON")
         self.assertIn(
             "        if: ${{ always() && steps.profile.outputs.scan == 'passed' }}\n", step
         )

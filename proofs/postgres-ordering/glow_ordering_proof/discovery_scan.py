@@ -6,9 +6,11 @@ The Database proof checks job runs it after the discovery suite::
     python -m glow_ordering_proof.discovery_scan <directory> <log> <results JSON>
 
 ``<directory>`` is the job's protected temporary directory. The check reads every secret value the
-job holds there: the discovery, profile and identity settings' ``SECRET_KEY`` and JWT signing keys,
-the four databases' markers, the PostgreSQL superuser's password and every password in the
-passfile. It looks for each in the suite's log and in its results JSON, and it reads the suite's own
+job holds there, from every secret file the job writes and no other (SV4 A0, D2): the discovery
+settings' ``SECRET_KEY`` and JWT signing key, the discovery database's marker, the decoy
+database's marker (in ``profile-marker``; DM-96 AG1), the PostgreSQL superuser's password and
+every password in the passfile. It looks for each in the suite's log and in its results JSON, and
+it reads the suite's own
 result line for each of its scans (its secrets and its member values), which must say clean with 0
 found. It passes only when no value is found in either file and the suite reported both scans
 clean. On a refusal it removes the results JSON, so nothing is left to upload. It prints counts and
@@ -29,15 +31,11 @@ from glow_ordering_proof.identity_scan import ScanError, found_in, results_text,
 VALUE_FILES = (
     "discovery-secret-key",
     "discovery-marker",
-    "profile-secret-key",
     "profile-marker",
-    "identity-secret-key",
-    "identity-marker",
-    "marker",
     "superuser-password",
 )
 PASSFILE = "passfile"
-KEY_FILES = ("discovery-jwt-key.pem", "profile-jwt-key.pem", "identity-jwt-key.pem")
+KEY_FILES = ("discovery-jwt-key.pem",)
 SUITE_CLEAN = ("discovery secret scan: clean", "discovery value scan: clean")
 # The suite's own result lines, each read as a whole line (C2, finding 15): exactly one line for
 # each scan, at the start of its line, clean, with 0 found. The word "clean" elsewhere in the log
