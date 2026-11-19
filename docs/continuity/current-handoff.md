@@ -15,17 +15,17 @@ This file only routes: the current item, what happens next and who waits on whom
 - **The repository is public for now** (OD-51); before it goes private, an Actions line is approved (M07, Line 16).
 - **The order** (PF01 1.19): A01-R next; SV4 (two stages), SV5, SV2-L, AC1 to AC3, then P07 to P12. M09-R, the record corrections, may run beside a code item (D-06).
 - **Done:** P00 to P05 (fixture scope), M01 to M09, P06.1, P06.DB, P06.2, P09.3a, P06.2-F, P06.3, SV1 to SV3 and SV2-R.
-- **Owner directions:** OD-01 to OD-80. **Review log:** DM-01 to DM-94. **Linear (OD-29).** Every prompt names its environment (OD-36) and glow-docs as attached (OD-74).
+- **Owner directions:** OD-01 to OD-80. **Review log:** DM-01 to DM-95. **Linear (OD-29).** Every prompt names its environment (OD-36) and glow-docs as attached (OD-74).
 
-## Waiting checkpoint (19 November 2026, 02:21 UTC, App Manager 12)
+## Waiting checkpoint (19 November 2026, 02:27 UTC, App Manager 12)
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| Nathan | App Manager 12 | PF01 1.20, the pre-integration plan, and DM-95 to carry | — |
+| App Manager 12 | Nathan, then Dev Manager 5 | DM-95 carried ([the consultation](../ephemeral/2026-11-19-dm-95-pf01-1-20-prototype-first.md)), and the Dev Manager's answer on PF01 1.20 | PF01 1.20 does not merge; SV4 Stage A's brief is written meanwhile |
 
 ## Next actions (App Manager 12)
 
-1. **PF01 1.20, the pre-integration plan (OD-78 to OD-80):** every app-side item before integration (SV4 Stage A, SV5, AC1 to AC3, the birth-time refusal, the remaining server parts), then a later integration process that Nathan starts (the database on the existing service, the deployed server, HDE); the Railway analysis item; for the Dev Manager's read (DM-95). Then SV4's brief.
+1. **PF01 1.20** (written; DM-95): on the Dev Manager's answer, the records batch, then one pull request into `main`. **SV4 Stage A's brief** is written meanwhile, for the Dev Manager's first read under D-07.
 2. **Manager records:** PF02 1.9 (AM12-31, AM12-32); the status log's move (M09 (b)); R-07, R-10, R-26, R-28.
 
 **Carried follow-ups** live in their owning homes: [`carried-to-later-items.md`](../planning/carried-to-later-items.md) (with "Routed by M09" and "Routed by A01-R"), the P11 plan, the review log's "Deferred conditions".
