@@ -27,7 +27,7 @@ This file only routes: the current item, what happens next and who waits on whom
 ## Next actions (App Manager 12)
 
 1. **DM-94's answer:** its disposition, a records batch with its conditions, then one pull request of the manager branch into `main` (ordinary documentation), and Notion's "pending" markings removed.
-2. **M07,** the costed list: its brief and prompt are written meanwhile and go to Nathan after DM-94's answer. Then **A01-R**; M09-R, the record corrections, beside a code item (D-06).
+2. **M07,** the costed list: its [brief](../planning/m07-costed-list.md) and prompt are written; the prompt goes to Nathan after DM-94's answer, its start gate run first. Then **A01-R**; M09-R, the record corrections, beside a code item (D-06).
 3. **Manager records after DM-94:** the State of the App (R-07), the review log (R-15), SV2's brief (R-10), Notion (R-26), the pruning (R-28).
 
 **Carried follow-ups** live in their owning homes: [`carried-to-later-items.md`](../planning/carried-to-later-items.md) (with "Routed by M09"), the P11 plan, the review log's "Deferred conditions".
