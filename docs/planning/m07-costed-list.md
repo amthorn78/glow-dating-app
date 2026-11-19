@@ -91,3 +91,4 @@ Ordinary documentation: one Markdown file, outside any `.claude/` directory. No 
 - **The prompt given** (19 November 2026): at Nathan's request (*"ok, give me the M07 handoff"*), before DM-94's answer, which it does not depend on; its start gate rechecked against the live branch first.
 - **The research session** (19 November 2026; branch `claude/sharp-keller-j1uvsv`, head `02b7a1f`, Foundation run 44437200417): its record, `docs/testing/evidence/2026-11-19-m07-costed-list.md`; 13 of 15 sampled prices matched by an independent reader, none differing, and the two it could not read (Wyoming's fees) matched from the state's PDF.
 - **Manager verification** (19 November 2026): the record's last section; the totals recomputed and three prices rechecked, all matching.
+- **Merged into `main`** with PR56 at `c2cffbe` (19 November 2026; `main`'s push run 44449161310 passed, the application jobs skipped by design); the cleanup run 44449161323 then deleted the session branch.
