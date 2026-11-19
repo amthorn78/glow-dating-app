@@ -394,3 +394,24 @@ On `main`'s run 44416436012 the one shared job took 16 minutes 32 seconds. Here 
 - **The name `Database proof checks` is gone**, replaced by four names. No check is required (OD-52), so no required check changes. The CI policy says so.
 - **Wording left as it was:** the three suites' offline test files' module docstrings still say the cases run "in the Database proof checks job, on the second (third, fourth) disposable database". The prompt allows only their tests of the workflow's steps and the scans' lists to change.
 - The local runs used PostgreSQL 17.11 from the pinned image, under Docker 29.10.0 started in the session. They are iteration only: the run of record is CI's.
+
+### Manager verification of A0 (App Manager 12, 19 November 2026)
+
+- **The branch:** `claude/affectionate-curie-hzo99y`, code head `3bf55de`, records head `c77646b`, both after the prompt's commit `eac8443`, which the branch starts at; merged into the manager branch at `4dfb0ac`.
+- **The diff** from `eac8443` lists ten code and documentation paths, each one of A0's owned paths (the brief, revision 3), and the record.
+- **The trusted classifier,** `main`'s `scripts/change_scope.py` (`c2cffbe`), run outside the checkout with `python3 -I --base c2cffbe… --head 3bf55de… --merge-base`: `"full": true`, reason `behavior-or-empty`.
+- **The workflow, read whole and compared step for step** (PyYAML over `eac8443`'s and `3bf55de`'s files):
+  - the jobs `scope`, `api`, `smoke`, `artifact` and `proof`, the triggers, the permissions and the concurrency group are unchanged;
+  - the four database jobs each take the old job's `needs: scope`, its condition, `runs-on`, defaults and permissions, with `timeout-minutes: 30`;
+  - every one of the old job's 30 steps is in a new job: 22 byte for byte, and the other 8 changed only as the split needs (the credentials and role-and-database steps per job; the three marker-and-migrations steps, now refusing the decoy and counting relations before and after; the profile and discovery suite steps, whose comments alone change). The new steps are each job's `dbshell` refusal and decoy;
+  - the action pins and the PostgreSQL image's digest are the same set;
+  - the gate's `needs` and its results loop name the four jobs, and nothing else in it changes;
+  - Mobile checks gains exactly the carried Chromium retry (`id: chromium`, `continue-on-error: true`, `timeout-minutes: 10`; a 60-second pause and one retry with `timeout-minutes: 6`, each under `if: steps.chromium.outcome == 'failure'`, the retry without `continue-on-error`), and its other steps and settings are unchanged;
+  - each credentials step masks five values before anything prints, and its `echo` lines print a directory, a container name and a refusal only.
+- **The run of record,** Foundation run 44463105633 (event `push`, head `3bf55de`), read with the GitHub tools: all eleven jobs succeeded, among them the four database jobs, and the gate's log ends "Application checks passed".
+- **The scans:** each `VALUE_FILES` and `KEY_FILES` now names its own job's files only, the decoy's marker in the earlier suite's file name, as the CI policy's new paragraph says.
+- **For the exact-head review (AG21), noted, not decided here:**
+  - whether a step killed by its own `timeout-minutes` has the outcome `failure`, on which the Chromium retry depends (the record's limits);
+  - four pulls of the PostgreSQL image per run, where there was one;
+  - the decoy's marker is one the job generates in the earlier suite's form (`glow-ordering-proof:` for the identity job), not that suite's own marker, which only a shared PostgreSQL held; AG1's words are "carrying another suite's marker";
+  - the three proof offline test files' module docstrings still describe the shared job, outside A0's owned lines.
