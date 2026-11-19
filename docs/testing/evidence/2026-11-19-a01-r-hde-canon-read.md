@@ -350,3 +350,4 @@ I did not read the canon whole: it is about 8.6 MB. The coverage was:
 
 - `git diff --name-only 06e8cec71c0b158bb5b50880e28061df277fa5ce HEAD` lists only this file.
 - Every question, C01 to C35, has a row in section 2.
+- The trusted classifier, `scripts/change_scope.py` taken from `origin/main` (`d3273f3`) into the scratchpad and run with `python3 -I … --base 06e8cec… --head <head> --merge-base`, printed `{"full": false, "reason": "ordinary-docs-only", "paths": ["docs/testing/evidence/2026-11-19-a01-r-hde-canon-read.md"]}` at this record's first commit `d9671a1`.
