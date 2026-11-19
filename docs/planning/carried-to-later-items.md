@@ -118,6 +118,7 @@ The [store, legal and safety requirements matrix](store-legal-safety-requirement
 
 ## Carried to SV4 (chat's HTTP surface; OD-49)
 
+- **SV4's brief, revision 1** ([`sv4-chat-notifications.md`](sv4-chat-notifications.md), 19 November 2026), disposes of each entry below, of "Carried to P06.2-T" and of "Routed by M09"'s SV4 Stage A entries in its D12, for the Dev Manager's first read (DM-96). Each entry stays here until the stage that takes it merges, or until the brief moves it.
 - **From P09.3a's matrix** ([the matrix](store-legal-safety-requirements.md), section 8; DM-37 2.1 and 2.3):
   - **G-04's records:** who received (and responded to) a member's messages, kept after unmatch and block, for fraud-ban notices.
   - **G-05's hold:** a hold that survives deletion, which P08.1 designs.

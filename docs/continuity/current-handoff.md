@@ -1,4 +1,4 @@
-# Current handoff — App Manager 12 (19 November 2026; PR56 merged: PF01 1.20, the prototype first)
+# Current handoff — App Manager 12 (19 November 2026; PR56 merged; SV4's brief with the Dev Manager)
 
 This file only routes: the current item, what happens next and who waits on whom. Each fact lives in one home, listed in the [documentation map](../README.md); earlier handoffs are in `docs/continuity/history/`, the last as [P06.2 to its merge](history/p06-2-handoff.md).
 
@@ -16,17 +16,17 @@ This file only routes: the current item, what happens next and who waits on whom
 - **The repository is public for now** (OD-51); before it goes private, an Actions line is approved (M07, Line 16).
 - **The order** (PF01 1.20, in force since PR56): stage 1, the pre-integration build, now: SV4 (two stages), SV5, SV2-L, AC1 to AC3, then P07.2, P07.3, P08.1, P08.2 and P09.1; stage 2, integration, a later process Nathan starts; stage 3, business set-up and release. The Railway analysis, once Nathan authorizes its read, and M09-R may each run beside a code item (D-06).
 - **Done:** P00 to P05 (fixture scope), M01 to M09, A01-R, P06.1, P06.DB, P06.2, P09.3a, P06.2-F, P06.3, SV1 to SV3 and SV2-R.
-- **Owner directions:** OD-01 to OD-81. **Review log:** DM-01 to DM-95. **Linear (OD-29).** Every prompt names its environment (OD-36) and glow-docs as attached (OD-74).
+- **Owner directions:** OD-01 to OD-81. **Review log:** DM-01 to DM-96. **Linear (OD-29).** Every prompt names its environment (OD-36) and glow-docs as attached (OD-74).
 
-## Waiting checkpoint (19 November 2026, 03:08 UTC, App Manager 12)
+## Waiting checkpoint (19 November 2026, 03:27 UTC, App Manager 12)
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| Nobody | — | App Manager 12 writes SV4 Stage A's brief, then a consultation for Dev Manager 5's first read (D-07) | — |
+| App Manager 12 | Nathan, then Dev Manager 5 | DM-96 carried ([the consultation](../ephemeral/2026-11-19-dm-96-sv4-stage-a-brief.md)), and the first read of [SV4's brief](../planning/sv4-chat-notifications.md), revision 1 (D-07) | No SV4 prompt is written |
 
 ## Next actions (App Manager 12)
 
-1. **SV4 Stage A's brief,** then its consultation for the Dev Manager's first read under D-07; its prompt after the answer.
+1. **SV4 Stage A** (the brief, revision 1; DM-96): on the Dev Manager's answer, the disposition and the brief's revision 2, then A0's prompt (the CI tooling) for Nathan.
 2. **Manager records:** PF02 1.9 (AM12-31 to AM12-36); the status log's move (M09 (b)); R-07, R-10, R-26, R-28.
 
 **Carried follow-ups** live in their owning homes: [`carried-to-later-items.md`](../planning/carried-to-later-items.md) (with "Routed by M09" and "Routed by A01-R"), the P11 plan, the review log's "Deferred conditions".
