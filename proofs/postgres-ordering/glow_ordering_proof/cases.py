@@ -10,20 +10,19 @@ P06.2 adds CX2's boundary (``named.session_expires_after_check``, both subjects)
 D5's three revocations of contact (a paused or restricted profile, a withdrawn
 onboarding consent), each with its four interleavings, for the adapter only: the
 reference design excludes them (P06.DB 5.6). Stage B1 adds, for the adapter only, the
-match activation against the D5 writers both ways (CX5; DM-15 6.1), the token grant
-against the epoch bump and a sign-out with the app's clock skewed ahead (F1; DM-14
-item 3), and the F2 and F5 nits (``B1_CASES``).
+match activation against the D5 writers both ways (CX5; DM-15 6.1) and the F2 and F5
+nits (``B1_CASES``). SV4 A1 removed B1's seven token cases (F1; DM-14 item 3) with the
+app's token grant (its brief's D7), and a block now ends an active match as an unmatch
+does: ``unmatched``, with its contact version advanced (its brief's D4).
 """
 
 from __future__ import annotations
 
 import time
 import uuid
-from collections.abc import Callable, Collection, Iterator
+from collections.abc import Callable, Collection
 from concurrent.futures import Future
-from contextlib import contextmanager
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
 from functools import partial
 from typing import cast
 from uuid import UUID
@@ -36,8 +35,6 @@ from glow_ordering_proof.dbreads import (
     block_state,
     consent_row,
     deletion_recorded,
-    event_times,
-    identity_row,
     match_between,
     match_row,
     outbox_count,
@@ -357,7 +354,7 @@ def _block(by: str) -> Revocation:
 
     def effect(world: World, judge: Judge) -> None:
         actor = world.low if by == "low" else world.high
-        judge.expect(match_row(world.match) == ("restricted", 2), "match not restricted at v2")
+        judge.expect(match_row(world.match) == ("unmatched", 2), "match not unmatched at v2")
         judge.expect(block_state(actor, world.other(actor)) == "active", "block row not active")
         judge.expect(account_row(actor)[2] == 2, "blocks_version not bumped")
         judge.expect(outbox_count("contact_revoked", world.match) == 1, "no contact_revoked event")
@@ -755,7 +752,7 @@ def unblock_no_resurrect(ctx: Context, judge: Judge) -> None:
     judge.outcome(ctx.subject.block(world.high, world.low), "block", "applied")
     judge.outcome(ctx.subject.unblock(world.high, world.low), "unblock", "applied")
     judge.expect(block_state(world.high, world.low) == "removed", "block row not removed")
-    judge.expect(match_row(world.match) == ("restricted", 2), "the unblock changed the match")
+    judge.expect(match_row(world.match) == ("unmatched", 2), "the unblock changed the match")
     judge.outcome(
         ctx.subject.send(send_request(world, key="k1", contact_version=1)),
         "send with the old contact version",
@@ -844,7 +841,7 @@ def opposing_first_lock_block_high_vs_send(ctx: Context, judge: Judge) -> None:
     judge.expect(
         blocked.outcome != "deadlock" and sent.outcome != "deadlock", "deadlock", signal=DEADLOCK
     )
-    judge.expect(match_row(world.match) == ("restricted", 2), "match not restricted")
+    judge.expect(match_row(world.match) == ("unmatched", 2), "match not unmatched")
 
 
 def opposing_first_lock_suspend_high_vs_block_low(ctx: Context, judge: Judge) -> None:
@@ -858,7 +855,7 @@ def opposing_first_lock_suspend_high_vs_block_low(ctx: Context, judge: Judge) ->
     )
     judge.outcome(suspended, "suspension of the higher account (held)", "applied")
     judge.outcome(blocked, "block by the lower account (waited on the higher account)", "applied")
-    judge.expect(match_row(world.match) == ("restricted", 2), "match not restricted")
+    judge.expect(match_row(world.match) == ("unmatched", 2), "match not unmatched")
     judge.expect(account_row(world.high)[0] == "suspended", "account not suspended")
 
 
@@ -875,7 +872,7 @@ def opposing_blocks_both_sides(ctx: Context, judge: Judge) -> None:
     judge.outcome(second, "block by the lower account (waited)", "applied")
     judge.expect(block_state(world.high, world.low) == "active", "high->low block missing")
     judge.expect(block_state(world.low, world.high) == "active", "low->high block missing")
-    judge.expect(match_row(world.match) == ("restricted", 2), "match not restricted once at v2")
+    judge.expect(match_row(world.match) == ("unmatched", 2), "match not unmatched once at v2")
 
 
 def opposing_four_writers(ctx: Context, judge: Judge) -> None:
@@ -907,7 +904,7 @@ def opposing_four_writers(ctx: Context, judge: Judge) -> None:
             ("block low", "block high", "suspend high"), results[1:], strict=True
         ):
             judge.expect(result.outcome == "applied", f"{label}: {result.label()}")
-        judge.expect(match_row(world.match)[0] == "restricted", "match not restricted")
+        judge.expect(match_row(world.match)[0] == "unmatched", "match not unmatched")
     judge.expect(deadlocks == 0, f"{deadlocks} deadlocks", signal=DEADLOCK)
     judge.note("40 writers in 10 rounds, no deadlock")
 
@@ -1241,9 +1238,9 @@ def all_cases(*, d5: bool = False) -> tuple[Case, ...]:
 
 
 # -- P06.2 B1: the adapter's match activation against the profile and consent writers
-# (CX5; DM-15 6.1), the token grant against the epoch bump (F1; DM-14 item 3), and the
-# F2 and F5 nits. The adapter only: the reference design has no activation of its own
-# (its fixtures write the match directly), no grant and no D5 writer. ---------------------
+# (CX5; DM-15 6.1), and the F2 and F5 nits. The adapter only: the reference design has
+# no activation of its own (its fixtures write the match directly) and no D5 writer.
+# SV4 A1 removed B1's token cases (F1) with the app's token grant (its brief's D7). -----
 
 
 @dataclass(frozen=True)
@@ -1274,30 +1271,6 @@ def _sessions_for(ctx: Context, pair: Pair, match_id: UUID) -> World:
             raise RuntimeError(f"fixture sign-in failed: {signed.label()}")
         sessions.append(signed.session_id)
     return World(pair.low, pair.high, match_id, sessions[0], sessions[1])
-
-
-@contextmanager
-def skewed_app_clock(ahead: timedelta = timedelta(hours=1)) -> Iterator[None]:
-    """The app server's clock deliberately ahead of the database's (F1 point 5): what
-    Django writes into ``created_at`` and ``updated_at``. The adapter's issue time and the
-    bump's cut-off come from ``clock_timestamp()`` under the locks, so the skew must not
-    reach them; a case shows it in the rows it reads back."""
-    from django.utils import timezone
-
-    real = timezone.now
-    timezone.now = lambda: real() + ahead
-    try:
-        yield
-    finally:
-        timezone.now = real
-
-
-# The token cases' skew (B1-C1, R5): shorter than their sessions (``SESSION_TTL``), so a
-# grant whose time came from the app clock would still pass the expiry check and fail on
-# the issue time against the bump's cut-off. One case keeps an hour's skew, longer than
-# the sessions, so a check of the session's expiry against the app clock refuses there.
-APP_CLOCK_SKEW = timedelta(minutes=2)
-APP_CLOCK_SKEW_LONG = timedelta(hours=1)
 
 
 def _b1_writer(op: str, which: str) -> Callable[[Context, Pair, Hooks | None], Result]:
@@ -1438,211 +1411,6 @@ B1_ACTIVATION_CASES: tuple[Case, ...] = tuple(
 )
 
 
-# -- the token grant ----------------------------------------------------------------------
-
-GRANT_REFUSED_AFTER_BUMP = frozenset({"account_not_active", "session_epoch_stale"})
-TOKEN_GUARANTEE = "P06.2 B1 token grant under the account and session locks (F1)"
-
-
-def _provisioned_world(ctx: Context) -> World:
-    """A world whose first member's identity is provisioned (a fixture write: the
-    delivery phase, which provisions, runs after the cases)."""
-    world = make_world(ctx)
-    provision = getattr(ctx.fixtures, "provision_identity", None)
-    if provision is None:
-        raise RuntimeError("this subject's fixtures cannot provision an identity")
-    provision(world.low)
-    return world
-
-
-def _grant(ctx: Context, world: World, hooks: Hooks | None = None) -> Result:
-    return ctx.state_subject.grant_token(world.session_low, hooks=hooks)
-
-
-def _bump_cutoff(world: World) -> tuple[datetime, datetime]:
-    """The bump's cut-off, the time it read after its account lock (the event's
-    ``available_at``), and the app clock at the event's save (``created_at``)."""
-    times = event_times("session_epoch_bumped", world.low)
-    if times is None:
-        raise RuntimeError("no session_epoch_bumped event")
-    return times
-
-
-def _judge_grant_before_bump(
-    judge: Judge, granted: Result, world: World, ahead: timedelta = APP_CLOCK_SKEW
-) -> None:
-    """The grant's issue time precedes the bump's cut-off, both from the database clock,
-    while the app's clock (skewed ``ahead``) shows in the row the app stamped."""
-    issued_at = granted.detail.get("issued_at")
-    if not judge.expect(isinstance(issued_at, datetime), "the grant carries no issue time"):
-        return
-    assert isinstance(issued_at, datetime)
-    cutoff, created_at = _bump_cutoff(world)
-    before = judge.expect(
-        issued_at < cutoff,
-        f"the issue time {issued_at.isoformat()} is not before the cut-off {cutoff.isoformat()}",
-        signal=COMMIT_AFTER_REVOCATION,
-    )
-    skew = created_at - cutoff
-    judge.expect(
-        skew > ahead - ahead / 4,
-        f"the app clock skew did not show: created_at - cut-off = {skew}",
-    )
-    judge.expect(
-        issued_at < cutoff + ahead / 4,
-        "the issue time followed the skewed app clock, not the database's",
-    )
-    if before:
-        judge.note(
-            f"issued {issued_at.isoformat()} before the cut-off {cutoff.isoformat()}; the app"
-            f" clock, {skew} ahead, stamped created_at and reached neither"
-        )
-
-
-def token_pending_identity_refused(ctx: Context, judge: Judge) -> None:
-    """DM-15 5.1: an identity the provider does not hold yet refuses a grant."""
-    world = make_world(ctx)
-    judge.outcome(
-        _grant(ctx, world),
-        "a grant for a pending identity",
-        "refused",
-        reasons={"no_chat_identity"},
-    )
-    row = identity_row(world.low)
-    judge.expect(row is not None and row[0] == "pending", f"identity {row}")
-
-
-def token_sequential_grant_first(
-    ctx: Context, judge: Judge, ahead: timedelta = APP_CLOCK_SKEW
-) -> None:
-    world = _provisioned_world(ctx)
-    commits: list[str] = []
-    with skewed_app_clock(ahead):
-        granted = _grant(ctx, world, Hooks(before_commit=lambda: commits.append("before_commit")))
-        judge.outcome(granted, "grant before the bump", "granted")
-        judge.outcome(ctx.subject.suspend(world.low), "suspension (the epoch bump)", "applied")
-    # B1-C1 R2: the granted path signals its commit point once.
-    judge.expect(commits == ["before_commit"], f"before_commit signalled {len(commits)} times")
-    if granted.outcome == "granted":
-        _judge_grant_before_bump(judge, granted, world, ahead)
-    judge.outcome(
-        _grant(ctx, world), "grant after the bump", "refused", reasons=GRANT_REFUSED_AFTER_BUMP
-    )
-
-
-def token_sequential_bump_first(ctx: Context, judge: Judge) -> None:
-    world = _provisioned_world(ctx)
-    with skewed_app_clock(APP_CLOCK_SKEW):
-        judge.outcome(ctx.subject.suspend(world.low), "suspension (the epoch bump)", "applied")
-        judge.outcome(
-            _grant(ctx, world), "grant after the bump", "refused", reasons=GRANT_REFUSED_AFTER_BUMP
-        )
-
-
-def token_grant_holds(ctx: Context, judge: Judge) -> None:
-    """A grant that commits just before a bump: the bump waits on the grant's shared
-    locks, and the issue time precedes the cut-off (F1 point 5, second case)."""
-    world = _provisioned_world(ctx)
-    with skewed_app_clock(APP_CLOCK_SKEW):
-        granted, bumped, _ = forced(
-            ctx,
-            judge,
-            lambda hooks: _grant(ctx, world, hooks),
-            lambda hooks: ctx.subject.suspend(world.low, hooks=hooks),
-        )
-    judge.outcome(granted, "grant (held its shared locks)", "granted")
-    judge.outcome(bumped, "suspension (arrived while the grant held)", "applied")
-    if granted.outcome == "granted" and bumped.outcome == "applied":
-        _judge_grant_before_bump(judge, granted, world)
-
-
-def token_bump_holds(ctx: Context, judge: Judge) -> None:
-    """A grant forced to wait on a bump that holds the account lock refuses after it (F1
-    point 5, first case)."""
-    world = _provisioned_world(ctx)
-    with skewed_app_clock(APP_CLOCK_SKEW):
-        bumped, granted, _ = forced(
-            ctx,
-            judge,
-            lambda hooks: ctx.subject.suspend(world.low, hooks=hooks),
-            lambda hooks: _grant(ctx, world, hooks),
-        )
-    judge.outcome(bumped, "suspension (held the account lock)", "applied")
-    judge.outcome(
-        granted,
-        "grant (arrived while the bump held)",
-        "refused",
-        reasons=GRANT_REFUSED_AFTER_BUMP,
-    )
-    judge.expect(account_row(world.low)[1] == 2, "epoch not bumped")
-
-
-def token_sign_out_holds(ctx: Context, judge: Judge) -> None:
-    """The session row is the grant's second shared lock: a grant that arrives while a
-    sign-out holds it waits, and refuses."""
-    world = _provisioned_world(ctx)
-    ended, granted, _ = forced(
-        ctx,
-        judge,
-        lambda hooks: ctx.subject.sign_out(world.session_low, hooks=hooks),
-        lambda hooks: _grant(ctx, world, hooks),
-    )
-    judge.outcome(ended, "sign-out (held the session row)", "applied")
-    judge.outcome(
-        granted,
-        "grant (arrived while the sign-out held)",
-        "refused",
-        reasons={"session_not_valid"},
-    )
-
-
-B1_TOKEN_CASES: tuple[Case, ...] = (
-    Case(
-        "token.pending_identity_refused",
-        TOKEN_GUARANTEE,
-        "a grant for an identity the provider does not hold yet is refused (DM-15 5.1)",
-        token_pending_identity_refused,
-    ),
-    Case(
-        "token.sequential_grant_first",
-        TOKEN_GUARANTEE,
-        "a grant, then the bump: the issue time precedes the cut-off; a later grant refuses",
-        token_sequential_grant_first,
-    ),
-    Case(
-        "token.sequential_grant_first_long_skew",
-        TOKEN_GUARANTEE,
-        "a grant, then the bump, with the app clock an hour ahead (longer than the session):"
-        " granted, so the session's expiry is not checked against the app clock",
-        partial(token_sequential_grant_first, ahead=APP_CLOCK_SKEW_LONG),
-    ),
-    Case(
-        "token.sequential_bump_first",
-        TOKEN_GUARANTEE,
-        "the bump, then a grant: refused",
-        token_sequential_bump_first,
-    ),
-    Case(
-        "token.grant_holds",
-        TOKEN_GUARANTEE,
-        "the bump arrives while the grant holds its shared locks: issued before the cut-off",
-        token_grant_holds,
-    ),
-    Case(
-        "token.bump_holds",
-        TOKEN_GUARANTEE,
-        "the grant arrives while the bump holds the account lock: refused after it",
-        token_bump_holds,
-    ),
-    Case(
-        "token.sign_out_holds",
-        TOKEN_GUARANTEE,
-        "the grant arrives while a sign-out holds the session row: refused after it",
-        token_sign_out_holds,
-    ),
-)
-
-
 # -- F2 and F5 ------------------------------------------------------------------------------
 
 
@@ -1778,7 +1546,7 @@ B1_NAMED_CASES: tuple[Case, ...] = (
     ),
 )
 
-B1_CASES: tuple[Case, ...] = (*B1_ACTIVATION_CASES, *B1_TOKEN_CASES, *B1_NAMED_CASES)
+B1_CASES: tuple[Case, ...] = (*B1_ACTIVATION_CASES, *B1_NAMED_CASES)
 
 
 CASE_BY_ID = {case.id: case for case in all_cases(d5=True)}

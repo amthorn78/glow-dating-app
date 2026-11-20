@@ -18,13 +18,17 @@ adapter in memory and on the Stream adapter live, with the same identifiers, and
 outcomes are compared. A difference is a finding, reported, never fixed silently; for the
 causes delivery acts on (the provider halves of F3 and CX6: a removal from a channel Stream
 does not have, and a deactivation, a revocation or a channel creation naming a user Stream
-does not have) a difference blocks B2's merge until it is dispositioned (DM-16 5.2). Three
+does not have) a difference blocks B2's merge until it is dispositioned (DM-16 5.2). Two
 rows are stated as recorded: a send by a removed member (4.7), where the fixture refuses
-and Stream's answer is recorded (an acceptance is a reported difference, not a failure); a
-send by a user Stream does not have (M5; DM-20 1.3), which Stream accepts and which may
-create that user, so its sender is reserved in the ledger and recorded as a run user before
-the send, and cleanup deletes it by record; and a token whose ``iat`` equals the sent
-cut-off, which shows Stream's comparison at the whole-second boundary.
+and Stream's answer is recorded (an acceptance is a reported difference, not a failure);
+and a send by a user Stream does not have (M5; DM-20 1.3), which Stream accepts and which
+may create that user, so its sender is reserved in the ledger and recorded as a run user
+before the send, and cleanup deletes it by record.
+
+**The token rows are history** (SV4 A1, its brief's D7; OD-45: no provider token is
+issued): the ten rows that needed Glow's signer (T1, T2, R3, D3, D7, V5 to V8 and V12)
+were retired with the signer, and their P06.2 records stand as history. The other rows keep
+their identifiers, and none opens a client session.
 
 **Identifiers**: the run's prefix plus ``secrets.token_hex(16)`` (49 characters), so the
 guard's ownership by prefix, ``verify-clean`` and ``cleanup --apply`` work unchanged. The
@@ -44,28 +48,22 @@ import importlib
 import json
 import secrets
 import sys
-import time
 from collections.abc import Callable, Mapping
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime, timedelta
 from types import ModuleType
 from typing import Any
 
-from . import matrix
 from . import proof_run as pr
-from .client_bridge import ClientSessionEnded
 from .credentials import ServerCredentials
 from .proof_run import PREFIX_ROOT, ProofRun, RunStopped
-from .redaction import Redactor, describe_token
+from .redaction import Redactor
 from .server_api import ServerApi
 from .usage import UsageLedger
 from .workdir import PROOF_ROOT
 
 API_ROOT = PROOF_ROOT.parent.parent / "services" / "api"
 T = pr.T
-# A token signed after a revocation is used only once the wall clock has passed its
-# ``iat`` by this margin, so Stream never sees an ``iat`` in its own future.
-AFTER_REVOCATION_MARGIN_SECONDS = 3.0
 # A user object's standard keys, as Stream's listing returns them; any other key a
 # provisioned user carries is recorded by name (never by value).
 USER_STANDARD_KEYS = frozenset(
@@ -320,7 +318,7 @@ class ConformanceRun(ProofRun):
     def _fact(
         self, row_id: str, description: str, ok: bool | None, evidence: dict[str, Any]
     ) -> Row:
-        """A read-back or a token check: expected as designed, observed as Stream shows."""
+        """A read-back: expected as designed, observed as Stream shows."""
         if ok is None:
             row = self._row(
                 row_id, description, "as designed", "not shown", reason="", detail=evidence
@@ -424,116 +422,6 @@ class ConformanceRun(ProofRun):
             return None, "not read"
         return shape["member_user_ids"] == sorted(members), shape
 
-    # -- tokens ------------------------------------------------------------------------
-
-    def _grant(self, user_id: str, issued_at: datetime) -> Any:
-        """A grant from the domain rule, for a valid session of an active account, with the
-        issue time given (the database's clock in the app; the host's here)."""
-        tokens = self.tokens
-        grant = tokens.grant_chat_token(
-            account=tokens.TokenAccount("active", 1),
-            session=tokens.TokenSession("valid", 1, issued_at + timedelta(hours=2)),
-            user_ref=user_id,
-            identity_active=True,
-            now=issued_at,
-        )
-        if not isinstance(grant, tokens.TokenGrant):
-            raise RuntimeError("the token rule refused a grant the run expected")
-        return grant
-
-    def _sign(self, user_id: str, issued_at: datetime) -> tuple[str, dict[str, Any]]:
-        """The signer's token for a grant issued at ``issued_at``, and its claims relative
-        to the grant (never the token itself)."""
-        grant = self._grant(user_id, issued_at)
-        token = self.adapter_module.sign_chat_token(grant, self.api.sdk)
-        described = describe_token(token)
-        claims = described.get("claims")
-        claims = claims if isinstance(claims, dict) else {}
-        iat, exp = claims.get("iat"), claims.get("exp")
-        issue = int(issued_at.replace(microsecond=0).timestamp())
-        expiry = int(grant.expires_at.replace(microsecond=0).timestamp())
-        return token, {
-            "alg": described.get("alg"),
-            "claim_names": sorted(claims),
-            "iat_minus_truncated_issue": iat - issue if isinstance(iat, int) else None,
-            "exp_minus_truncated_expiry": exp - expiry if isinstance(exp, int) else None,
-            "exp_minus_iat": exp - iat if isinstance(iat, int) and isinstance(exp, int) else None,
-            "user_id_is_the_grants": claims.get("user_id") == user_id,
-        }
-
-    def _token_check(
-        self, label: str, user_id: str, token: str, channel_id: str | None
-    ) -> dict[str, Any]:
-        """A new client session with ``token``: connect, then read ``channel_id`` when
-        connected; closed afterwards. Stream's answers, by outcome, status and code."""
-        out: dict[str, Any] = {}
-        session = None
-        try:
-            session = self._session(label, token, max_api_calls=10)
-            connected = pr._ws_answer(
-                self._send(session, "connect", max_calls=3, user={"id": user_id})
-            )
-            out["connect"] = pr._observed(connected)
-            out["connect_outcome"] = connected.outcome
-            if connected.note:
-                out["connect_note"] = self._text(RuntimeError(connected.note))
-            if connected.outcome == "success" and channel_id is not None:
-                read = pr._http_answer(
-                    self._send(
-                        session,
-                        "call",
-                        max_calls=2,
-                        target="channel",
-                        method="query",
-                        args=[matrix.READ_OPTIONS],
-                        type=T,
-                        id=channel_id,
-                    )
-                )
-                out["read"] = pr._observed(read)
-                out["read_outcome"] = read.outcome
-                if read.note:
-                    out["read_note"] = self._text(RuntimeError(read.note))
-        except ClientSessionEnded as exc:
-            out["error"] = self._text(exc)
-        finally:
-            if session is not None:
-                self.sessions.pop(label, None)
-                session.close()
-        return out
-
-    @staticmethod
-    def _accepted(check: Mapping[str, Any], *, with_read: bool) -> bool | None:
-        """Whether the token was accepted: the connect succeeded and, when asked, the read.
-        ``None`` when Stream's answer was not recorded."""
-        connect = check.get("connect_outcome")
-        if connect is None or connect == "no-response":
-            return None
-        if connect != "success":
-            return False
-        if not with_read:
-            return True
-        read = check.get("read_outcome")
-        if read is None or read == "no-response":
-            return None
-        return bool(read == "success")
-
-    @staticmethod
-    def _refused(check: Mapping[str, Any], *, at_read: bool) -> bool | None:
-        """Whether Stream refused: at the connect, or (``at_read``) at the channel read after
-        a connect that succeeded. ``None`` when no answer was recorded."""
-        connect = check.get("connect_outcome")
-        if connect is None or connect == "no-response":
-            return None
-        if connect != "success":
-            return True
-        if not at_read:
-            return False
-        read = check.get("read_outcome")
-        if read is None or read == "no-response":
-            return None
-        return bool(read != "success")
-
     # -- the rows ------------------------------------------------------------------------
 
     def rows_provisioning(self) -> None:
@@ -629,41 +517,11 @@ class ConformanceRun(ProofRun):
             recorded=True,
         )
 
-    def rows_signer(self) -> None:
-        u1, c1 = self.ids["U1"], self.ids["C1"]
-        token, relative = self._sign(u1, datetime.now(UTC))
-        backdate = int(self.adapter_module.IAT_BACKDATE_SECONDS)
-        self._fact(
-            "T1",
-            "the token's iat and exp are the grant's, truncated to the second",
-            relative["alg"] == "HS256"
-            and relative["claim_names"] == ["exp", "iat", "user_id"]
-            and relative["iat_minus_truncated_issue"] == -backdate
-            and relative["exp_minus_truncated_expiry"] == 0
-            and relative["user_id_is_the_grants"],
-            {**relative, "backdate_seconds": backdate},
-        )
-        check = self._token_check("T2", u1, token, c1)
-        self._fact(
-            "T2",
-            "a token from the signer is accepted: connect and read the channel",
-            self._accepted(check, with_read=True),
-            check,
-        )
-
     def rows_removal(self) -> None:
         u1, u2, c1 = self.ids["U1"], self.ids["U2"], self.ids["C1"]
         self._both("R1", "removal of both members", "remove_members", c1, (u1, u2))
         empty, shape = self._members_are(c1, [])
         self._fact("R2", "read back: no member remains", empty, {"shape": shape})
-        token, _ = self._sign(u1, datetime.now(UTC))
-        check = self._token_check("R3", u1, token, c1)
-        self._fact(
-            "R3",
-            "the removed member's own client can no longer read the channel",
-            self._refused(check, at_read=True),
-            check,
-        )
         self._both("R4", "removal repeated returns already", "remove_members", c1, (u1, u2))
         self._both(
             "R5", "channel creation repeated after the removal", "create_channel", c1, (u1, u2)
@@ -694,14 +552,6 @@ class ConformanceRun(ProofRun):
         self._both("D1", "a third user is provisioned", "provision_user", u3)
         self._both("D2", "deactivation", "deactivate_user", u3)
         self.deactivated_users.add(u3)
-        token, _ = self._sign(u3, datetime.now(UTC))
-        check = self._token_check("D3", u3, token, None)
-        self._fact(
-            "D3",
-            "the deactivated user's signed token is refused",
-            self._refused(check, at_read=False),
-            check,
-        )
         self._both("D4", "deactivation repeated returns already", "deactivate_user", u3)
         self._both("D5", "re-provisioning a deactivated user returns already", "provision_user", u3)
         user = self._read_user(u3)
@@ -711,13 +561,6 @@ class ConformanceRun(ProofRun):
             "read back: still deactivated after the re-provisioning (4.4)",
             None if shape is None else bool(shape["deactivated"]),
             {"shape": shape or "not read"},
-        )
-        check = self._token_check("D7", u3, token, None)
-        self._fact(
-            "D7",
-            "the deactivated user's token is still refused after the re-provisioning (4.4)",
-            self._refused(check, at_read=False),
-            check,
         )
         self._both(
             "D8",
@@ -751,8 +594,6 @@ class ConformanceRun(ProofRun):
         # The cut-off is an exact second; revocation_cutoff_sent sends it one second later.
         exact = datetime.now(UTC).replace(microsecond=0)
         sent = self.tokens.revocation_cutoff_sent(exact)
-        before, before_claims = self._sign(u4, exact - timedelta(microseconds=500_000))
-        at, at_claims = self._sign(u4, exact + timedelta(microseconds=400_000))
         self._both(
             "V3",
             "a per-user revocation with the cut-off from revocation_cutoff_sent",
@@ -774,44 +615,6 @@ class ConformanceRun(ProofRun):
                 "sent_minus_exact_seconds": int((sent - exact).total_seconds()),
             },
         )
-        check = self._token_check("V5", u4, before, c3)
-        self._fact(
-            "V5",
-            "a token whose iat is before the cut-off is refused",
-            self._refused(check, at_read=True),
-            {**check, **before_claims},
-        )
-        check = self._token_check("V6", u4, at, c3)
-        self._fact(
-            "V6",
-            "a token issued in the cut-off's second (iat equal to the exact second) is refused",
-            self._refused(check, at_read=True),
-            {**check, **at_claims},
-        )
-        ready = sent + timedelta(seconds=1 + AFTER_REVOCATION_MARGIN_SECONDS)
-        wait = (ready - datetime.now(UTC)).total_seconds()
-        if wait > 0:
-            time.sleep(wait)
-        at_sent, at_sent_claims = self._sign(u4, sent)
-        check = self._token_check("V7", u4, at_sent, c3)
-        accepted = self._accepted(check, with_read=True)
-        self._row(
-            "V7",
-            "a token whose iat equals the sent cut-off: Stream's comparison at the boundary",
-            "recorded",
-            "accepted" if accepted else ("refused" if accepted is False else "not shown"),
-            reason="shows whether Stream revokes iat < cut-off (strict) or iat <= cut-off",
-            detail={**check, **at_sent_claims},
-            recorded=True,
-        )
-        after, after_claims = self._sign(u4, sent + timedelta(seconds=1))
-        check = self._token_check("V8", u4, after, c3)
-        self._fact(
-            "V8",
-            "a token signed after the cut-off is accepted",
-            self._accepted(check, with_read=True),
-            {**check, **after_claims},
-        )
         self._both("V9", "the revocation repeated returns already", "revoke_user_tokens", u4, sent)
         earlier, _ = self._outcome(
             lambda: self.adapter.revoke_user_tokens(u4, sent - timedelta(seconds=10))
@@ -827,13 +630,6 @@ class ConformanceRun(ProofRun):
         self._both(
             "V11", "re-provisioning after the revocation returns already", "provision_user", u4
         )
-        check = self._token_check("V12", u4, before, c3)
-        self._fact(
-            "V12",
-            "the revoked token is still refused after the re-provisioning (4.4)",
-            self._refused(check, at_read=True),
-            check,
-        )
         self._both(
             "V13",
             "revocation of a user Stream does not have",
@@ -848,7 +644,6 @@ class ConformanceRun(ProofRun):
             self.rows_provisioning,
             self.rows_channel,
             self.rows_send,
-            self.rows_signer,
             self.rows_removal,
             self.rows_deactivation,
             self.rows_revocation,
@@ -868,8 +663,9 @@ class ConformanceRun(ProofRun):
     def _without_ids(self, value: Any) -> Any:
         """``value`` with every identifier of the run replaced by ``{key}``, longest first,
         in every string at any depth (B2R2): whole, and in the form ``proof_run._generic``
-        leaves (``{prefix}`` and the identifier's part after the prefix), as in the connect,
-        read and client notes, the checks, the async errors and the deferred stops (C4R1).
+        leaves (``{prefix}`` and the identifier's part after the prefix), as in the client
+        notes, the checks, the async errors and the deferred stops (C4R1; the connect and
+        read notes went with the token rows, SV4 A1's D7).
         :meth:`results` applies it to every part of the results, and ``cmd_conformance`` to
         its ``stop_reason``; the command's console lines do not pass through it."""
         pairs = sorted(

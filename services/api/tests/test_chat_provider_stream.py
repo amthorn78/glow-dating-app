@@ -1,5 +1,6 @@
-"""The Stream adapter and the client token's signer, offline (P06.2 Stage B2; the brief's
-design points c to f, DM-16 4.1 to 4.5 and 3.1 to 3.3).
+"""The Stream adapter, offline (P06.2 Stage B2; the brief's design points c to f, DM-16 4.1
+to 4.5). SV4 A1 retired the client token's signer and its tests (its brief's D7; OD-45: no
+provider token is issued); the adapter's own guards on its environment stay (``SealTests``).
 
 The adapter runs on a ``getstream`` client built here with explicit dummy values on a
 *recorded* ``httpx`` transport: a hand-written model of Stream Chat's documented answers
@@ -26,14 +27,12 @@ import inspect
 import json
 import logging
 import re
-import time
 import unittest
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import httpx
-import jwt
 from getstream import Stream
 from getstream.exceptions import StreamApiException, StreamTransportException
 
@@ -50,13 +49,10 @@ from glow_domain.chat_provider import (
 )
 from glow_domain.chat_provider_fixtures import FixtureChatProvider
 from glow_domain.chat_provider_stream import (
-    IAT_BACKDATE_SECONDS,
     StreamChatProvider,
     StreamProviderError,
-    sign_chat_token,
-    token_claims,
 )
-from glow_domain.chat_tokens import TokenGrant, revocation_cutoff_sent
+from glow_domain.chat_tokens import revocation_cutoff_sent
 
 # Dummy values for the client built here; neither is a credential.
 API_KEY = "synthetic-api-key-for-offline-tests"
@@ -1281,74 +1277,19 @@ class TextReadTests(unittest.TestCase):
                 self.assertNotIn(text, line)
 
 
-class SignerTests(unittest.TestCase):
-    """DM-16 3.1 to 3.3: the pre-approved signer, against the SDK's own token."""
+class SealTests(unittest.TestCase):
+    """DM-16 2.3, 2.4: the module imports only the port and the SDK (SV4 A1 removed the token
+    module's import with the signer), and builds no client and reads no environment."""
 
-    def grant(self, issued_at: datetime) -> TokenGrant:
-        return TokenGrant("user-ref", issued_at, issued_at + timedelta(hours=1))
-
-    def test_iat_and_exp_are_the_grants_truncated_to_the_second_and_never_later(self) -> None:
-        issued = datetime(2026, 10, 23, 12, 0, 0, 999_999, tzinfo=UTC)
-        claims = token_claims(self.grant(issued))
-        self.assertEqual(
-            claims,
-            {"user_id": "user-ref", "iat": 1792756800 - IAT_BACKDATE_SECONDS, "exp": 1792760400},
-        )
-        self.assertLessEqual(claims["iat"], int(issued.timestamp()))
-        self.assertLessEqual(claims["exp"], int((issued + timedelta(hours=1)).timestamp()))
-        self.assertEqual(claims["exp"] - claims["iat"], 3600 + IAT_BACKDATE_SECONDS)
-
-    def test_the_backdate_is_fixed_and_at_most_five_seconds(self) -> None:
-        self.assertIsInstance(IAT_BACKDATE_SECONDS, int)
-        self.assertGreaterEqual(IAT_BACKDATE_SECONDS, 0)
-        self.assertLessEqual(IAT_BACKDATE_SECONDS, 5)
-
-    def test_a_naive_time_is_refused(self) -> None:
-        with self.assertRaises(ValueError):
-            token_claims(self.grant(datetime(2026, 10, 23, 12, 0, 0)))
-
-    def test_the_signers_token_matches_the_sdks_in_header_and_claim_names(self) -> None:
-        client = make_client(RecordedStream())
-        ours = sign_chat_token(self.grant(NOW), client)
-        theirs = client.create_token("user-ref", expiration=3600)
-        self.assertEqual(jwt.get_unverified_header(ours), {"alg": "HS256", "typ": "JWT"})
-        self.assertEqual(jwt.get_unverified_header(ours), jwt.get_unverified_header(theirs))
-        decoded = jwt.decode(ours, SECRET, algorithms=["HS256"], options={"verify_exp": False})
-        self.assertEqual(set(decoded), {"user_id", "iat", "exp"})
-        self.assertEqual(set(decoded), set(jwt.decode(theirs, SECRET, algorithms=["HS256"])))
-        self.assertEqual(
-            decoded,
-            {
-                "user_id": "user-ref",
-                "iat": int(NOW.timestamp()) - IAT_BACKDATE_SECONDS,
-                "exp": int(NOW.timestamp()) + 3600,
-            },
-        )
-        # The SDK's own claims come from its clock: iat now - 5 and exp now + lifetime.
-        sdk_claims = jwt.decode(theirs, SECRET, algorithms=["HS256"])
-        self.assertAlmostEqual(sdk_claims["iat"], int(time.time()) - 5, delta=3)
-
-    def test_a_token_signed_with_a_wrong_key_fails_verification(self) -> None:
-        token = sign_chat_token(self.grant(NOW), make_client(RecordedStream()))
-        with self.assertRaises(jwt.InvalidSignatureError):
-            jwt.decode(
-                token,
-                "another-synthetic-value",
-                algorithms=["HS256"],
-                options={"verify_exp": False},
-            )
-
-    def test_the_signer_keeps_nothing(self) -> None:
+    def test_the_adapter_builds_no_client_and_reads_no_environment(self) -> None:
+        # Kept from the retired ``SignerTests.test_the_signer_keeps_nothing`` (SV4 A1): the
+        # guards on the adapter itself, without the signer's own line.
         source = inspect.getsource(adapter_module)
         self.assertNotIn("os.environ", source)
         self.assertNotIn("getenv", source)
         self.assertNotIn("from_env", source.split('"""', 2)[2])  # outside the docstring
         self.assertNotIn("Stream(", source.split('"""', 2)[2])
-        self.assertIn("client.api_secret", source)
-
-
-class SealTests(unittest.TestCase):
-    """DM-16 2.3, 2.4: the module imports only the port, the token module and the SDK."""
+        self.assertNotIn("api_secret", source)
 
     def test_the_module_imports_nothing_from_django_glow_persistence_or_glow_chat(self) -> None:
         source = inspect.getsource(adapter_module)
@@ -1357,10 +1298,7 @@ class SealTests(unittest.TestCase):
         for line in imports:
             self.assertNotRegex(line, r"django|glow_persistence|glow_chat|glow_api")
         own = [line for line in imports if line.startswith("from .")]
-        self.assertEqual(
-            sorted(own),
-            sorted(["from .chat_provider import (", "from .chat_tokens import TokenGrant"]),
-        )
+        self.assertEqual(own, ["from .chat_provider import ("])
 
     def test_the_sdks_errors_are_the_only_ones_mapped(self) -> None:
         source = inspect.getsource(adapter_module)

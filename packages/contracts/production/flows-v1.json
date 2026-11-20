@@ -1202,6 +1202,15 @@
           "eligible": false,
           "policies": [],
           "active_match": false
+        },
+        {
+          "event": "block",
+          "from": "active",
+          "to": "unmatched",
+          "role": "participant",
+          "eligible": false,
+          "policies": [],
+          "active_match": false
         }
       ],
       "forbidden": "Every unlisted transition; wrong actor/object; stale version; unknown required policy; denied/unknown eligibility when required.",

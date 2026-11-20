@@ -215,7 +215,7 @@ Nathan ran the delta review at the extra-high level on head `5e3fb2f394048628482
 **Recorded follow-ups.** These are outside PF01's sequence. After M02, the plan's next step is a proposal on whether to resume P06.1: the [initiation](claude-code-initiation.md) assignment ends *"Complete the optimization before proposing whether to resume P06.1."* The manager presents these follow-ups with that proposal, and Nathan schedules them:
 
 - **Rendered-test failures.** Intermittent failures of one kind, a form submit that does not advance: `state-corrections.spec.ts:45` twice and `onboarding.spec.ts:103` once. They turn CI red at random, and the manager cannot re-run jobs.
-- **Setup-script and pin-test hardening:** N1, N2, N6, the Codex P2 on directory-shaped link destinations, and the optional N4 stamp. This is full scope, and a script change means another Setup-script paste.
+- **Setup-script and pin-test hardening:** N1, N2, N6, the Codex P2 on directory-shaped link destinations, and the optional N4 stamp. This is full scope, and a script change means another Setup-script paste. **Disposed by SV4** (its brief, D7; DM-96; H-01): N2 was done in A0 (PR57, merged at `499ccbb`); N1, N4, the Codex P2 and N6 are closed as declined. The bootstrap script's wording and uv pin, below, stay open.
 - **Stale-documentation sweep** of `docs/architecture/`, `docs/testing/` and the rest of `docs/operations/`. It is Markdown only, so ordinary documentation.
 
 **Moved from the current handoff on 26 October 2026** (M05 finding 38), with what M05 found:

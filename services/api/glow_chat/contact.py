@@ -20,11 +20,17 @@ paused or restricted profile and a withdrawn onboarding consent refuse a send. T
 writers take the account row lock first and bump the version of the row the send
 checks (the profile's, or the consent decision's), and the send reads that state under
 its account locks. Stage B1 makes match activation run the same profile and consent
-checks under its account locks (CX5), and adds the token grant (F1; DM-14 item 3): the
-account row and the session row locked ``FOR SHARE`` in the send's order, the time from
-``clock_timestamp()`` under those locks, and every check of ``grant_chat_token`` on the
-locked rows, so a grant that waits on an epoch bump refuses after it, and a grant that
-commits before the bump has an issue time before the bump's cut-off, from one clock.
+checks under its account locks (CX5). ``_lock_shared`` takes a row ``FOR SHARE``, as the
+conversation reads take theirs (``glow_chat.reads``). No provider token is granted (OD-45):
+SV4 A1 removed the token grant (its brief's D7).
+
+SV4 A1 (its brief's D3 and D4; DM-96): a block ends an active match as an unmatch does,
+storing ``unmatched`` with the same contact and version advance and the same
+``contact_revoked`` event, so a member who did not block is served the same either way; the
+cause stays in the ``Block`` rows. And a block retires every ``liked`` row between the pair,
+both ways, by its ``retired_at`` (the database's clock, under the block's account locks),
+changing nothing else of the row, so a like made before a block never counts toward a match
+(``activate_reciprocal`` requires ``retired_at`` null on both rows).
 
 There is no switch here: no test-only branch, flag or hook that changes a lock, a
 check or a write (DM-13 2.1). A ``TransactionProbe`` may observe a writer at its hold
@@ -50,7 +56,7 @@ from django.db import IntegrityError, connection, transaction
 from django.db.models import Q
 
 from glow_chat import events
-from glow_domain import chat, chat_tokens
+from glow_domain import chat
 from glow_domain.chat import ContactResult, SendCommand, SendReceipt, TransactionProbe
 from glow_domain.chat import TransactionTrace as Trace
 from glow_persistence.models import (
@@ -306,9 +312,10 @@ class OrmContactPersistence:
         """F09's activation (SV3's D10 (a); DM-60): ``activate_match``'s body with one check
         added under its account locks, the two ``liked`` rows, one from each member to the other.
         It refuses everything ``activate_match`` refuses, and a missing ``liked`` row in either
-        direction (``not_reciprocal``); it writes the same rows and events (the identity events
-        for members without an identity, and the one ``match_activated``), with the same lock
-        order (the lower account, then the higher) and probe points.
+        direction, or one a block retired (``not_reciprocal``; SV4 A1, D3); it writes the same
+        rows and events (the identity events for members without an identity, and the one
+        ``match_activated``), with the same lock order (the lower account, then the higher) and
+        probe points.
 
         Its documented precondition: it is called only from SV3's like, inside the like's
         transaction, after the like has rechecked current two-person eligibility (the SV3 brief's
@@ -344,7 +351,7 @@ class OrmContactPersistence:
             # writer of a directional row takes (SV3's like, pass and undo).
             for actor_id, target_id in ((low_id, high_id), (high_id, low_id)):
                 if not DirectionalInteraction.objects.filter(
-                    actor_id=actor_id, target_id=target_id, state="liked"
+                    actor_id=actor_id, target_id=target_id, state="liked", retired_at__isnull=True
                 ).exists():
                     raise _Refused("not_reciprocal")
             # CX5: the send's profile and consent checks, on the rows read under the
@@ -387,14 +394,14 @@ class OrmContactPersistence:
 
         return self._run(body, probe)
 
-    # -- the token grant (P06.2 B1; F1, DM-14 item 3) -------------------------------------
+    # -- the shared lock (the conversation reads') ---------------------------------------
 
     @staticmethod
     def _lock_shared(table: str, pk: UUID, columns: tuple[str, ...], cursor: Any) -> Any:
-        """A row by primary key, ``FOR SHARE``: the grant reads what a bump or a sign-out
-        writes under its lock (``FOR NO KEY UPDATE`` on the account, DM-61; ``FOR UPDATE``
-        on the session), so it waits for a writer in flight and reads its result; it
-        excludes no other reader. An absent row is a refusal (5.5)."""
+        """A row by primary key, ``FOR SHARE``: a read reads what a revocation writes under its
+        lock (``FOR NO KEY UPDATE`` on the account, DM-61; ``FOR UPDATE`` on any other row),
+        so it waits for a writer in flight and reads its result; it excludes no other reader.
+        An absent row is a refusal (5.5)."""
         cursor.execute(
             f"SELECT {', '.join(columns)} FROM {table} WHERE id = %s FOR SHARE",
             [pk],
@@ -403,57 +410,6 @@ class OrmContactPersistence:
         if row is None:
             raise _Refused(f"{table.removeprefix('glow_persistence_')}_missing")
         return row
-
-    def grant_token(
-        self, session_id: UUID, *, probe: TransactionProbe | None = None
-    ) -> ContactResult:
-        def body(tx: _Tx) -> ContactResult:
-            # Only the session's account is read before the locks: it never changes, and
-            # the locked row is checked against it (F2).
-            session_account = (
-                AccountSession.objects.filter(pk=session_id)
-                .values_list("account_id", flat=True)
-                .first()
-            )
-            if session_account is None:
-                raise _Refused(chat.SESSION_MISSING)
-            account_id: UUID = session_account
-            # The send's order: the account, then the session (points 1 and 2).
-            account_state, session_epoch = self._lock_shared(
-                "glow_persistence_appaccount", account_id, ("state", "session_epoch"), tx.cursor
-            )
-            self._signal(tx.probe, "after_first_lock")
-            locked_account, session_state, epoch, expires_at = self._lock_shared(
-                "glow_persistence_accountsession",
-                session_id,
-                ("account_id", "state", "epoch", "expires_at"),
-                tx.cursor,
-            )
-            self._signal(tx.probe, "after_locks")
-            now = self._clock(tx.cursor)
-            if locked_account != account_id:
-                raise _Refused(chat.SESSION_CHANGED)
-            identity = (
-                ChatIdentity.objects.filter(account_id=account_id, provider=self.provider)
-                .values_list("user_ref", "state")
-                .first()
-            )
-            user_ref, identity_state = identity if identity is not None else (None, None)
-            # Every check of the rule, on the locked rows, with the database's time (5.1:
-            # "active" means provisioned and not deactivated).
-            granted = chat_tokens.grant_chat_token(
-                account=chat_tokens.TokenAccount(str(account_state), int(session_epoch)),
-                session=chat_tokens.TokenSession(str(session_state), int(epoch), expires_at),
-                user_ref=user_ref,
-                identity_active=identity_state == "active",
-                now=now,
-            )
-            # ``_run`` signals ``before_commit`` once, after the body, as for every writer.
-            if isinstance(granted, chat_tokens.TokenRefusal):
-                raise _Refused(granted.code)
-            return ContactResult("granted", grant=granted, session_id=session_id)
-
-        return self._run(body, probe)
 
     # -- sessions ---------------------------------------------------------------------
 
@@ -645,6 +601,11 @@ class OrmContactPersistence:
     def block(
         self, actor_id: UUID, target_id: UUID, *, probe: TransactionProbe | None = None
     ) -> ContactResult:
+        """F13's block (SV4 A1, D3 and D4): an active match ends as an unmatch ends it, and
+        every ``liked`` row between the pair is retired."""
+        # Imported here, as ``activate_reciprocal`` imports it (SV3's D10 (a)).
+        from glow_persistence.models import DirectionalInteraction
+
         def body(tx: _Tx) -> ContactResult:
             if actor_id == target_id:
                 # F5: refused before any lock or write, not left to the no-self constraint.
@@ -687,9 +648,19 @@ class OrmContactPersistence:
                     available_at=now,
                     payload_ref=block.id,
                 )
+            # D3: every like between the pair, either way, made before this block never counts
+            # toward a match. Only ``retired_at`` is written, with the database's clock under
+            # the account locks; the row's state, version, ``decided_at`` and policy version stay.
+            DirectionalInteraction.objects.filter(
+                Q(actor_id=low_id, target_id=high_id) | Q(actor_id=high_id, target_id=low_id),
+                state="liked",
+                retired_at__isnull=True,
+            ).update(retired_at=now)
             contact_version: int | None = None
             if match is not None and match.state == "active":
-                match.state = "restricted"
+                # D4: as an unmatch ends it, so the member who did not block is served the
+                # same; the cause stays in the Block rows.
+                match.state = "unmatched"
                 match.contact_version += 1
                 match.version += 1
                 match.save(update_fields=["state", "contact_version", "version", "updated_at"])

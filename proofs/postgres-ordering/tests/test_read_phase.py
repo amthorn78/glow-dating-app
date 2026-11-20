@@ -101,12 +101,54 @@ class ReadPlanTests(unittest.TestCase):
 
     def test_plan_count_and_uniqueness(self) -> None:
         plan = read_phase.plan()
-        self.assertEqual(len(plan), 16 * 3 + 14)
+        # Re-pinned by SV4 A1 (D5): the 14 named cases, D5's two named cases and its two
+        # settings cases.
+        self.assertEqual(len(plan), 16 * 3 + 14 + 2 + 2)
         self.assertEqual(len({c["id"] for c in plan}), len(plan))
         self.assertTrue(all(c["guarantee"] and c["title"] for c in plan))
         # The reads are not the suite's: the reference design's 56 cases are unchanged.
         self.assertEqual(len(cases.plan()), 56)
         self.assertFalse({c["id"] for c in plan} & {c["id"] for c in cases.plan(d5=True)})
+
+    def test_d5s_cases_are_planned_and_the_settings_cases_come_last(self) -> None:
+        # SV4 A1 (D5): the two named cases among the named cases, and the two settings cases
+        # last in the plan, outside ``cases_for``, which ``run_read_phase`` runs before the
+        # controls.
+        plan = [c["id"] for c in read_phase.plan()]
+        for name in ("read.d5_read_only_at_launch", "read.d5_ended_contact_keeps_its_refusal"):
+            self.assertIn(name, plan)
+        settings = ["read.d5_hidden_when_the_setting_says_so", "read.d5_consent_limit_fails_closed"]
+        self.assertEqual(plan[-2:], settings)
+        placeholder = read_phase.ReadPhase(None, None, None)  # type: ignore[arg-type]
+        self.assertFalse({c.id for c in read_phase.cases_for(placeholder)} & set(settings))
+
+    def test_d5s_read_only_revocations(self) -> None:
+        # SV4 A1 (D5): the seven revocations read-only at launch, for the lower reader; the
+        # suspension only when it is the other member's.
+        self.assertEqual(
+            read_phase.READ_ONLY_AT_LAUNCH,
+            {
+                "suspend_high",
+                "pause_low",
+                "pause_high",
+                "restrict_low",
+                "restrict_high",
+                "withdraw_low",
+                "withdraw_high",
+            },
+        )
+        revocations = {r.id for r in (*cases.REVOCATIONS, *cases.D5_REVOCATIONS)}
+        served = {r for r in revocations if read_phase.served_read_only(r)}
+        self.assertEqual(served, read_phase.READ_ONLY_AT_LAUNCH)
+        self.assertTrue(read_phase.served_read_only("suspend_low", "high"))
+        self.assertFalse(read_phase.served_read_only("suspend_low", "low"))
+        self.assertFalse(read_phase.served_read_only("suspend_high", "high"))
+        titles = {c["id"]: c["title"] for c in read_phase.plan()}
+        for rev in revocations:
+            for name in ("read_waits", "check_holds", "revocation_holds"):
+                with self.subTest(case=f"read.{rev}.{name}"):
+                    title = titles[f"read.{rev}.{name}"]
+                    self.assertEqual("served read-only" in title, rev in served, title)
 
 
 class FirstLockReadersTests(unittest.TestCase):

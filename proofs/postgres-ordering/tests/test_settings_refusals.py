@@ -38,9 +38,82 @@ def api_forbidden_names() -> frozenset[str]:
     raise AssertionError("FORBIDDEN_CONNECTION_NAMES not found in the API's source")
 
 
+def api_constant(name: str) -> Any:
+    """One of the API's refusal constants (SV4 A1, D7), read from its source without importing
+    it: a ``frozenset({...})`` as a frozenset, a tuple literal as a tuple."""
+    module = ast.parse(API_PROFILES.read_text(encoding="utf-8"))
+    for node in module.body:
+        if isinstance(node, ast.Assign) and any(
+            isinstance(t, ast.Name) and t.id == name for t in node.targets
+        ):
+            value = node.value
+            if isinstance(value, ast.Call):
+                return frozenset(ast.literal_eval(value.args[0]))
+            return ast.literal_eval(value)
+    raise AssertionError(f"{name} not found in the API's source")
+
+
+# SV4 A1 (D7; M05's finding 22): the names M05 found the API accepted, and members of the
+# families they stand for (Railway's database and Redis names, the chat provider's).
+M05_ACCEPTED = (
+    "DATABASE_PUBLIC_URL",
+    "PGPASSFILE",
+    "PGSERVICE",
+    "POSTGRES_PASSWORD",
+    "REDIS_PUBLIC_URL",
+    "REDISPASSWORD",
+    "STREAM_API_SECRET",
+)
+FAMILIES: tuple[str, ...] = (
+    "POSTGRES_USER",
+    "POSTGRES_DB",
+    "REDISHOST",
+    "REDISUSER",
+    "REDIS_PASSWORD",
+    "STREAM_API_KEY",
+    "STREAM_APP_ID",
+    "PGSSLMODE",
+)
+
+
 class ForbiddenNameTests(unittest.TestCase):
     def test_copy_matches_the_api(self) -> None:
         self.assertEqual(environment.API_FORBIDDEN_CONNECTION_NAMES, api_forbidden_names())
+
+    def test_the_inherited_names_copies_match_the_api(self) -> None:
+        # SV4 A1 (D7): the new constants' copies, beside the unchanged list above.
+        self.assertEqual(
+            environment.API_FORBIDDEN_INHERITED_NAMES, api_constant("FORBIDDEN_INHERITED_NAMES")
+        )
+        self.assertEqual(
+            environment.API_FORBIDDEN_INHERITED_PREFIXES,
+            api_constant("FORBIDDEN_INHERITED_PREFIXES"),
+        )
+        self.assertEqual(environment.API_FORBIDDEN_INHERITED_NAMES, frozenset(M05_ACCEPTED))
+
+    def test_each_inherited_name_refuses_before_its_value_is_read(self) -> None:
+        class Unreadable(dict[str, str]):
+            # Only the names are read: any value lookup of the refused name fails the test.
+            def __init__(self, refused: str) -> None:
+                super().__init__({**GOOD, refused: "never-read"})
+                self.refused = refused
+
+            def __getitem__(self, name: str) -> str:
+                if name == self.refused:
+                    raise AssertionError(f"the value of {name} was read")
+                return super().__getitem__(name)
+
+            def get(self, name: str, default: Any = None) -> Any:
+                if name == self.refused:
+                    raise AssertionError(f"the value of {name} was read")
+                return super().get(name, default)
+
+        for name in (*M05_ACCEPTED, *FAMILIES):
+            with self.subTest(name=name):
+                with self.assertRaises(environment.RefusedEnvironment) as ctx:
+                    environment.require_clean_environment(Unreadable(name))
+                self.assertIn(name, str(ctx.exception))
+                self.assertNotIn("never-read", str(ctx.exception))
 
     def test_each_api_name_refuses(self) -> None:
         for name in sorted(environment.API_FORBIDDEN_CONNECTION_NAMES):

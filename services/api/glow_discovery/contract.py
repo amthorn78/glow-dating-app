@@ -253,8 +253,8 @@ def match_projection(
     match_id: str, version: int, other_profile_id: str, state: str
 ) -> dict[str, Any]:
     """``MatchProjection``, for a participant only: the other member's profile ID and the state.
-    It names no actor and no reason, but only a block makes a match ``restricted``, so the member
-    who did not block can infer its direction (D8's gap, carried to SV4 before P11; DM-75)."""
+    It names no actor and no reason. D8's gap is closed (SV4 A1, D4; DM-75, DM-96): no command
+    makes a match ``restricted``, and a block ends it as ``unmatched``, as an unmatch does."""
     return {
         "kind": "match",
         "match_id": match_id,

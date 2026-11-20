@@ -40,6 +40,21 @@ API_FORBIDDEN_CONNECTION_NAMES = frozenset(
         "GLOW_HDE_API_TOKEN",
     }
 )
+# The API's names refused beside them (FORBIDDEN_INHERITED_NAMES and
+# FORBIDDEN_INHERITED_PREFIXES; SV4 A1, D7; M05's finding 22), copied for the same reason;
+# tests/test_settings_refusals.py reads both from the API's source and fails if they differ.
+API_FORBIDDEN_INHERITED_NAMES = frozenset(
+    {
+        "DATABASE_PUBLIC_URL",
+        "PGPASSFILE",
+        "PGSERVICE",
+        "POSTGRES_PASSWORD",
+        "REDIS_PUBLIC_URL",
+        "REDISPASSWORD",
+        "STREAM_API_SECRET",
+    }
+)
+API_FORBIDDEN_INHERITED_PREFIXES = ("PG", "POSTGRES_", "REDIS", "STREAM_")
 # Any PG* name: libpq reads them as connection defaults (PGPASSFILE, PGSERVICE,
 # PGSSLMODE, PGOPTIONS, PGSERVICEFILE and the rest), so none may be present.
 LIBPQ_PREFIX = "PG"
@@ -88,13 +103,17 @@ class ConnectionOptions:
 
 
 def refused_names(environ: Mapping[str, str]) -> tuple[str, ...]:
-    """The names present that forbid a start: the API's forbidden connection names and
-    every PG* name. Presence alone counts, an empty value included."""
+    """The names present that forbid a start: the API's forbidden connection names, the
+    API's names refused beside them (SV4 A1), and every PG* name. Presence alone counts, an
+    empty value included."""
     return tuple(
         sorted(
             name
             for name in environ
-            if name in API_FORBIDDEN_CONNECTION_NAMES or name.startswith(LIBPQ_PREFIX)
+            if name in API_FORBIDDEN_CONNECTION_NAMES
+            or name in API_FORBIDDEN_INHERITED_NAMES
+            or name.startswith(API_FORBIDDEN_INHERITED_PREFIXES)
+            or name.startswith(LIBPQ_PREFIX)
         )
     )
 

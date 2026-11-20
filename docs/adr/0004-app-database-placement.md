@@ -31,7 +31,7 @@ The app gets its own logical database on HDE's PostgreSQL service, in the same R
 
    This is a bounded read-only inspection under its own assignment (PF01 D08). It has not started.
 4. **Movable to its own service without redesign.** Nothing needs to change today:
-   - the API opens no database connection (Django's dummy backend, and no driver in the image), and its fixture guards refuse by presence the names in `FORBIDDEN_CONNECTION_NAMES`, including `GLOW_DATABASE_URL`, `DATABASE_URL`, `DATABASE_PRIVATE_URL` and five libpq `PG*` names (other names, such as `DATABASE_PUBLIC_URL` or `PGPASSFILE`, are not refused until the hardening item lands) [Corrected by M05, finding 22; DM-31: this said its fixture guards "refuse every database connection name"];
+   - the API opens no database connection (Django's dummy backend, and no driver in the image), and its fixture guards refuse by presence the names in `FORBIDDEN_CONNECTION_NAMES`, including `GLOW_DATABASE_URL`, `DATABASE_URL`, `DATABASE_PRIVATE_URL` and five libpq `PG*` names; since SV4 A1 (its brief's D7) they also refuse by presence a `PG` prefix, the names M05 found accepted (`DATABASE_PUBLIC_URL`, `PGPASSFILE`, `PGSERVICE`, `POSTGRES_PASSWORD`, `REDIS_PUBLIC_URL`, `REDISPASSWORD`, `STREAM_API_SECRET`) and the families they stand for (`FORBIDDEN_INHERITED_NAMES` and `FORBIDDEN_INHERITED_PREFIXES`: `PG`, `POSTGRES_`, `REDIS`, `STREAM_`) [Corrected by M05, finding 22; DM-31: this said its fixture guards "refuse every database connection name"];
    - the provisional models set no schema, `search_path` or `db_table` prefix (checked on 25 September 2026).
 
    To keep it movable:

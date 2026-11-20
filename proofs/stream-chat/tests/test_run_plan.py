@@ -94,11 +94,14 @@ class RunPlanTest(unittest.TestCase):
         """P06.2 Stage B2 (its prompt, item 5; DM-16 1.3): the Stream adapter's conformance
         run and one rerun of it fit the session caps."""
         conformance = self.plan["conformance"]
+        # Users: 4 until B2-C4, when M5's sender came to be reserved (DM-20 1.3; B2R3).
+        # Peak connections: 1, and rows: 46, until SV4 A1 retired the token rows, which
+        # opened the run's only client sessions (its brief's D7).
         self.assertEqual(
             (conformance["users"], conformance["channels"], conformance["peak_connections"]),
-            (5, 2, 1),  # 4 until B2-C4: M5's sender is now reserved (DM-20 1.3; B2R3)
+            (5, 2, 0),
         )
-        self.assertEqual(conformance["rows"], 46)
+        self.assertEqual(conformance["rows"], 36)
         self.assertEqual(conformance["problems"], [])
         self.assertLess(conformance["api_calls"], 400)
         self.assertEqual(self.plan["b2_total_with_reserve"], {"users": 10, "channels": 4})
