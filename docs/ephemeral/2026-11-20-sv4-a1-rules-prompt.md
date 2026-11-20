@@ -113,7 +113,7 @@ If a check fails, stop and report. The prompt is stale if its commit is not on t
 
 **Then read, completely:**
 - **The instructions:** root `AGENTS.md` and `CLAUDE.md`; `services/api/README.md`; `proofs/postgres-ordering/README.md`; `apps/mobile/AGENTS.md` (you change only generated files there).
-- **The brief,** revision 4: D1, D3 to D15, "Owned paths", "Exclusions", "Acceptance checks" and "Review plan", and the revision history in its status line.
+- **The brief,** revision 5: D1, D3 to D15, "Owned paths", "Exclusions", "Acceptance checks" and "Review plan", and the revision history in its status line.
 - **The Dev Manager's report** DM-96 (`docs/continuity/dev-manager/reviews/2026-11-19-dm-96-sv4-stage-a-brief.md`), sections 4 to 8 and 11, and section 14's words for D3 to D7.
 - **M05's finding 22** (`docs/testing/evidence/2026-10-25-m05-project-review.md`, from line 189): the names the API accepted.
 - **SV2's D19** (`docs/planning/sv2-profiles-media.md`): the pointer order a read of a setting follows.
