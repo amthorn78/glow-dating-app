@@ -850,3 +850,11 @@ With this review, A0's corrections are closed: no finding of any review is open 
 ### Dev Manager 6's pre-merge read (DM-97, 20 November 2026)
 
 Dev Manager 6's report ([DM-97](../../continuity/dev-manager/reviews/2026-11-19-dm-97-sv4-a0-pre-merge-read.md); `b505a8e`, a read of `fc9decd`) approves the CI policy's change as written, A0 against AG1, AG1 to AG21 and revision 3's additions, C1 and C2, the manager's D-07 calls and F8's sentence. It answers F3 with option (a), with AH1 and AH2. AH1 (the F3 row above) and AH2 (the carried-items file, "Carried to the next change to the Foundation workflow (DM-97)") are applied as given, with AH3 and AH4 (its "Carried to SV4" entry), AH5 (the environment inventory) and AH6 (the migration plan), in the batch that records the disposition (App Manager 12; the review log's "DM-97"). PR57 merges once that batch's head has its passing PR run, with its non-Markdown paths still equal to `5a2f137`, Codex's completed review and the filled checklist (DM-97, section 13).
+
+### Merge (20 November 2026)
+
+- **PR57 merged** into `main` at `499ccbb` (App Manager 12, with the GitHub tools; expected head `8b18311`). DM-97's four conditions held: AH1 and AH2 applied as given at `8b18311`, in the batch that records the disposition; PR run 44655197105 on `8b18311` passed all eleven jobs, and its gate printed "Application checks passed" (01:48:25 UTC); the non-Markdown paths at `8b18311` equal `5a2f137`; Codex's code review of `8b18311` completed at 01:41:12 UTC with no findings, with no review thread; the checklist was filled.
+- **`main`'s push run 44657225220** on `499ccbb` passed all eleven jobs, and its gate printed "Application checks passed" (02:04:42 UTC).
+- **The Chromium install's first attempt** (for the carried entry "Carried to the next change to the Foundation workflow (DM-97)"): 23 s in PR run 44655197105 and 23 s in push run 44657225220; the pause and the retry were skipped in both.
+- **The cleanup run** 44657225140 (success) deleted A0's `claude/affectionate-curie-hzo99y`, C1's `claude/awesome-brown-lmfi8e` and C2's `claude/dazzling-feynman-cjl16t`.
+- **Closed with the merge** (the carried-items file): DM-59 item 7's Chromium retry; the pin test's gap (M05 finding 13); M02's N2 (H-01), with N1, N4, the Codex P2 and N6 declined (DM-96); M09's C-16 and C-17's split (the fifth job is A2's).

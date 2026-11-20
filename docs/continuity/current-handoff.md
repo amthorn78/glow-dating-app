@@ -1,4 +1,4 @@
-# Current handoff — App Manager 12 (20 November 2026; DM-97 approved SV4 A0; PR57 waits on its run and Codex)
+# Current handoff — App Manager 12 (20 November 2026; SV4 A0 merged with PR57; A1's prompt next)
 
 This file only routes: the current item, what happens next and who waits on whom. Each fact lives in one home, listed in the [documentation map](../README.md); earlier handoffs are in `docs/continuity/history/`, the last as [P06.2 to its merge](history/p06-2-handoff.md).
 
@@ -9,7 +9,7 @@ This file only routes: the current item, what happens next and who waits on whom
 - **Manager: App Manager 12** ([OD-67](owner-directions.md)), in `Glow App - No Stream`, on the manager branch `claude/magical-wozniak-yfmmx2` (its outcome branch; on the cleanup's keep-list).
 - **Dev Manager 6** (`session_01Q789u2AYaBgUF8gPDLeJmV`; OD-82, from Dev Manager 5's handover) holds `claude/dev-manager`. Nathan carries each consultation to it (OD-25). Its read of governing Markdown stays (OD-76).
 - **Never ask Nathan to perform a GitHub operation** (OD-58). A failure that seems to need a re-run goes to the Dev Manager first (OD-32).
-- **PR56 merged** at `c2cffbe`: PF01 1.20 (DM-95's AE1 to AE5), M07's and A01-R's records, OD-77 to OD-81. Before it, PR55 (`d3273f3`): PF02 1.8 and D-06 and D-07. Under D-07 the Dev Manager reads a code item at its brief and before its merge; under D-06 one Markdown-only item may run beside a code item.
+- **PR57 merged** at `499ccbb`: SV4 A0 (the database job split by suite, the Chromium retry, the pin test), its corrections C1 and C2, and DM-97. Before it, PR56 (`c2cffbe`): PF01 1.20, M07's and A01-R's records, OD-77 to OD-81. Under D-07 the Dev Manager reads a code item at its brief and before its merge; under D-06 one Markdown-only item may run beside a code item.
 - **M07 is done** ([its record](../testing/evidence/2026-11-19-m07-costed-list.md)). **OD-77:** no cost now; the legal entity and what needs it deferred; Railway and WordPress hosting available; Stream's Maker account assumed. **OD-78:** the MVP prototype, the priority, is the whole system working together (app, server, database and HDE, integrated); business set-up waits for it. **OD-79:** the app's database on HDE's existing PostgreSQL service (OD-18); the existing Railway components analyzed and retired; HDE still under development.
 - **A01-R is done** ([its record](../testing/evidence/2026-11-19-a01-r-hde-canon-read.md)): HDE's pair read is deployed, but HDE has no permitted way to create a real member's chart, no credential for the app and no test environment. **OD-80:** no design decision about HDE now; a later integration process handles it; the app does as much pre-integration work as possible.
 - **OD-81:** `glow-frontend-v2` is deprecated (Dev Manager 5's note); the Railway analysis does not cover it, and its retirement and the domain `glowme.io` are not decided.
@@ -18,20 +18,20 @@ This file only routes: the current item, what happens next and who waits on whom
 - **Done:** P00 to P05 (fixture scope), M01 to M09, A01-R, P06.1, P06.DB, P06.2, P09.3a, P06.2-F, P06.3, SV1 to SV3 and SV2-R.
 - **Owner directions:** OD-01 to OD-82. **Review log:** DM-01 to DM-97. **Linear (OD-29).** Every prompt names its environment (OD-36) and glow-docs as attached (OD-74).
 
-## Waiting checkpoint (20 November 2026, 01:39 UTC, App Manager 12)
+## Waiting checkpoint (20 November 2026, 02:10 UTC, App Manager 12)
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 12 | GitHub Actions and Codex | PR57's run and Codex's review on its final head (DM-97, section 13) | It does not merge |
+| Nathan | App Manager 12 | SV4 A1's prompt (the rules) | Nathan starts nothing |
 
 ## Next actions (App Manager 12)
 
-1. **SV4 A0** (integrated at `4dfb0ac`; C1 at `b407239`; C2 at `a63e7ae`; every review closed; DM-97 approved, AH1 to AH6 applied as given): PR57's run and Codex on its final head; the merge; then A1's prompt.
+1. **SV4 A1** (the rules; A0 merged with PR57 at `499ccbb`, `main`'s run 44657225220 passed): its prompt, with D7's and D11's searches repeated at its commit (PF02-R14); then the session, the verification, the exact-head review, Codex and the Dev Manager's pre-merge read.
 2. **Manager records:** PF02 1.9 (AM12-31 to AM12-45); the status log's move (M09 (b)); R-07, R-10, R-26, R-28.
 
 **Carried follow-ups** live in their owning homes: [`carried-to-later-items.md`](../planning/carried-to-later-items.md) (with "Routed by M09" and "Routed by A01-R"), the P11 plan, the review log's "Deferred conditions".
 
-## Branches and PRs (20 November 2026, 01:39 UTC; listed with `git ls-remote` at this time)
+## Branches and PRs (20 November 2026, 02:10 UTC; listed with `git ls-remote` at this time)
 
-- **Open PRs:** PR57, the manager branch into `main` (full scope). `main` is at `c2cffbe` (PR56).
-- **Remote branches, six:** `main`; the manager branch; `claude/dev-manager` (`b505a8e`, merged); A0's `claude/affectionate-curie-hzo99y` (`c77646b`, merged); C1's `claude/awesome-brown-lmfi8e` (`b407239`) and C2's `claude/dazzling-feynman-cjl16t` (`a63e7ae`), each fast-forwarded.
+- **Open PRs:** none. `main` is at `499ccbb` (PR57).
+- **Remote branches, three:** `main`; the manager branch (`main`'s merge commit, then the receipt); `claude/dev-manager` (`b505a8e`, merged). The cleanup run 44657225140 deleted A0's, C1's and C2's branches.
