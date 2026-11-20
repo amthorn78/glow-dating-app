@@ -57,17 +57,20 @@ See [interaction semantics](../../docs/architecture/interactions-fixtures.md),
 
 P06.2 Stage A adds the chat contact port (`glow_domain/chat.py`), the chat provider
 port with an in-memory fixture adapter (`glow_domain/chat_provider*.py`), the token rules
-(`glow_domain/chat_tokens.py`) and the `glow_chat` package: an ORM persistence adapter
-that carries P06.DB's send-versus-revocation design onto `glow_persistence`'s models,
+(`glow_domain/chat_tokens.py`; removed by SV4 A1, which keeps only the revocation's
+cut-off, `revocation_cutoff_sent`: the SV4 brief's D7; OD-45, no provider token is
+issued) and the `glow_chat` package: an ORM persistence adapter that carries P06.DB's
+send-versus-revocation design onto `glow_persistence`'s models,
 and the outbox delivery to the provider port. Migration `0003` adds `ChatIdentity` and
 `ChatReadCursor`; it is applied only to the disposable proof database. Stage B1 (offline,
 against the fixture provider) adds user provisioning to the port, delivered before the
 channel that names the user (CX4), a database-assigned order column on the outbox
 (`glow_persistence/fields.py`), the reconciliation mark on bindings and identities after a
 dead letter (F3, CX6), the token grant's transaction in the adapter (F1: shared locks on
-the account and the session, the issue time from the database clock) with the cut-off sent
-at the next whole second, the send's profile and consent checks in match activation (CX5),
-and the F2, F4 and F5 nits; it amends the unapplied `0003` for the schema (the
+the account and the session, the issue time from the database clock; removed by SV4 A1:
+D7; OD-45) with the cut-off sent at the next whole second (kept, for the epoch
+revocation), the send's profile and consent checks in match activation (CX5), and the F2,
+F4 and F5 nits; it amends the unapplied `0003` for the schema (the
 [migration plan](../../docs/operations/migration-plan.md)). `glow_chat` needs
 a database and runs only under `proofs/postgres-ordering`'s settings, which test it on
 PostgreSQL in CI; this runtime imports none of it and keeps the dummy backend
@@ -76,18 +79,27 @@ call is added; B2 adds the Stream adapter on this port.
 See the [data model](../../docs/architecture/data-model.md), "Chat contact and the outbox".
 
 P06.2 Stage B2 adds the Stream adapter on that port, `glow_domain/chat_provider_stream.py`
-(`StreamChatProvider`), and the client token's signer (`sign_chat_token`), with Stream's
-server SDK `getstream` 6.1.0 and `pyjwt` 2.15.0 pinned in the **development scope only**
-(`requirements-dev.in`; `tests/test_dependency_pins.py` holds them to the same version and
-hashes as the harness's lock). The adapter takes an injected `getstream` client and holds
-nothing else: it never constructs a client, reads no environment variable and imports only
-the port, the token module and the SDK, so it loads without Django; the sealed-runtime
-test shows the runtime imports neither it nor the SDK. It runs only in the API's offline
-tests (`tests/test_chat_provider_stream.py`: one port contract against the fixture and
-against the adapter on a hand-written recorded transport) and in `proofs/stream-chat`'s
-`conformance` command, which proves it live against the development application through
-the harness's guard. No runtime path constructs a client or signs a token; P11 wires the
-runtime, decides how it builds the client, and moves the pin to the runtime scope.
+(`StreamChatProvider`), and the client token's signer (`sign_chat_token`; removed by SV4
+A1: D7; OD-45, no provider token is issued), with Stream's server SDK `getstream` 6.1.0
+and `pyjwt` 2.15.0 pinned in the **development scope only** (`requirements-dev.in`;
+`tests/test_dependency_pins.py` holds them to the same version and hashes as the
+harness's lock; `pyjwt` stays pinned there for SV1, which uses it: H-02). The adapter
+takes an injected `getstream` client and holds nothing else: it never constructs a
+client, reads no environment variable and imports only the port and the SDK, so it loads
+without Django; the sealed-runtime test shows the runtime imports neither it nor the SDK.
+It runs only in the API's offline tests (`tests/test_chat_provider_stream.py`: one port
+contract against the fixture and against the adapter on a hand-written recorded
+transport) and in `proofs/stream-chat`'s `conformance` command, which proves it live
+against the development application through the harness's guard. No runtime path
+constructs a client or signs a token; P11 wires the runtime, decides how it builds the
+client, and moves the pin to the runtime scope.
+
+P06.2 Stage C1 adds the conversation reads: the port and its domain types
+(`glow_domain/chat_reads.py`), their projections into the production contracts
+(`glow_domain/chat_projections.py`) and the ORM reads (`glow_chat/reads.py`). Since SV4 A1
+(its brief's D5; OD-60, H) they serve a conversation read-only for each cause
+`chat.history` marks `read_only` (every cause at launch) and hide it for an unmatch, a
+block, a deletion and each cause marked `hidden`, with one refusal for every hidden cause.
 
 ## Reproduce locally
 

@@ -1,17 +1,19 @@
 """The conversation reads behind ``glow_domain.chat_reads.ConversationReads`` (P06.2 Stage
 C1; the brief's "Stage C under OD-45", points b, c and e, with DM-22's conditions).
 
-It carries the send's protocol to the reads, as B1's grant does:
+It carries the send's protocol to the reads:
 
 - every transaction runs at READ COMMITTED and takes the send's row locks in the send's
   canonical order (the lower account, the higher account, the match, the session), but
   ``FOR SHARE``: a read waits for a revocation in flight, which holds one of those rows under
   its writer's lock (an account ``FOR NO KEY UPDATE``, any other row ``FOR UPDATE``; DM-61),
   and then reads its result; a revocation waits for a read in flight; no reader
-  excludes another;
-- every check is the send's, in the send's order, on the rows as locked, with the time
-  read from ``clock_timestamp()`` after the locks (``OrmContactPersistence``'s own lock,
-  clock and profile-and-consent helpers, so the two cannot drift);
+  excludes another. After them it takes ``chat.history``'s pointer ``FOR SHARE`` through
+  ``glow_profiles.settings_store.read_shared`` (SV2's D19 order), so a publication of the
+  setting and a read cannot cross;
+- every check runs on the rows as locked, with the time read from ``clock_timestamp()``
+  after the locks (``OrmContactPersistence``'s own lock and clock, so the two cannot drift),
+  under the read rule below;
 - the history read checks in one transaction, which ends before the provider call; the
   call runs outside any transaction, so no lock is held across it and a safety action
   never waits on the provider; then a new transaction takes the same shared locks and
@@ -31,6 +33,27 @@ It carries the send's protocol to the reads, as B1's grant does:
 There is no switch here (DM-13 2.1). A probe may observe a read at its hold points; it
 only signals and waits.
 
+**The read rule** (the SV4 brief's D5; OD-60, H; DM-96), for the history read, the list and
+the read cursor; the send's own checks do not change:
+
+- the reader's session is valid, unexpired and at the reader's epoch, and the reader's account
+  is ``active``;
+- the match is ``active`` (an unmatch or a block ends it) and no block is active either way;
+- the other account is ``active``, or ``suspended`` (a cause below); a deletion works as an
+  unmatch, and every other state refuses as before;
+- then each cause that stops messaging reads its value in ``chat.history``: ``own_pause`` and
+  ``other_pause`` (that member's profile ``paused``, or SV2's ``incomplete``, read as a pause),
+  ``restriction`` (either profile ``restricted``; a ``removed`` profile is a deletion, so it is
+  hidden), ``suspension`` (the other account ``suspended``) and ``withdrawn_consent`` (either
+  member's latest onboarding decision not ``accepted``). ``read_only`` serves the conversation
+  (the page, the list entry and the cursor's move); ``hidden`` refuses it. Fail-closed on the
+  consent limit (SV2's D2): while the setting names the launch onboarding version, each cause
+  reads its value; once it names any other, every cause reads ``hidden``.
+
+Every hidden cause refuses with one reason, ``CONVERSATION_HIDDEN``, which names no cause; the
+earlier refusals (the block, the unmatch, the deletion, the sign-out, the expiry) keep theirs,
+and the served layer maps every one to ``not_found`` (``glow_domain.chat_projections``).
+
 **Glow's rows define the conversation** (point b): a page is the match's accepted
 ``MessageSubmission`` rows, in acceptance order (``glow_domain.chat_reads``, DM-22 2.2):
 the ``delivered_at`` of each message's ``message_submitted`` event, then its ``sequence``.
@@ -42,10 +65,10 @@ one call; a page with no accepted message makes no call.
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from dataclasses import dataclass, replace
+from collections.abc import Callable, Iterable, Mapping
+from dataclasses import dataclass, field, replace
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 from uuid import UUID
 
 from django.db import IntegrityError, connection, transaction
@@ -54,6 +77,7 @@ from django.db.models import Q
 from glow_chat import events
 from glow_chat.contact import DEADLOCK_DETECTED, OrmContactPersistence, _Refused
 from glow_domain import chat
+from glow_domain import profile_settings as ps
 from glow_domain.chat import TransactionProbe
 from glow_domain.chat import TransactionTrace as Trace
 from glow_domain.chat_provider import CHANNEL_UNAVAILABLE, error_code
@@ -77,13 +101,35 @@ from glow_domain.chat_reads import (
     UnsentRow,
     page_messages,
 )
-from glow_persistence.models import AccountSession, Block, ChatBinding, ChatReadCursor, Match
+from glow_persistence.models import (
+    AccountSession,
+    Block,
+    ChatBinding,
+    ChatReadCursor,
+    ConsentDecision,
+    Match,
+    Profile,
+)
+from glow_profiles import settings_store
+from glow_profiles.tx import Refused as SettingRefused
+from glow_profiles.tx import Tx
 
-# The send's own helpers: one lock, one clock and one profile-and-consent check for the
-# send, the grant and the reads.
+# The send's own helpers: one shared lock and one clock for the send and the reads.
 _lock_shared = OrmContactPersistence._lock_shared
 _clock = OrmContactPersistence._clock
-_contact_state_checks = OrmContactPersistence._contact_state_checks
+
+# D5: the one reason every hidden cause refuses with; it names no cause.
+CONVERSATION_HIDDEN = "conversation_hidden"
+# The onboarding consent's wording at launch, which ``chat.history`` names at launch (SV2's D2).
+LAUNCH_CONSENT_POLICY_VERSION: str = ps.LAUNCH_DEFAULTS[ps.HISTORY]["consent_policy_version"]
+READ_ONLY = "read_only"
+# The profile states read as a pause of their member: SV2's ``incomplete`` is a profile that is
+# not shown and that its member can make visible again, as a pause is; neither is a safety
+# restriction (D5; DM-96).
+PAUSED_STATES = frozenset({"paused", "incomplete"})
+# The other account's states a conversation can still be read in: ``active``, and a
+# suspension, a cause of its own. Every other state (a deletion first) refuses as before.
+READABLE_OTHER_STATES = frozenset({"active", "suspended"})
 
 _SUBMISSIONS = "glow_persistence_messagesubmission"
 _EVENTS = "glow_persistence_outboxevent"
@@ -132,6 +178,75 @@ class _Selected:
     unsent: tuple[UnsentRow, ...]
     older: PageCursor | None
     newer: PageCursor | None
+
+
+@dataclass
+class _Pointers:
+    """What ``settings_store.read_shared`` takes of a transaction: its cursor and the pointers it
+    holds, which the store records and checks against SV2's D19 order. A read's transaction
+    holds no other pointer."""
+
+    cursor: Any
+    pointers: list[str] = field(default_factory=list)
+
+
+def readable(causes: Iterable[str], history: Mapping[str, Any]) -> bool:
+    """D5: whether a conversation with ``causes`` is served, read-only, under ``chat.history``'s
+    ``history``: with no cause, always; otherwise only while the setting names the launch
+    onboarding version and every cause reads ``read_only``. Any other version, a missing key or
+    any other value reads ``hidden`` (fail-closed)."""
+    found = frozenset(causes)
+    if not found:
+        return True
+    if history.get("consent_policy_version") != LAUNCH_CONSENT_POLICY_VERSION:
+        return False
+    return all(history.get(cause) == READ_ONLY for cause in found)
+
+
+def _history(cursor: Any) -> Mapping[str, Any]:
+    """``chat.history``'s current content, its pointer ``FOR SHARE``, taken after the row locks
+    (SV2's D19 order). A setting that cannot be resolved refuses the read."""
+    try:
+        found = settings_store.read_shared(cast(Tx, _Pointers(cursor)), (ps.HISTORY,))
+    except SettingRefused as refused:
+        raise _Refused(refused.reason) from None
+    content: Mapping[str, Any] = found[ps.HISTORY].content
+    return content
+
+
+def _causes(actor_id: UUID, other_id: UUID, other_state: str) -> frozenset[str]:
+    """D5's causes for one conversation, read under the account locks that every writer of a
+    profile or a consent decision takes first (DM-13 4.1). A profile that is neither shown nor
+    one of the causes (``removed``, which a deletion writes, or none) refuses the read as
+    hidden."""
+    causes: set[str] = set()
+    if other_state == "suspended":
+        causes.add("suspension")
+    profiles = dict(
+        Profile.objects.filter(account_id__in=(actor_id, other_id)).values_list(
+            "account_id", "state"
+        )
+    )
+    for account_id, pause in ((actor_id, "own_pause"), (other_id, "other_pause")):
+        state = profiles.get(account_id)
+        if state in PAUSED_STATES:
+            causes.add(pause)
+        elif state == "restricted":
+            causes.add("restriction")
+        elif state != "visible":
+            raise _Refused(CONVERSATION_HIDDEN)
+    for account_id in (actor_id, other_id):
+        latest = (
+            ConsentDecision.objects.filter(
+                account_id=account_id, purpose=chat.ONBOARDING_CONSENT_PURPOSE
+            )
+            .order_by("-version")
+            .values_list("state", flat=True)
+            .first()
+        )
+        if latest != "accepted":
+            causes.add("withdrawn_consent")
+    return frozenset(causes)
 
 
 def _signal(probe: TransactionProbe | None, name: str) -> None:
@@ -223,14 +338,16 @@ class OrmConversationReads:
     def __init__(self, texts: TextReader) -> None:
         self.texts = texts
 
-    # -- the send's checks, under the send's shared locks -------------------------------
+    # -- the read rule, under the send's shared locks ----------------------------------
 
     @staticmethod
     def _authorize(
         cursor: Any, probe: TransactionProbe | None, session_id: UUID, match_id: UUID
     ) -> _Members:
-        """The send's checks for one conversation, in the send's order (``contact.send``),
-        on the rows locked ``FOR SHARE`` in the send's order."""
+        """D5's read rule for one conversation, on the rows locked ``FOR SHARE`` in the send's
+        order and ``chat.history`` read under its pointer after them: the send's checks of the
+        match, the session and the block, in the send's order (``contact.send``); the other
+        account in a readable state; then the causes, each by its value in the setting."""
         # Only identifiers are read before the locks: a match's pair and a session's
         # account never change, and the locked rows are checked against them (F2).
         first_pair = (
@@ -271,6 +388,8 @@ class OrmConversationReads:
             ("account_id", "state", "epoch", "expires_at"),
             cursor,
         )
+        # D5: the setting's pointer, after the row locks (SV2's D19 order).
+        history = _history(cursor)
         _signal(probe, "after_locks")
         now = _clock(cursor)
         if match_state != "active":
@@ -279,7 +398,12 @@ class OrmConversationReads:
             raise _Refused(chat.MATCH_CHANGED)
         if locked_account != actor_id:
             raise _Refused(chat.SESSION_CHANGED)
-        if low_state != "active" or high_state != "active":
+        reader_state, other_state = (
+            (low_state, high_state) if actor_id == low_id else (high_state, low_state)
+        )
+        if reader_state != "active" or other_state not in READABLE_OTHER_STATES:
+            # The reader's own account, and a deletion of the other's, which works as an
+            # unmatch (OD-60, H), keep the refusal they had.
             raise _Refused(chat.ACCOUNT_NOT_ACTIVE)
         if session_state != "valid":
             raise _Refused(chat.SESSION_NOT_VALID)
@@ -289,9 +413,9 @@ class OrmConversationReads:
             raise _Refused(chat.SESSION_EPOCH_STALE)
         if _blocked(actor_id, other_id):
             raise _Refused(chat.BLOCKED)
-        # D5: both profiles visible and both onboarding consents accepted, read under the
-        # account locks every writer of them takes.
-        _contact_state_checks(low_id, high_id)
+        # D5: each cause by its value in chat.history; every hidden one refuses alike.
+        if not readable(_causes(actor_id, other_id, str(other_state)), history):
+            raise _Refused(CONVERSATION_HIDDEN)
         return _Members(actor_id, other_id)
 
     # -- what a conversation shows the member ---------------------------------------------
@@ -535,10 +659,11 @@ class OrmConversationReads:
     def _list(
         self, cursor: Any, probe: TransactionProbe | None, session_id: UUID
     ) -> tuple[ConversationEntry, ...]:
-        """The session's checks, then each conversation's own, under the shared locks of
-        every account and match it names and of the session, in the canonical order
-        (accounts, then matches, then the session). A conversation the member may no
-        longer see is not listed. No provider is called."""
+        """The session's checks, then each conversation's own under D5's read rule, under the
+        shared locks of every account and match it names and of the session, in the canonical
+        order (accounts, then matches, then the session), and ``chat.history``'s pointer after
+        them. A conversation the member may no longer see, or may see only as hidden, is not
+        listed. No provider is called."""
         session_account = (
             AccountSession.objects.filter(pk=session_id)
             .values_list("account_id", flat=True)
@@ -576,6 +701,8 @@ class OrmConversationReads:
             ("account_id", "state", "epoch", "expires_at"),
             cursor,
         )
+        # D5: the setting's pointer, after the row locks (SV2's D19 order).
+        history = _history(cursor)
         _signal(probe, "after_locks")
         now = _clock(cursor)
         # The session's checks (point c), as the send makes them.
@@ -596,11 +723,14 @@ class OrmConversationReads:
             other_id = high_id if me == low_id else low_id
             if state != "active" or (locked_low, locked_high) != (low_id, high_id):
                 continue
-            if accounts[other_id][0] != "active" or _blocked(me, other_id):
+            other_state = str(accounts[other_id][0])
+            if other_state not in READABLE_OTHER_STATES or _blocked(me, other_id):
                 continue
             try:
-                _contact_state_checks(low_id, high_id)
+                causes = _causes(me, other_id, other_state)
             except _Refused:
+                continue
+            if not readable(causes, history):
                 continue
             binding_id = (
                 ChatBinding.objects.filter(match_id=match_id).values_list("id", flat=True).first()

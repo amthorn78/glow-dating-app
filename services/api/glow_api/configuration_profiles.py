@@ -46,6 +46,22 @@ FORBIDDEN_CONNECTION_NAMES = frozenset(
         "GLOW_HDE_API_TOKEN",
     }
 )
+# M05's finding 22 (SV4 A1, its brief's D7): the names refused beside the list above, which does
+# not change, in the same presence step, before any value is read. The names M05 found accepted,
+# and the families they stand for: every libpq default (a ``PG`` prefix), Railway's database and
+# Redis names (``POSTGRES_`` and ``REDIS`` prefixes), and the chat provider's (``STREAM_``).
+FORBIDDEN_INHERITED_NAMES = frozenset(
+    {
+        "DATABASE_PUBLIC_URL",
+        "PGPASSFILE",
+        "PGSERVICE",
+        "POSTGRES_PASSWORD",
+        "REDIS_PUBLIC_URL",
+        "REDISPASSWORD",
+        "STREAM_API_SECRET",
+    }
+)
+FORBIDDEN_INHERITED_PREFIXES = ("PG", "POSTGRES_", "REDIS", "STREAM_")
 PUBLIC_NAMES = frozenset({"EXPO_PUBLIC_GLOW_MODE", "EXPO_PUBLIC_GLOW_API_BASE_URL"})
 
 
@@ -158,9 +174,22 @@ PROFILE_NAMES = frozenset(
 )
 
 
+def inherited_name_refused(name: str) -> bool:
+    """A name refused by its presence alone: never its value (M05's finding 22)."""
+    return name in FORBIDDEN_INHERITED_NAMES or name.startswith(FORBIDDEN_INHERITED_PREFIXES)
+
+
 def forbidden_configuration(environ: Mapping[str, str]) -> tuple[ConfigurationIssue, ...]:
     issues: list[ConfigurationIssue] = []
-    present = tuple(sorted((FORBIDDEN_CONNECTION_NAMES | SECRET_SLOT_NAMES).intersection(environ)))
+    present = tuple(
+        sorted(
+            name
+            for name in environ
+            if name in FORBIDDEN_CONNECTION_NAMES
+            or name in SECRET_SLOT_NAMES
+            or inherited_name_refused(name)
+        )
+    )
     if present:
         issues.append(
             ConfigurationIssue(IssueCategory.CONTRADICTORY, "inherited_connection", present)

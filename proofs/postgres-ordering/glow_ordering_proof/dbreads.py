@@ -153,29 +153,3 @@ def match_between(low: UUID, high: UUID) -> tuple[UUID, str] | None:
         .first()
     )
     return None if row is None else (row[0], str(row[1]))
-
-
-def identity_row(account_id: UUID) -> tuple[str, str | None, datetime | None] | None:
-    """P06.2 B1: the account's chat identity: (state, reconcile_code, tokens_revoked_before)."""
-    from glow_persistence.models import ChatIdentity
-
-    row = (
-        ChatIdentity.objects.filter(account_id=account_id)
-        .values_list("state", "reconcile_code", "tokens_revoked_before")
-        .first()
-    )
-    return None if row is None else (str(row[0]), row[1], row[2])
-
-
-def event_times(event_type: str, aggregate_id: UUID) -> tuple[datetime, datetime] | None:
-    """P06.2 B1: an outbox event's (available_at, created_at): the database clock the
-    writer read under its locks, and the app's clock at the row's save."""
-    from glow_persistence.models import OutboxEvent
-
-    row = (
-        OutboxEvent.objects.filter(event_type=event_type, aggregate_id=aggregate_id)
-        .order_by("-aggregate_version")
-        .values_list("available_at", "created_at")
-        .first()
-    )
-    return None if row is None else (row[0], row[1])

@@ -1,9 +1,4 @@
-"""App-owned P02 definitions, not a live ORM/repository implementation.
-
-Only static_settings installs these models. No methods perform persistence.
-Cross-row safety, authorization and state transitions belong in future atomic
-repositories; field/check definitions alone do not enforce them. See data-model.md.
-"""
+"""Models used by the sealed slices; the served runtime installs none."""
 
 import uuid
 
@@ -699,7 +694,12 @@ class DirectionalInteraction(Record):
     deleted and created again, and it excludes nothing. ``decided_at`` is the transaction's
     ``clock_timestamp()`` at the row's last like, pass or undo, which resurfacing's and undo's
     waiting periods count from; the field's default (the application's clock) fills a row written
-    otherwise, as the proofs' seeded rows are."""
+    otherwise, as the proofs' seeded rows are.
+
+    ``retired_at`` (SV4 A1, migration 0013; its brief's D3) is set by ``glow_chat``'s ``block``,
+    with the database's clock, on every ``liked`` row between the pair, either way, and on
+    nothing else of the row: a like made before a block never counts toward a match. A pass, or
+    a like that replaces a pass, writes it null. No read of the actor's own row returns it."""
 
     actor = models.ForeignKey(AppAccount, on_delete=models.CASCADE, related_name="outgoing_actions")
     target = models.ForeignKey(
@@ -708,6 +708,7 @@ class DirectionalInteraction(Record):
     state = models.CharField(max_length=16, choices=choices("liked", "passed", "withdrawn"))
     policy_version = models.CharField(max_length=100)
     decided_at = models.DateTimeField(default=timezone.now)
+    retired_at = models.DateTimeField(null=True)
 
     class Meta(Record.Meta):
         constraints = Record.Meta.constraints + [

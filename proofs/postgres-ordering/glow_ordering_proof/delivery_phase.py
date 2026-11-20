@@ -588,10 +588,6 @@ def _lost_provisioning(
     _require(
         refused.outcome == "refused" and refused.reason == "binding_not_active", refused.label()
     )
-    # A grant for the marked, unprovisioned identity is refused too (5.1).
-    session = world.session_of(marked_account)
-    granted = ctx.state_subject.grant_token(session)
-    _require(granted.outcome == "refused" and granted.reason == "no_chat_identity", granted.label())
     _require(ctx.subject.suspend(marked_account).outcome == "applied")
     later = _deliver(delivery)
     _require(
@@ -634,9 +630,9 @@ def _lost_provisioning(
     return (
         "a provisioning whose answer was lost dead-lettered after 5 attempts and marked the"
         " identity (pending, provider_unavailable); the channel dead-lettered member_unavailable"
-        " without a call and the binding failed and marked; a grant was refused; the later"
-        " deactivation and token revocation made their calls (the user existed), and for a user"
-        " the provider never created they counted as done"
+        " without a call and the binding failed and marked; the later deactivation and token"
+        " revocation made their calls (the user existed), and for a user the provider never"
+        " created they counted as done"
     )
 
 

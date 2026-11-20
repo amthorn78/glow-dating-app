@@ -1,9 +1,10 @@
-"""The Stream adapter on the chat provider port, and the client token's signer (P06.2
-Stage B2; the brief's design points c to e, with DM-16's conditions).
+"""The Stream adapter on the chat provider port (P06.2 Stage B2; the brief's design points c
+and d, with DM-16's conditions). Its client token's signer was removed by SV4 A1 (its brief's
+D7; OD-45: no provider token is issued).
 
 **Its place.** Beside the port and its fixture adapter in ``glow_domain``, because the seal
 (DM-16 2.3) requires that it import nothing from Django, ``glow_persistence`` or
-``glow_chat``: only the port, the token module and the SDK. ``glow_domain`` is the
+``glow_chat``: only the port and the SDK. ``glow_domain`` is the
 Django-free package, so the harness can import this module by path without Django
 (DM-16 4.6), and the runtime's seal keeps it out of every runtime import
 (``tests/test_chat_sealed_runtime.py``). P11 decides how the runtime builds a client and
@@ -63,14 +64,6 @@ field (the user, the member, custom data, reactions, attachments, timestamps) is
 and so is every message Glow did not ask for; an ID answered twice is not trusted and left
 out. Its errors map as every operation's: 404 with code 16 is ``channel_unavailable``, and a
 success without its list of messages is ``provider_unavailable``.
-
-**The signer** (design point e; DM-16 3.1 to 3.3). ``getstream`` 6.1.0's ``create_token``
-sets ``iat`` to its own clock minus 5 s and ``exp`` to its own clock plus a lifetime, with
-no parameter for either, so the pre-approved fallback signs the token here: HS256 with the
-injected client's own secret, read at signing time and never kept; the claims are exactly
-``user_id``, ``iat`` (the grant's ``issued_at`` truncated to the second, less
-``IAT_BACKDATE_SECONDS``, which is 0) and ``exp`` (the grant's ``expires_at`` truncated to
-the second, never later; the SDK's clock plays no part).
 """
 
 from __future__ import annotations
@@ -81,7 +74,6 @@ from datetime import UTC, datetime
 from typing import Any
 
 import httpx
-import jwt
 from getstream.exceptions import StreamApiException, StreamTransportException
 from getstream.models import (
     ChannelInput,
@@ -102,13 +94,9 @@ from .chat_provider import (
     ProviderReceipt,
     text_read_ids,
 )
-from .chat_tokens import TokenGrant
 
 PROVIDER_NAME = "stream"
 CHANNEL_TYPE = "glow-match"
-# The fixed number of whole seconds taken off the truncated issue time (DM-16 3.1). It is
-# 0 unless Stream refuses a token whose ``iat`` is the current second; never more than 5.
-IAT_BACKDATE_SECONDS = 0
 # Stream's "object does not exist" answer.
 _NOT_FOUND = (404, 16)
 # Stream's input error, which covers several causes on a send (4.5).
@@ -371,31 +359,3 @@ def _send_error(error: BaseException) -> StreamProviderError:
         if about_user and _USER_MISSING.search(message):
             return StreamProviderError(MEMBER_UNAVAILABLE, status=status, number=number)
     return _mapped(error, missing=CHANNEL_UNAVAILABLE)
-
-
-# -- the signer --------------------------------------------------------------------------
-
-
-def _whole_second(moment: datetime) -> int:
-    """The moment truncated to the whole second, as a Unix time; aware times only."""
-    if moment.tzinfo is None:
-        raise ValueError("an aware time is required")
-    return int(moment.replace(microsecond=0).timestamp())
-
-
-def token_claims(grant: TokenGrant) -> dict[str, Any]:
-    """Exactly ``user_id``, ``iat`` and ``exp``, from the grant (DM-16 3.1, 3.2, 3.3)."""
-    return {
-        "user_id": grant.user_ref,
-        "iat": _whole_second(grant.issued_at) - IAT_BACKDATE_SECONDS,
-        "exp": _whole_second(grant.expires_at),
-    }
-
-
-def sign_chat_token(grant: TokenGrant, client: Any) -> str:
-    """The client's token for a grant, signed HS256 with the injected client's own secret,
-    read here and kept nowhere (DM-16 3.3)."""
-    token = jwt.encode(token_claims(grant), client.api_secret, algorithm="HS256")
-    if not isinstance(token, str):
-        raise TypeError("the JWT library returned a non-string token")
-    return token

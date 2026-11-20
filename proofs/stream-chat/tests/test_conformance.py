@@ -1,8 +1,9 @@
 """P06.2 Stage B2: the ``conformance`` command, offline (DM-16 1.1, 4.1, 4.3, 4.4, 4.6).
 
 The Stream adapter is imported from ``services/api`` by the command's own import route, in
-this harness's environment (no Django here), and run against the fake server and fake
-client sessions: no network, no Stream, no Node, no ``STREAM_*`` variable.
+this harness's environment (no Django here), and run against the fake server: no network,
+no Stream, no Node, no ``STREAM_*`` variable. No row opens a client session since the token
+rows were retired (SV4 A1, its brief's D7).
 """
 
 from __future__ import annotations
@@ -10,19 +11,16 @@ from __future__ import annotations
 import json
 import sys
 import unittest
-from collections.abc import Callable, Iterator
-from contextlib import contextmanager
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 from unittest import mock
 
 import httpx
-import jwt
 
 import tests  # noqa: F401
 from glow_stream_proof import baseline, cli, configuration, conformance
-from glow_stream_proof.client_bridge import Reply
 from glow_stream_proof.conformance import ConformanceRun, load_api_modules, start_refusals
 from glow_stream_proof.credentials import EnvironmentRefused, ServerCredentials
 from glow_stream_proof.proof_run import RunStopped
@@ -35,12 +33,10 @@ from tests.fakes import (
     PREFIX,
     SECRET,
     FakeServer,
-    FakeSession,
     NoSettle,
     error,
-    http_reply,
     make_run,
-    ws_refused,
+    ok,
 )
 from tests.test_cli import FakeContext
 from tests.test_preflight import dashboard_user
@@ -52,77 +48,46 @@ OPERATIONS = tuple(PORT.OPERATIONS)
 NOW = datetime(2026, 10, 23, 12, 0, tzinfo=UTC)
 
 
-@contextmanager
-def no_revocation_wait() -> Iterator[None]:
-    """The run waits for the wall clock to pass a signed token's iat; not here."""
-    with mock.patch.object(conformance, "AFTER_REVOCATION_MARGIN_SECONDS", -2.0):
-        yield
-
-
-def stream_like(
-    server: FakeServer, tokens: dict[str, str], session: FakeSession, op: str, params: Any
-) -> Reply | None:
-    """Stream's answers to a client session, as the harness's P06.1 runs recorded them: a
-    token of a deactivated user or one issued before the user's cut-off is refused at the
-    connect (401 with a token code); a channel read by a member succeeds and one by a
-    non-member (a removed member) gets 404 code 16."""
-    token = tokens.get(session.label)
-    claims = jwt.decode(token, options={"verify_signature": False}) if token else {}
-    user_id = str(claims.get("user_id"))
-    if op == "connect":
-        user = server.users.get(user_id)
-        if user is None:
-            return ws_refused(401, 5, message="user not found")
-        if user.get("deactivated_at"):
-            return ws_refused(401, 40, message="user deactivated")
-        cut = user.get("revoke_tokens_issued_before")
-        iat = claims.get("iat")
-        if cut and isinstance(iat, int) and iat < cut / 1e9:
-            return ws_refused(401, 40, message="token revoked")
-        return None  # the fake session's own success
-    if op == "call" and params.get("method") == "query":
-        channel_id = params.get("id")
-        members = server.members.get(channel_id)
-        if members is None or user_id not in members:
-            return http_reply(404, 16, path=f"/channels/{T}/{channel_id}/query")
-        return http_reply(201, response={"channel": {"cid": f"{T}:{channel_id}"}, "members": []})
-    return None
-
-
-def conformance_run(
-    server: FakeServer | None = None,
-    behaviour: Callable[[FakeSession, str, dict[str, Any]], Reply | None] | None = None,
-) -> tuple[ConformanceRun, FakeServer]:
+def conformance_run(server: FakeServer | None = None) -> tuple[ConformanceRun, FakeServer]:
     """A conformance run on the fakes, with the dashboard user the live application holds."""
     fake = server or FakeServer(UsageLedger())
     fake.users.setdefault("owner", dashboard_user("owner"))
-    tokens: dict[str, str] = {}
-
-    def answer(session: FakeSession, op: str, params: dict[str, Any]) -> Reply | None:
-        if behaviour is not None:
-            scripted = behaviour(session, op, params)
-            if scripted is not None:
-                return scripted
-        return stream_like(fake, tokens, session, op, params)
-
-    run, server = make_run(fake, default_behaviour=answer, run_class=ConformanceRun)
+    run, server = make_run(fake, run_class=ConformanceRun)
     assert isinstance(run, ConformanceRun)
-    original = run._session
-
-    def session_with_token(label: str, token: str | None, **kwargs: Any) -> Any:
-        if token is not None:
-            tokens[label] = token
-        return original(label, token, **kwargs)
-
-    run._session = session_with_token  # type: ignore[method-assign]
     return run, server
 
 
 def complete(run: ConformanceRun) -> list[str]:
-    with NoSettle(), no_revocation_wait():
+    with NoSettle():
         run.preflight()
         run.run_rows()
         return run.finish(cleanup=True)
+
+
+def lagging_read_after_the_removal(run: ConformanceRun, server: FakeServer) -> None:
+    """A fault in the fake server: Stream accepts the removal of C1's two members, but its
+    first listing of C1 after the removal still shows both (a read that lags the removal).
+    Only R2's read-back meets it; R6's, later, reads the channel as it is."""
+    lagged: list[str] = []
+
+    def listing(method: str, path: str, body: Any, params: Any) -> Any:
+        c1 = run.ids.get("C1")
+        conditions = body.get("filter_conditions") if isinstance(body, dict) else None
+        if (
+            lagged
+            or c1 is None
+            or path != "/api/v2/chat/channels"
+            or not isinstance(conditions, dict)
+            or conditions.get("cid") != f"{T}:{c1}"
+            or server.members.get(c1) != []
+        ):
+            return None
+        lagged.append(c1)
+        members = [{"user_id": run.ids["U1"]}, {"user_id": run.ids["U2"]}]
+        entry = {"channel": server.effective_channel(c1), "members": members}
+        return ok(method, path, {"channels": [entry]}, 201)
+
+    server.handlers.append(listing)
 
 
 class ImportRouteTest(unittest.TestCase):
@@ -341,12 +306,10 @@ class ConformanceRunTest(unittest.TestCase):
     def test_every_row_passes_or_is_one_stated_as_recorded(self) -> None:
         verdicts = {row.row_id: row.verdict for row in self.proof.rows}
         not_passing = {k: v for k, v in verdicts.items() if v != conformance.PASS}
-        self.assertEqual(
-            not_passing,
-            {"M5": conformance.RECORDED, "R7": conformance.RECORDED, "V7": conformance.RECORDED},
-        )
+        self.assertEqual(not_passing, {"M5": conformance.RECORDED, "R7": conformance.RECORDED})
         self.assertEqual(self.problems, [])
-        self.assertEqual(len(self.proof.rows), 46)
+        # 46 until SV4 A1 retired the ten token rows (its brief's D7).
+        self.assertEqual(len(self.proof.rows), 36)
 
     def test_the_recorded_rows(self) -> None:
         by_id = {row.row_id: row for row in self.proof.rows}
@@ -359,8 +322,6 @@ class ConformanceRunTest(unittest.TestCase):
             (by_id["M5"].expected, by_id["M5"].observed, by_id["M5"].reason),
             ("member_unavailable", "member_unavailable", "as the fixture"),
         )
-        # The boundary token: this model compares strictly, so iat == cut-off is accepted.
-        self.assertEqual(by_id["V7"].observed, "accepted")
 
     def test_the_codes_the_composition_needs_and_their_mappings(self) -> None:
         by_id = {row.row_id: row for row in self.proof.rows}
@@ -410,7 +371,8 @@ class ConformanceRunTest(unittest.TestCase):
         counted = self.proof.ledger.summary()["run"]
         # Five users: U1 to U4, and M5's sender, reserved before its send (B2R3).
         self.assertEqual((counted["users"], counted["channels"]), (5, 2))
-        self.assertEqual(counted["peak_connections"], 1)
+        # No client session: 1 until SV4 A1 retired the token rows (D7).
+        self.assertEqual(counted["peak_connections"], 0)
         self.assertGreater(counted["api_calls"], 40)
         self.assertEqual(len(self.proof.users), 5)
         self.assertEqual(len(self.proof.channels), 2)
@@ -427,48 +389,54 @@ class ConformanceRunTest(unittest.TestCase):
         text = json.dumps(self.results, default=str) + conformance.render(self.results)
         self.assertIsNone(JWT_PATTERN.search(text))
         self.assertNotIn(SECRET, text)
-        self.assertEqual(self.results["verdicts"], {"PASS": 43, "RECORDED": 3})
+        self.assertEqual(self.results["verdicts"], {"PASS": 34, "RECORDED": 2})
         self.assertEqual(
             self.results["api_calls_used"], self.proof.ledger.summary()["run"]["api_calls"]
         )
 
-    def test_the_signer_rows(self) -> None:
+    def test_the_revocation_read_back(self) -> None:
+        """V4: Stream holds the exact second plus one, as ``revocation_cutoff_sent`` sent it
+        (kept from the signer rows' test when SV4 A1 retired the token rows; D7)."""
         by_id = {row.row_id: row for row in self.proof.rows}
-        self.assertEqual(by_id["T1"].detail["claim_names"], ["exp", "iat", "user_id"])
-        self.assertEqual(
-            by_id["T1"].detail["iat_minus_truncated_issue"], -ADAPTER.IAT_BACKDATE_SECONDS
-        )
-        self.assertEqual(by_id["T1"].detail["exp_minus_truncated_expiry"], 0)
         self.assertEqual(by_id["V4"].detail["sent_minus_exact_seconds"], 1)
         self.assertEqual(by_id["V4"].detail["held_minus_exact_seconds"], 1)
 
 
+# The rows that read Stream's state back and are INCONCLUSIVE when the read gets no answer.
+READ_BACK_ROWS = ("P2", "C2", "M2", "R2", "R6", "D6", "V4")
+
+
 class ConformanceVerdictTest(unittest.TestCase):
-    """What the rows say when Stream answers otherwise."""
+    """What the rows say when Stream answers otherwise. Since SV4 A1 retired the token rows
+    (D7), FAIL and INCONCLUSIVE are shown on the read-back rows."""
 
-    def test_a_read_that_still_succeeds_after_the_removal_fails_the_row(self) -> None:
-        def reads_succeed(session: FakeSession, op: str, params: dict[str, Any]) -> Reply | None:
-            if op == "call" and params.get("method") == "query":
-                return http_reply(201, response={"channel": {}})
-            return None
-
-        run, _server = conformance_run(behaviour=reads_succeed)
+    def test_a_read_back_that_lags_the_removal_fails_the_row(self) -> None:
+        run, server = conformance_run()
+        lagging_read_after_the_removal(run, server)
         complete(run)
         by_id = {row.row_id: row for row in run.rows}
-        self.assertEqual(by_id["R3"].verdict, conformance.FAIL)
-        self.assertEqual(by_id["T2"].verdict, conformance.PASS)
+        self.assertEqual(by_id["R2"].verdict, conformance.FAIL)
+        self.assertEqual(by_id["R2"].reason, "Stream shows otherwise")
+        self.assertEqual(by_id["R6"].verdict, conformance.PASS)
 
-    def test_a_connect_without_a_recorded_answer_is_inconclusive(self) -> None:
-        def no_answer(session: FakeSession, op: str, params: dict[str, Any]) -> Reply | None:
-            if op == "connect":
-                return Reply(False, None, {"kind": "error", "message": "local"})
-            return None
+    def test_a_read_back_without_a_recorded_answer_is_inconclusive(self) -> None:
+        run, server = conformance_run()
 
-        run, _server = conformance_run(behaviour=no_answer)
-        complete(run)
+        def unanswered(method: str, path: str, body: Any, params: Any) -> Any:
+            return error(method, path, 500, 0, "no answer")
+
+        with NoSettle():
+            run.preflight()
+            # During the rows only: every read-back the run makes gets no answer.
+            server.handlers.append(unanswered)
+            run.run_rows()
+            server.handlers.remove(unanswered)
+            problems = run.finish(cleanup=True)
+        self.assertEqual(problems, [])
         by_id = {row.row_id: row for row in run.rows}
-        for row_id in ("T2", "R3", "D3", "V5", "V8"):
+        for row_id in READ_BACK_ROWS:
             self.assertEqual(by_id[row_id].verdict, conformance.INCONCLUSIVE, row_id)
+            self.assertEqual(by_id[row_id].reason, "Stream's answer was not recorded", row_id)
 
     def test_a_contract_row_that_differs_is_a_difference_and_the_blocking_ones_say_so(self) -> None:
         run, _server = conformance_run()
@@ -616,7 +584,7 @@ class RecordedSenderTest(unittest.TestCase):
             (m5.expected, m5.observed, m5.verdict, m5.reason),
             ("member_unavailable", "ok", conformance.RECORDED, "differs from the fixture"),
         )
-        self.assertEqual(run.verdict_counts(), {"PASS": 43, "RECORDED": 3})
+        self.assertEqual(run.verdict_counts(), {"PASS": 34, "RECORDED": 2})
 
     def test_the_sender_is_reserved_and_recorded_before_the_send(self) -> None:
         run, server = self.stream_like_run()
@@ -644,7 +612,7 @@ class RecordedSenderTest(unittest.TestCase):
                 return error(method, path, 500, 0, "listing unavailable")
             return None
 
-        with NoSettle(), no_revocation_wait():
+        with NoSettle():
             run.preflight()
             run.run_rows()
             # Only the cleanup's listing fails: the prefix search finds nothing.
@@ -695,55 +663,24 @@ class ResultsIdentifiersTest(unittest.TestCase):
 
     def test_the_form_generic_leaves_loses_its_random_part_too(self) -> None:
         """C4R1: a string ``proof_run._generic`` has already rewritten holds ``{prefix}`` and
-        the identifier's random part. Here identifiers reach the results that way: a connect
-        refusal naming the user, as Stream's did for D3 and D7 in B2-C3 (``_text``), a
-        client note (``_client_note``), an async error (``_send``), a check's evidence
-        (``_check``) and a deferred stop (``_defer_stop``). None keeps the random part."""
-        holder: dict[str, ConformanceRun] = {}
-
-        def naming(session: FakeSession, op: str, params: dict[str, Any]) -> Reply | None:
-            if op != "connect":
-                return None
-            run = holder["run"]
-            user_id = str((params.get("user") or {}).get("id"))
-            if session.label in ("D3", "D7"):
-                return ws_refused(404, 16, message=f'user "{user_id}" does not exist')
-            if session.label == "T2":
-                run._client_note(f"client T2 connected as {user_id}")
-                return Reply(
-                    True,
-                    {"me": {"id": user_id, "role": "user"}},
-                    None,
-                    async_errors=[f"event for {user_id} in {T}:{run.ids['C1']}"],
-                )
-            return None
-
-        run, _server = conformance_run(SendCreatesItsSender(UsageLedger()), behaviour=naming)
-        holder["run"] = run
+        the identifier's random part. Here identifiers reach the results that way: a client
+        note (``_client_note``), a check's evidence (``_check``) and a deferred stop
+        (``_defer_stop``). None keeps the random part. (Until SV4 A1 retired the token rows,
+        D7, the connect refusals of D3 and D7, ``_text``, and T2's async error, ``_send``,
+        reached them too; no row opens a client session now.)"""
+        run, _server = conformance_run(SendCreatesItsSender(UsageLedger()))
         complete(run)
+        run._client_note(f"client X2 connected as {run.ids['U1']}")
         run._check("X1", "a check naming an identifier", True, f"read {run.ids['U4']} back")
         run._defer_stop(f"stopped at {run.ids['U2']}")
-        u3_rewritten = "{prefix}" + run.ids["U3"][len(PREFIX) :]
-        by_id = {row.row_id: row for row in run.rows}
         # The rewritten form is what reached the run's own state (C4R1's case).
-        self.assertEqual(
-            by_id["D3"].detail["connect_note"], f'user "{u3_rewritten}" does not exist'
-        )
-        self.assertTrue(any(n.startswith("client T2 connected as {prefix}") for n in run.notes))
+        self.assertIn("client X2 connected as {prefix}" + run.ids["U1"][len(PREFIX) :], run.notes)
         results = run.results()
         text = json.dumps(results, default=str) + conformance.render(results)
         for random_part in {value[len(PREFIX) :] for value in run.ids.values()}:
             with self.subTest(random_part=random_part[:6]):
                 self.assertNotIn(random_part, text)
-        rows = {row["row_id"]: row for row in results["rows"]}
-        for row_id in ("D3", "D7"):
-            with self.subTest(row=row_id):
-                self.assertEqual(rows[row_id]["verdict"], conformance.PASS)
-                self.assertEqual(
-                    rows[row_id]["detail"]["connect_note"], 'user "{U3}" does not exist'
-                )
-        self.assertIn("client T2 connected as {U1}", results["notes"])
-        self.assertIn("client T2 async error: event for {U1} in glow-match:{C1}", results["notes"])
+        self.assertIn("client X2 connected as {U1}", results["notes"])
         check = next(c for c in results["checks"] if c["check_id"] == "X1")
         self.assertEqual(check["evidence"], "read {U4} back")
         self.assertIn("stopped at {U2}", results["stops"])
@@ -771,9 +708,9 @@ class CommandTest(unittest.TestCase):
             patcher = mock.patch.object(cli, name, fake)
             patcher.start()
             self.addCleanup(patcher.stop)
-        for context in (NoSettle(), no_revocation_wait()):
-            context.__enter__()
-            self.addCleanup(context.__exit__, None, None, None)
+        no_settle = NoSettle()
+        no_settle.__enter__()
+        self.addCleanup(no_settle.__exit__, None, None, None)
 
     def command(self, adjust: Callable[[ConformanceRun, FakeServer], None] | None = None) -> int:
         run, server = conformance_run()
@@ -800,7 +737,7 @@ class CommandTest(unittest.TestCase):
     def test_a_clean_run_exits_zero_and_records_the_rows(self) -> None:
         self.assertEqual(self.command(), 0)
         results = self.results()
-        self.assertEqual(results["verdicts"], {"PASS": 43, "RECORDED": 3})
+        self.assertEqual(results["verdicts"], {"PASS": 34, "RECORDED": 2})
         self.assertEqual(results["post_run_problems"], [])
         self.assertIsNone(results["stop_reason"])
         markdown = next(v for k, v in self.written.items() if k.endswith(".md"))
@@ -823,17 +760,14 @@ class CommandTest(unittest.TestCase):
         )
 
     def test_a_failing_row_exits_one_after_cleanup(self) -> None:
-        def reads_succeed(session: FakeSession, op: str, params: dict[str, Any]) -> Reply | None:
-            if op == "call" and params.get("method") == "query":
-                return http_reply(201, response={"channel": {}})
-            return None
-
-        run, server = conformance_run(behaviour=reads_succeed)
+        run, server = conformance_run()
+        lagging_read_after_the_removal(run, server)
         self.proof, self.server, self.ctx = run, server, FakeContext(server)
         with mock.patch.object(conformance, "ConformanceRun", lambda *a, **k: run):
             code = cli.cmd_conformance(self.ctx, True)  # type: ignore[arg-type]
         self.assertEqual(code, cli.EXIT_ROWS_DIFFER)
-        self.assertEqual(self.results()["verdicts"].get("FAIL"), 1)  # R3: the read succeeded
+        # R2: the read-back lagged the removal (R3 until SV4 A1 retired it; D7).
+        self.assertEqual(self.results()["verdicts"].get("FAIL"), 1)
         self.assertEqual(self.results()["post_run_problems"], [])
         self.assertEqual(set(server.users), {"owner"})
 
@@ -852,7 +786,7 @@ class CommandTest(unittest.TestCase):
         self.assertEqual(
             results["stop_reason"], "stopped: guard refused POST channels/{type}/{id}: test"
         )
-        self.assertLess(len(results["rows"]), 46)
+        self.assertLess(len(results["rows"]), 36)
         self.assertEqual(set(self.server.users), {"owner"})
         self.assertEqual(results["post_run_problems"], [])
 

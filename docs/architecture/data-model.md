@@ -166,8 +166,8 @@ migration is activated by this fixture work.
 | `BirthInput`, `EngineIdentity` | Private input revisions unique by account/version; input time/provenance checks. One current mapping per account with protected birth-input FK. Resolved mapping requires engine ID plus engine/contract provenance; pending mapping has none. Engine IDs intentionally not unique across accounts. | Account-private input/mapping; engine-owned chart semantics. Shared references do not grant chart deletion rights. Cross-row input ownership is checked in UOW, not by a simple FK. |
 | `MediaAsset`, `MediaObject` (SV2 Stage B, migration 0008) | Owner FK; unique provider/storage reference when present (`storage_ref` is the original's object key); unique current position per owner (not `removed`). Approved state requires variant and review references (`review_ref` is the automated check's `StaffAudit` row). Since SV2 Stage B (its brief's D10): the delivery reference exists only while `approved` (`media_delivery_only_approved`); an approved asset holds no revocation record (`media_approved_unrevoked`); `removal_pending` and `removed` hold the owner's removal record (`removal_requested_at`, `media_removal_record`); `review_pending`, `approved` and `rejected` record G-02's seam (`detection`, `no_detector` in SV2; `media_seam_passed`). Staff's restriction on a report is its own revocation record (`restriction_ref`, the restriction's `StaffAudit` row), and the check's rejection reason a code (`rejection_reason`). `MediaObject`: one row per object in private storage, the original (one per asset, at its grant's key) and each variant processing writes; a unique key of 32 random hexadecimal characters (`media_object_opaque_key`), the adopted completion's size and entity tag (`media_object_adoption_evidence`), and the storage adapter's deletion acknowledgment (`deleted_at`). | Private originals and variants in private R2 storage (OD-62), behind the storage and processing ports, with fixture adapters only in SV2 (no R2 call, credential, SDK or decoder; P11 proves R2, PV04). App owns review, order and lifecycle; every state change goes through F05's registry table in one writer, which withholds delivery in every state but `approved`. A key holds no account, profile or asset ID, filename or member value. Only provider upload completion, authenticated by the storage adapter, moves `upload_pending` → `quarantined`; only the system review step, Glow's own processing on the adopted original then G-02's seam for every adopted upload, moves `quarantined` → `review_pending` (an upload with no variant is then rejected, `no_variant`); only the automated check approves or rejects (`system`), asking the hold port before approval and never acting on a staff restriction. Owner removal withholds delivery at once (`removal_pending`); the purge asks the hold port first, and `removed` follows the acknowledgment of every object. The purge and that acknowledgment run in any account state, under the account row's lock (`lock_account_any_state`), so a photo removed before its owner is suspended or asks for deletion is still purged; every other photo command, staff operation, system step and read refuses an account that is not active (`account_not_active`; DM-58 item 9, SV2 Stage B's correction C1). Reorder moves each photo through a temporary position above every real one inside one UOW; PostgreSQL's behaviour is shown by the profile suite, P11 proves the real target. Completion (D9) needs an approved photo: the check's approval recomputes, and the removal or restriction of the last approved photo demotes a `visible` profile. Rows are never deleted, so every outbox event's reference names an existing record. `MediaCollection.version` is derived from them, 1 plus the sum of the account's asset versions, with no column of its own (DM-58): a change that deletes an asset row, such as a retention rule, first stores the account's collection version, so that it never goes back. |
 | `MediaUploadGrant` (SV2 Stage B, migration 0008) | One per asset (one-to-one, cascading with the asset and the account); a unique opaque `grant_ref` (what `MediaUploadGrant` returns) and the original's unique object key (`media_grant_opaque_key`); the media policy version it was issued under (`policy_version`); the issue and expiry times (`media_grant_expiry`); and its use (`used_at`, the adopted upload's time, never after the expiry: `media_grant_used_in_time`). | Account-private. Short-lived (the policy's grant seconds, 60 in `development-media-1`), opaque and one-use by Glow's own record, within the policy's limits (four live photos; the 20 collection entries). Its completion is checked against the byte limit of the version the grant records, not the current one (DM-57 U3, U4); only the first matching completion is adopted, and a later one changes nothing. The store's upload credential (P11's signed upload address for the key) goes to no member in SV2; how it reaches the client is P11's (DM-57 U6). |
-| `DirectionalInteraction`, `Block` (SV3 Stage B, migration 0011) | Unique ordered actor/target; self-pairs forbidden; FK indexes support both directions. `DirectionalInteraction`: the actor's current `liked`, `passed` or, since SV3 Stage B (its brief's D12), `withdrawn` row (`glow_persistence_directionalinteraction_state`), its version, the policy version it was decided under and `decided_at`, the transaction's `clock_timestamp()` at its last like, pass or undo, from which resurfacing's and undo's waiting periods count (the field's default, the application's clock, only fills a row written otherwise, as the proofs' seeded rows are). `Block`: the actor's current `active` or `removed` row and its version. The idempotency record's receipt codes gain `withdrawn` (0011). | Account-private unilateral actions, written only by `glow_discovery.interactions` (sealed until P11) and, for blocks, `glow_chat`'s `block` and `unblock`, which the routes call unchanged. **Like and pass** (D9): one transaction that locks both members' account rows `FOR NO KEY UPDATE`, the lower first, through SV2's `lock_account`, then the five settings the selection reads (`FOR SHARE`, name order), checks a replay before anything stale (the actor, operation and key, the keyed digest), then the expected version against the row (zero for none), then the named batch (the actor's own, at its version, fresh, holding the target) and the pair's eligibility and consumption, all under the locks; otherwise the generic stale response and nothing is written. A pass over the actor's own like is refused (F08 has no such entry). The row is created, or kept and its version advanced; the named batch becomes `stale` with its version advanced (F07's `invalidate`). Nothing of the target's changes, so an unreciprocated like is never shown to its target. **Undo** (D12): only while `discovery.undo` is on, the actor's most recent pass within `waiting_days` of its `decided_at` becomes `withdrawn`, the row kept and its version advanced, never deleted and created again; a withdrawn pass excludes nothing. **Resurfacing** (D12): while `discovery.resurfacing` is on, a pass decided at least `waiting_days` before the transaction's clock excludes no longer; off, a pass excludes for good. **Block and unblock** (D11): `glow_chat`'s writers, unchanged, under both account locks: a block bumps only its actor's `blocks_version` and restricts an active match; an unblock keeps the row, marks it `removed` and advances its version, bumps the actor's `blocks_version`, and restores no match and no send. A block works after an unmatch and while either member is paused. No answer names its direction, but a match only a block restricts, read by both participants, lets the member who did not block infer it (D8's gap, carried to SV4 before P11; DM-75). |
-| `Match` | UUID pair sorted by underlying UUID value (`account_low < account_high`), unique pair and positive contact version. Its state is `active`, `restricted` (a block of an active match) or `unmatched`. | Participant-only projection (`MatchProjection`: the other member's profile and the state, never who restricted it or why); another member's match reads as not found. One pair record, never a second row: since SV3 Stage B (its brief's D10 (a)), a like that finds the target's `liked` row toward the actor makes the match in the same transaction, under the two account locks it already holds and after its recheck, through `glow_chat`'s `activate_reciprocal`: `activate_match`'s body with one check added under its account locks, the two `liked` rows, writing the same rows (the match, the binding, each member's identity if absent) and events (`identity_created` for each new identity, one `match_activated`). Simultaneous reciprocal likes serialize on the account locks, so the later one makes the match and the earlier one returns `liked` with none; the unique pair is the backstop. No route takes a match intent. Unmatch (D11) is `glow_chat`'s `unmatch`, unchanged, with no eligibility or policy prerequisite, and is final in SV3: rematch is not built, and `rematch_not_built` refuses a publication of `discovery.rematch` with `enabled` on (D12); a pair with a match row in any state is consumed, so neither member is shown to the other again and no like makes a second match or reactivates the first. |
+| `DirectionalInteraction`, `Block` (SV3 Stage B, migration 0011) | Unique ordered actor/target; self-pairs forbidden; FK indexes support both directions. `DirectionalInteraction`: the actor's current `liked`, `passed` or, since SV3 Stage B (its brief's D12), `withdrawn` row (`glow_persistence_directionalinteraction_state`), its version, the policy version it was decided under and `decided_at`, the transaction's `clock_timestamp()` at its last like, pass or undo, from which resurfacing's and undo's waiting periods count (the field's default, the application's clock, only fills a row written otherwise, as the proofs' seeded rows are). Since SV4 A1 (migration 0013; the [SV4 brief](../planning/sv4-chat-notifications.md)'s D3), `retired_at`, nullable: set by `glow_chat`'s `block`, with the database's clock under its account locks, on every `liked` row between the pair, either way, nothing else of the row changed (not its state, version, `decided_at` or policy version), so a like made before a block never counts toward a match; both reciprocity checks (`interact`'s own and `activate_reciprocal`'s) require it null; a pass, or a like that replaces a pass, writes it null; no read of the actor's own row returns it. `Block`: the actor's current `active` or `removed` row and its version. The idempotency record's receipt codes gain `withdrawn` (0011). | Account-private unilateral actions, written only by `glow_discovery.interactions` (sealed until P11) and, for blocks, `glow_chat`'s `block` and `unblock`, which the routes call unchanged. **Like and pass** (D9): one transaction that locks both members' account rows `FOR NO KEY UPDATE`, the lower first, through SV2's `lock_account`, then the five settings the selection reads (`FOR SHARE`, name order), checks a replay before anything stale (the actor, operation and key, the keyed digest), then the expected version against the row (zero for none), then the named batch (the actor's own, at its version, fresh, holding the target) and the pair's eligibility and consumption, all under the locks; otherwise the generic stale response and nothing is written. A pass over the actor's own like is refused (F08 has no such entry). The row is created, or kept and its version advanced; the named batch becomes `stale` with its version advanced (F07's `invalidate`). Nothing of the target's changes, so an unreciprocated like is never shown to its target. **Undo** (D12): only while `discovery.undo` is on, the actor's most recent pass within `waiting_days` of its `decided_at` becomes `withdrawn`, the row kept and its version advanced, never deleted and created again; a withdrawn pass excludes nothing. **Resurfacing** (D12): while `discovery.resurfacing` is on, a pass decided at least `waiting_days` before the transaction's clock excludes no longer; off, a pass excludes for good. **Block and unblock** (D11): `glow_chat`'s writers, under both account locks: a block bumps only its actor's `blocks_version`, retires the pair's likes (`retired_at`; SV4 D3) and, since SV4 A1, ends an active match as `unmatched`, as an unmatch does (SV4 D4; `Match`, below); an unblock keeps the row, marks it `removed` and advances its version, bumps the actor's `blocks_version`, and restores no match and no send. A block works after an unmatch and while either member is paused. No answer names its direction, and D8's gap is closed (SV4 A1, D4; DM-75, DM-96): no command makes a match `restricted`, so the member who did not block is served the same after a block as after an unmatch. |
+| `Match` | UUID pair sorted by underlying UUID value (`account_low < account_high`), unique pair and positive contact version. Its state is `active` or `unmatched` (an unmatch, or, since SV4 A1, a block of an active match, which ends it as an unmatch does, its cause kept in the `Block` rows); `restricted` stays in the enum, written by no server command (SV4 D4; DM-96). Its version and its contact version start at 1 and advance together only when contact ends (the first block of an active match, or the unmatch; SV4 D6), so `MatchProjection.version` is the `MessageIntent.meta.expected_version` a send carries. | Participant-only projection (`MatchProjection`: the other member's profile and the state, never who ended contact or why); another member's match reads as not found. One pair record, never a second row: since SV3 Stage B (its brief's D10 (a)), a like that finds the target's `liked` row toward the actor, unretired (SV4 D3), makes the match in the same transaction, under the two account locks it already holds and after its recheck, through `glow_chat`'s `activate_reciprocal`: `activate_match`'s body with one check added under its account locks, the two `liked` rows (since SV4 A1, neither retired), writing the same rows (the match, the binding, each member's identity if absent) and events (`identity_created` for each new identity, one `match_activated`). Simultaneous reciprocal likes serialize on the account locks, so the later one makes the match and the earlier one returns `liked` with none; the unique pair is the backstop. No route takes a match intent. Unmatch (D11) is `glow_chat`'s `unmatch`, unchanged, with no eligibility or policy prerequisite, and is final in SV3: rematch is not built, and `rematch_not_built` refuses a publication of `discovery.rematch` with `enabled` on (D12); a pair with a match row in any state is consumed, so neither member is shown to the other again and no like makes a second match or reactivates the first. |
 | `CompatibilitySnapshot` | Ordered viewer/candidate, both engine references, birth/mapping revisions, full eligibility vector, engine/contract/adapter provenance and expiry. Unique directional revision tuple; viewer/expiry index. | Account-private metadata only; no HDE result body/score/band column. `ready` means internal metadata state, not permission to expose an HDE result. Cache/output rights remain A01. |
 | `RecommendationBatch`, `RecommendationEntry` (SV3 Stage A, migration 0010) | Owner, collection, policy and own three eligibility revisions in batch; each candidate's three revisions in entry. Since SV3 Stage A (its brief's D7): the collection, `recommendations` or `discovery` (`batch_collection`), and at most one batch per owner and collection (`batch_one_per_collection`). Limit 1–100; positions 0–99; unique candidate and position per batch. Nullable snapshot FK can clear when removed. Owner/time/ID cursor index. | Bounded account-private candidate queue, written only by `glow_discovery.pages` (sealed until P11). A page with no cursor creates the batch in one transaction after the owner's account row lock (`FOR NO KEY UPDATE`; DM-61) and the five settings the selection reads (`FOR SHARE`, name order): the earlier batch of that collection is deleted with its entries, and the new one records the owner's three revisions, a policy version made of the five settings' version numbers (a publication of any makes it stale; DM-60 Q3), a limit of 100, a state (`ready`, `empty`, `pending` or `unavailable`) and an expiry 30 minutes later, with up to 100 entries in rank order (positions from 0) and their candidates' revisions. A cursor names the batch and an offset, under a MAC over the owner, the collection, the batch and the offset; a page refuses, alike, a cursor not so issued, a missing, expired or not-`ready` batch and one whose owner revisions or policy version changed, then rechecks every entry from the offset in one statement and writes nothing. The page maximum, 50, is smaller than the batch's 100. No snapshot is written: the entry's snapshot FK stays null (no `CompatibilitySnapshot` holds a fixture's or an HDE result). No self-candidate is ever selected (D3's SELF). |
 | `ChatBinding`, `MessageSubmission` | One binding per match; provider/channel unique when known; active binding requires reference; `reconcile_code` (P06.2 B1, migration 0003) marks a binding whose provider state is in doubt after a dead letter, with the Glow code of its last attempt. Actor/idempotency key unique; accepted message requires provider receipt, pending message requires private text. | Provider owns retained conversation history. App temporarily owns bounded delivery spool (4000 code points), clears per approved retention/receipt policy. Only reference/version enters outbox. No provider membership alone grants send permission. |
@@ -266,9 +266,10 @@ CX6, under DM-15's conditions). The domain port is `glow_domain/chat.py`
 `glow_chat/contact.py` (`OrmContactPersistence`); the outbox delivery is
 `glow_chat/delivery.py`; the chat provider port and its fixture adapter are
 `glow_domain/chat_provider.py` and `chat_provider_fixtures.py`; the Stream adapter on that
-port and the client token's signer are `glow_domain/chat_provider_stream.py` (Stage B2);
-the token rules are `glow_domain/chat_tokens.py`; the order column's field type is
-`glow_persistence/fields.py`; the conversation reads (Stage C1) are
+port is `glow_domain/chat_provider_stream.py` (Stage B2); `glow_domain/chat_tokens.py`
+keeps only `revocation_cutoff_sent`, the epoch revocation's cut-off (SV4 A1 removed the
+token rules and the client token's signer: the SV4 brief's D7; OD-45); the order
+column's field type is `glow_persistence/fields.py`; the conversation reads (Stage C1) are
 `glow_domain/chat_reads.py` (the port and its domain types), `glow_chat/reads.py`
 (`OrmConversationReads`) and `glow_domain/chat_projections.py` (their projections into the
 production contracts). The adapter is a new package rather than code in
@@ -383,38 +384,37 @@ agrees with Glow's record; it runs under P11's deployed worker with the outbox's
 and lease recovery (the [deferred acceptance plan](../testing/p11-deferred-acceptance.md),
 DB06 and DB09). Nothing in Stage B1 reconciles.
 
-**Token rules** (D6): `grant_chat_token` grants one hour only for a `valid`, unexpired
-session at its account's current epoch, of an `active` account with an `active` chat
-identity, which means provisioned and not deactivated (DM-15 5.1: a `pending` identity
-is refused with `no_chat_identity`); it refuses after suspension or deletion. It signs
-nothing. Under OD-45 (24 October 2026) no client token is issued: the rule, B1's grant
-and B2's signer stay in the code, dormant and unserved, until a later cleanup (the P06.2
-brief, point h), and P11 serves no token endpoint [Corrected by M05, finding 24: this said
-"P11 serves the endpoint and Stage B2's adapter signs", which predates OD-45].
+**Token rules** (D6), **removed by SV4 A1** (the
+[SV4 brief](../planning/sv4-chat-notifications.md)'s D7; OD-45: no provider token is
+issued). `grant_chat_token` granted one hour only for a `valid`, unexpired session at its
+account's current epoch, of an `active` account with an `active` chat identity (DM-15
+5.1), and signed nothing. Under OD-45 (24 October 2026) no client token is issued: the
+rule, B1's grant and B2's signer stayed in the code, dormant and unserved (the P06.2
+brief, point h), until SV4 A1 removed them, and P11 serves no token endpoint
+[Corrected by M05, finding 24: this said "P11 serves the endpoint and Stage B2's adapter
+signs", which predates OD-45]. **What stays:**
+`revocation_cutoff_sent` and the per-user token revocation on each session-epoch bump
+(`session_epoch_bumped`, above), kept as defence in depth and revisited at integration,
+when the live adapter is configured (DM-96).
 
-**The grant's transaction** (B1; F1, DM-14 item 3; closes Stage A's F1 gap).
-`OrmContactPersistence.grant_token` runs the rule in one transaction: the account row,
-then the session row, locked `SELECT ... FOR SHARE` in the send's order, so a grant
-waits for an epoch bump in flight (which holds the account `FOR NO KEY UPDATE`) and then
-refuses at the new epoch, and a bump waits for a grant in flight; the time is
-`clock_timestamp()` read under those locks and passed as `now`, so the issue time and
-the revocation's cut-off come from one clock, the database's, and the app server's
-clock plays no part; every check of `grant_chat_token` runs on the locked rows; the
-locked session's account is checked against the pre-lock read (F2). The grant writes
-nothing and returns the rule's grant with its issue time; B2's signer sets the token's
-`iat` to that issue time truncated to the whole second (DM-15 5.2). The cut-off of a
-per-user revocation stays the bump's pre-commit time read after its account lock
-(`event.available_at`), stored exact, and is sent to the provider rounded up to the
-next whole second, strictly, so every token issued at or before the cut-off is covered.
-The suite forces both orders with the app clock skewed an hour ahead (`token.*` cases):
-a grant that waits on a bump refuses after it, and a grant that commits just before a
-bump has an issue time before the bump's cut-off.
+**The grant's transaction** (B1; F1, DM-14 item 3; it closed Stage A's F1 gap),
+**removed by SV4 A1** with the rule (D7). `OrmContactPersistence.grant_token` ran the
+rule in one transaction: the account row, then the session row, locked
+`SELECT ... FOR SHARE` in the send's order, with the time `clock_timestamp()` read under
+those locks, so the issue time and the revocation's cut-off came from one clock, the
+database's; the suite's `token.*` cases, which forced both orders with the app clock
+skewed an hour ahead, were retired with it. Its shared lock, `_lock_shared`, stays: the
+conversation reads take their locks through it. The cut-off of a per-user revocation
+stays the bump's pre-commit time read after its account lock (`event.available_at`),
+stored exact, and is sent to the provider rounded up to the next whole second,
+strictly (`revocation_cutoff_sent`; DM-15 5.2), so every token issued at or before the
+cut-off is covered.
 
 **The Stream adapter** (B2; the brief's design points c and d, DM-16 2.3, 2.4, 4.1, 4.4
 and 4.5). `StreamChatProvider` in `glow_domain/chat_provider_stream.py` implements the six
 operations of the port on an injected `getstream` 6.1.0 client and holds nothing else: it
-never constructs a client, reads no environment variable and imports only the port, the
-token module and the SDK, so the runtime's seal keeps it out of every runtime import and
+never constructs a client, reads no environment variable and imports only the port and
+the SDK (since SV4 A1), so the runtime's seal keeps it out of every runtime import and
 the harness imports it by path. It sends identifiers and members only: a user is created
 with its ID; a channel in `glow-match` with exactly its two members and the first of them
 as the creator (`created_by_id`, which Stream requires of a server-side creation; one of
@@ -439,17 +439,14 @@ shape. The conformance run (`proofs/stream-chat`, `conformance`) is its live evi
 offline contract runs the same rows against the fixture and against the adapter on a
 hand-written recorded transport (`tests/test_chat_provider_stream.py`).
 
-**The signer** (B2; design point e, DM-16 3.1 to 3.3). `getstream` 6.1.0's `create_token`
-takes `iat` from the SDK's own clock minus five seconds and `exp` from that clock plus a
-lifetime, with no parameter for either, so the pre-approved fallback signs the client's
-token in `sign_chat_token`: HS256 through `pyjwt`, with the injected client's own secret
-read at signing time and kept nowhere, and the claims exactly `user_id`, `iat` and `exp`,
-where `iat` is the grant's `issued_at` truncated to the whole second (less
-`IAT_BACKDATE_SECONDS`, a fixed number of whole seconds, never more than 5, that is 0
-unless Stream refuses a token whose `iat` is the current second; the conformance run's
-row shows the value in force) and `exp` is the grant's `expires_at` truncated to the
-whole second, never later. The SDK's clock plays no part, so the issue time stays the
-database's (F1).
+**The signer** (B2; design point e, DM-16 3.1 to 3.3), **removed by SV4 A1** (D7; OD-45:
+no provider token is issued), with `token_claims` and `IAT_BACKDATE_SECONDS`.
+`sign_chat_token` signed the client's token itself, HS256 through `pyjwt`, because
+`getstream` 6.1.0's `create_token` takes `iat` and `exp` from the SDK's own clock; the
+claims were exactly `user_id`, `iat` and `exp`, from the grant's times, so the issue
+time stayed the database's (F1). The adapter no longer imports `pyjwt`; the package's pin
+stays, for SV1, which uses it (H-02). The Stream proof's conformance rows that needed the
+signer are history, kept in P06.2's records.
 
 **The conversation reads** (Stage C1; the [P06.2 brief](../planning/p06-2-chat-integration.md),
 "Stage C under OD-45", points b, c and e, with DM-22's conditions). Under OD-45 the app
@@ -458,17 +455,28 @@ the endpoints. No migration and no model change: the reads use the rows Stages A
 committed. `OrmConversationReads` runs only under the proof's settings, as the rest of
 `glow_chat` does.
 
-- **The send's checks, under the send's shared locks.** The history read, the
-  conversation list and the read-cursor command make the send's checks, in the send's
-  order, on rows read under the send's locks taken `FOR SHARE`, as B1's grant takes its
-  own: the lower and higher `AppAccount`, the `Match`, the reader's `AccountSession`, then
-  the active `Block` rows either way, both `Profile` states and both latest onboarding
-  `ConsentDecision` rows under those account locks (the send's own
-  `_contact_state_checks`). A read waits for a revocation in flight, which holds one of
-  those rows under its writer's lock (an account `FOR NO KEY UPDATE`, any other row
-  `FOR UPDATE`), and reads its result; a revocation waits for a read in flight.
-  The time is `clock_timestamp()` after the locks. This is the interim default under F06
-  (DM-22 3.1): the A05 history question goes to Nathan before P11 serves the reads.
+- **The read rule, under the send's shared locks** (since SV4 A1: the
+  [SV4 brief](../planning/sv4-chat-notifications.md)'s D5; OD-60, H; DM-96). The history
+  read, the conversation list and the read-cursor command take the send's locks
+  `FOR SHARE`, in the send's order (the lower and higher `AppAccount`, the `Match`, the
+  reader's `AccountSession`), then `chat.history`'s pointer through
+  `glow_profiles.settings_store.read_shared` (SV2's D19 order). On those rows they check
+  the reader's session (valid, unexpired, at the reader's epoch) and account (`active`),
+  the match (`active`), the active `Block` rows either way (none), and the other account
+  (`active` or `suspended`, so a deletion, which works as an unmatch, hides it); then
+  each cause, read under those account locks (either `Profile` `paused`, or SV2's
+  `incomplete`, read as a pause; either `restricted`; the other account `suspended`;
+  either latest onboarding `ConsentDecision` not `accepted`), by its value in
+  `chat.history`: `read_only` serves the conversation read-only (the send is refused as
+  before), `hidden` refuses it. At launch every cause is `read_only`; once the setting
+  names an onboarding consent version other than the launch one, every cause reads
+  `hidden` (fail-closed).
+  Every hidden cause refuses with one reason, `conversation_hidden`, which names no cause.
+  A read waits for a revocation in flight, which holds one of those rows under its
+  writer's lock (an account `FOR NO KEY UPDATE`, any other row `FOR UPDATE`), and reads
+  its result; a revocation waits for a read in flight. The time is `clock_timestamp()`
+  after the locks. It replaces the interim default under F06 (DM-22 3.1), under which the
+  reads made the send's checks.
 - **The history read checks twice** (DM-22 3.2). The first check's transaction reads the
   page's rows and ends; the provider call (the port's `read_message_texts`, for the page's
   accepted messages' `provider_message_ref`, in one call) runs outside any transaction, so
@@ -520,11 +528,12 @@ committed. `OrmConversationReads` runs only under the proof's settings, as the r
 - **The conversation list** reads, for the session's account, every `active` `Match` it
   belongs to, then locks `FOR SHARE` every account those matches name and the account's
   own, in UUID order, then those matches, then the session, the canonical order every
-  writer follows (accounts, then matches, then the session). It makes the session's checks
-  (the account `active`, the session `valid`, unexpired and at the account's epoch) and,
-  for each conversation, the per-match checks (the match still `active` with its pair, the
-  other account `active`, no block either way, both profiles and both consents); a
-  conversation that fails them is not listed. For each it reads the reader's
+  writer follows (accounts, then matches, then the session), then `chat.history`'s
+  pointer. It makes the session's checks (the account `active`, the session `valid`,
+  unexpired and at the account's epoch) and, for each conversation, the per-match checks
+  (the match still `active` with its pair, the other account `active` or `suspended`, no
+  block either way, then each cause by its value in `chat.history`, under the read rule
+  above); a conversation that fails them is not listed. For each it reads the reader's
   `ChatReadCursor` and counts the other member's accepted messages after it (6.3), and
   takes the latest-message marker over the accepted messages and the reader's own pending
   or failed submissions (6.1): the submission ID and its time, no text. No provider is

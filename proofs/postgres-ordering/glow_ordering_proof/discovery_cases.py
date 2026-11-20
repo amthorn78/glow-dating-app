@@ -56,9 +56,10 @@ class Case:
 CASES: list[Case] = []
 # The suite's case count, pinned: a case lost or added without this changing fails the run before
 # any case runs, and the offline tests. Stage A's 40, Stage B's 19 (``interaction_cases``,
-# registered after the rest: D14's reach, its item 2, and 18 interaction cases), and correction
-# B-C1's 7 (``interaction_cases``' ``own_versions.*``, after Stage B's; DM-74).
-CASE_COUNT = 66
+# registered after the rest: D14's reach, its item 2, and 18 interaction cases), correction
+# B-C1's 7 (``interaction_cases``' ``own_versions.*``, after Stage B's; DM-74), and SV4 A1's 4
+# (``interaction_cases``' ``sv4.a1.*``, after B-C1's: D3's two, D4's and D6's).
+CASE_COUNT = 70
 
 
 def case(

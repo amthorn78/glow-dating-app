@@ -54,6 +54,19 @@ own helpers that locks the session, then the match, then the accounts, must fail
 ``read.final_check_first_lock`` by an unobserved wait and a deadlock. No oracle rule
 judges a read (DM-22 item 3): a read writes nothing.
 
+SV4 A1 (its brief's D5; OD-60, H; DM-96) gives the reads their own rule, and the forced cases
+follow it: for the seven revocations of a cause ``chat.history`` marks ``read_only`` at launch
+(the other member's suspension, either member's pause, restriction or consent withdrawal), each
+forced case's read is served read-only, its waits still observed (``READ_ONLY_AT_LAUNCH``); the
+block, the unmatch, the deletions, the reader's own suspension, the sign-out and the expiry keep
+their refusal. ``read.final_check_first_lock``'s variant where the lower member's suspension
+holds its first lock while the higher member reads serves that read read-only. The named cases
+``read.d5_*`` show each cause read-only at launch and the ended contacts' refusals kept; the
+settings cases (``SETTINGS``) show each cause hidden once ``chat.history`` says so, with one
+reason, and the consent limit failing closed. They run last, after the planted controls,
+because a publication of ``chat.history`` cannot return to the launch value within a run: a
+more readable publication needs a new consent version, which A1's rule reads as hidden.
+
 No provider is called but the in-memory fixture; nothing reaches a network.
 """
 
@@ -65,7 +78,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, replace
 from functools import partial
 from typing import Any
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from django.db import connection, transaction
 from glow_domain.chat import TransactionProbe
@@ -122,6 +135,29 @@ WRITABLE_TABLES = (
     "glow_persistence_chatreadcursor",
 )
 BLOCK_REFUSALS = frozenset({"match_not_active", "blocked"})
+# SV4 A1 (D5): the revocations whose read the lower member's read is served read-only after, at
+# launch (every cause ``chat.history`` marks ``read_only``): the other member's suspension, and
+# either member's pause, restriction and consent withdrawal.
+READ_ONLY_AT_LAUNCH = frozenset(
+    {
+        "suspend_high",
+        "pause_low",
+        "pause_high",
+        "restrict_low",
+        "restrict_high",
+        "withdraw_low",
+        "withdraw_high",
+    }
+)
+
+
+def served_read_only(rev_id: str, reader: str = "low") -> bool:
+    """D5 at launch: whether the ``reader`` member's read is served read-only after the
+    revocation ``rev_id``. A suspension is a cause only when it is the other member's: a
+    suspended reader has no valid session."""
+    if rev_id in ("suspend_low", "suspend_high"):
+        return rev_id != f"suspend_{reader}"
+    return rev_id in READ_ONLY_AT_LAUNCH
 
 
 class ReadCheckFailed(AssertionError):
@@ -269,7 +305,8 @@ def _commit_before(judge: Judge, revoked_at: Any, moment: Any, what: str) -> Non
 
 def read_waits(rev: Revocation, phase: ReadPhase, ctx: Context, judge: Judge) -> None:
     """The revocation commits while the read waits between its provider call and its
-    final check: the read is refused."""
+    final check: the read is refused, or, for a revocation read-only at launch (D5), served
+    read-only."""
     world = _conversation(phase)
     reads = phase.reads()
     hold, reader = Hold(), PidSlot()
@@ -301,18 +338,23 @@ def read_waits(rev: Revocation, phase: ReadPhase, ctx: Context, judge: Judge) ->
     hold.release.set()
     read = reading.result(timeout=budget.HOLD_SECONDS)
     rev.effect(world, judge)
-    judge.outcome(
-        as_result(read), "the read after its final check", "refused", reasons=rev.refusals
-    )
+    if served_read_only(rev.id):
+        judge.outcome(as_result(read), "the read after its final check (read-only, D5)", "read")
+        judge.expect(_texts(read) == [OTHER_TEXT, OWN_TEXT], f"page {_texts(read)}")
+    else:
+        judge.outcome(
+            as_result(read), "the read after its final check", "refused", reasons=rev.refusals
+        )
     judge.note(f"the read held after its provider call, backend {pid} {state}")
-    if read.outcome == "refused" and len(read.traces) == 2:
+    if read.outcome in ("refused", "read") and len(read.traces) == 2:
         revoked_at = ctx.evidence.revocation_commit(world, rev)
         _commit_before(judge, revoked_at, read.traces[1].started_at, "the final check's start")
 
 
 def check_holds(rev: Revocation, phase: ReadPhase, ctx: Context, judge: Judge) -> None:
     """The revocation arrives while the final check holds its shared locks: it waits, and
-    the read returns its page."""
+    the read returns its page; the next read is refused, or, for a revocation read-only at
+    launch (D5), served read-only."""
     world = _conversation(phase)
     reads = phase.reads()
     hold, reader = Hold(), PidSlot()
@@ -346,6 +388,12 @@ def check_holds(rev: Revocation, phase: ReadPhase, ctx: Context, judge: Judge) -
         )
     calls = _read_calls(phase)
     after = reads.read_history(_request(world))
+    if served_read_only(rev.id):
+        # D5: served read-only after the revocation too, with the provider's texts.
+        judge.outcome(as_result(after), "a read after the revocation (read-only, D5)", "read")
+        judge.expect(_texts(after) == [OTHER_TEXT, OWN_TEXT], f"page {_texts(after)}")
+        judge.expect(_read_calls(phase) == calls + 1, "the read-only read called the provider once")
+        return
     judge.outcome(as_result(after), "a read after the revocation", "refused", reasons=rev.refusals)
     # Point c: a refused member causes no provider read.
     judge.expect(_read_calls(phase) == calls, "a refused read called the provider")
@@ -353,7 +401,8 @@ def check_holds(rev: Revocation, phase: ReadPhase, ctx: Context, judge: Judge) -
 
 def revocation_holds(rev: Revocation, phase: ReadPhase, ctx: Context, judge: Judge) -> None:
     """The revocation already holds its locks when the final check takes them: the final
-    check waits on it, and the read is refused."""
+    check waits on it, and the read is refused, or, for a revocation read-only at launch (D5),
+    served read-only."""
     world = _conversation(phase)
     reads = phase.reads()
     read_hold, reader = Hold(), PidSlot()
@@ -381,6 +430,19 @@ def revocation_holds(rev: Revocation, phase: ReadPhase, ctx: Context, judge: Jud
     read = reading.result(timeout=budget.HOLD_SECONDS)
     judge.outcome(revoked, f"{rev.title} (held its locks)", "applied")
     rev.effect(world, judge)
+    if served_read_only(rev.id):
+        judge.outcome(as_result(read), "the read (its final check waited; read-only, D5)", "read")
+        judge.expect(_texts(read) == [OTHER_TEXT, OWN_TEXT], f"page {_texts(read)}")
+        if len(read.traces) == 2:
+            # The final check began before the revocation committed and waited on it (the
+            # wait observed above), so it read the revoked state, and served it read-only.
+            revoked_at = ctx.evidence.revocation_commit(world, rev)
+            judge.expect(
+                revoked_at is not None and revoked_at > read.traces[1].started_at,
+                f"commit order: the revocation {revoked_at} before the final check's start"
+                f" {read.traces[1].started_at}",
+            )
+        return
     judge.outcome(
         as_result(read), "the read (its final check waited)", "refused", reasons=rev.refusals
     )
@@ -631,7 +693,8 @@ def _writer_holds_first_lock(
 ) -> None:
     """The writer holds its first lock (the lower account's); the final check of the
     ``reader`` member's read arrives and is observed waiting on it; the writer applies and
-    the read is refused."""
+    the read is refused, or, where the writer suspends the other member (D5), served
+    read-only."""
     world = _conversation(phase)
     reads = phase.reads()
     request = _request(world, reader=_reader(world, reader))
@@ -664,6 +727,16 @@ def _writer_holds_first_lock(
         written, f"{rev.title} (held its first lock against the {reader} reader)", "applied"
     )
     rev.effect(world, judge)
+    if served_read_only(rev.id, reader):
+        # SV4 A1 (D5): the other member's suspension serves the read read-only, its wait observed.
+        judge.outcome(
+            as_result(read),
+            f"the read by the {reader} member (its final check arrived at the first lock of"
+            f" {rev.id}; read-only, D5)",
+            "read",
+        )
+        judge.expect(_texts(read) == [OTHER_TEXT, OWN_TEXT], f"page {_texts(read)}")
+        return
     judge.outcome(
         as_result(read),
         f"the read by the {reader} member (its final check arrived at the first lock of {rev.id})",
@@ -1097,7 +1170,11 @@ def conversation_list(phase: ReadPhase, ctx: Context, judge: Judge) -> None:
     state = ctx.state_subject
     judge.outcome(state.pause_profile(third), "a pause of the third member's profile", "applied")
     paused = [e.match_id for e in reads.list_conversations(first.session_low).conversations]
-    judge.expect(paused == [first.match], f"listed while the other is paused: {paused}")
+    # SV4 A1 (D5): a pause is read-only at launch, so the paused member's conversation is listed.
+    judge.expect(
+        paused == [second.match, first.match],
+        f"listed read-only while the other is paused: {paused}",
+    )
     judge.outcome(state.resume_profile(third), "resume", "applied")
     judge.outcome(ctx.subject.block(first.high, first.low), "a block in the first match", "applied")
     blocked = [e.match_id for e in reads.list_conversations(first.session_low).conversations]
@@ -1109,6 +1186,256 @@ def conversation_list(phase: ReadPhase, ctx: Context, judge: Judge) -> None:
         "refused",
         reasons={"session_not_valid"},
     )
+
+
+# -- SV4 A1: the read rule (its brief's D5; OD-60, H; DM-96) ---------------------------------
+
+
+# Each cause, by the setting's key it reads, and how a world comes to it. The reader is the lower
+# member, so ``own_*`` is the reader's and ``other_*`` the other member's. SV2's ``incomplete`` is
+# read as a pause; no ``glow_chat`` writer makes a profile ``incomplete``, so it is test data here.
+def _set_profile_state(account_id: UUID, state: str) -> None:
+    """Test data: a profile state no writer of this suite makes (SV2's recompute and deletion
+    write ``incomplete`` and ``removed``)."""
+    _models().Profile.objects.filter(account_id=account_id).update(state=state)
+
+
+D5_CAUSES: tuple[tuple[str, str, Callable[[World, Context], Any]], ...] = (
+    ("own_pause", "own_pause", lambda w, ctx: ctx.state_subject.pause_profile(w.low)),
+    ("other_pause", "other_pause", lambda w, ctx: ctx.state_subject.pause_profile(w.high)),
+    ("own_incomplete", "own_pause", lambda w, ctx: _set_profile_state(w.low, "incomplete")),
+    ("other_incomplete", "other_pause", lambda w, ctx: _set_profile_state(w.high, "incomplete")),
+    ("own_restriction", "restriction", lambda w, ctx: ctx.state_subject.restrict_profile(w.low)),
+    ("other_restriction", "restriction", lambda w, ctx: ctx.state_subject.restrict_profile(w.high)),
+    ("other_suspension", "suspension", lambda w, ctx: ctx.subject.suspend(w.high)),
+    (
+        "own_withdrawal",
+        "withdrawn_consent",
+        lambda w, ctx: ctx.state_subject.withdraw_consent(w.low),
+    ),
+    (
+        "other_withdrawal",
+        "withdrawn_consent",
+        lambda w, ctx: ctx.state_subject.withdraw_consent(w.high),
+    ),
+)
+# The send keeps its own refusal (its checks do not change), cause by cause.
+SEND_REFUSAL = {
+    "own_pause": "profile_unavailable",
+    "other_pause": "profile_unavailable",
+    "own_incomplete": "profile_unavailable",
+    "other_incomplete": "profile_unavailable",
+    "own_restriction": "profile_unavailable",
+    "other_restriction": "profile_unavailable",
+    "other_suspension": "account_not_active",
+    "own_withdrawal": "consent_not_current",
+    "other_withdrawal": "consent_not_current",
+}
+
+
+def _caused(phase: ReadPhase, ctx: Context, name: str) -> World:
+    world = _conversation(phase)
+    act = next(act for cause, _, act in D5_CAUSES if cause == name)
+    done = act(world, ctx)
+    if done is not None and getattr(done, "outcome", "applied") != "applied":
+        raise ReadCheckFailed(f"the cause {name} was not applied: {done.label()}")
+    return world
+
+
+def _two_causes(phase: ReadPhase, ctx: Context) -> World:
+    """A world with two causes at once: both members' profiles paused (own_pause and
+    other_pause)."""
+    world = _caused(phase, ctx, "own_pause")
+    done = ctx.state_subject.pause_profile(world.high)
+    if done.outcome != "applied":
+        raise ReadCheckFailed(f"the second cause was not applied: {done.label()}")
+    return world
+
+
+def _other_message(read: ReadResult) -> UUID | None:
+    page = read.page
+    found = [m.submission_id for m in page.messages if not m.own] if page is not None else []
+    return found[0] if found else None
+
+
+def _all_three(phase: ReadPhase, world: World) -> tuple[ReadResult, Any, Any]:
+    """The lower member's history read, list and read cursor's move to the other's message."""
+    reads = phase.reads()
+    read = reads.read_history(_request(world))
+    listed = reads.list_conversations(world.session_low)
+    target = _other_message(read) or uuid4()
+    moved = reads.move_read_cursor(ReadCursorCommand(world.session_low, world.match, target))
+    return read, listed, moved
+
+
+def _judge_served(phase: ReadPhase, world: World, judge: Judge, what: str) -> None:
+    """Served read-only: the page with its texts, the conversation listed, and the read cursor
+    moved to the other member's message (or left there, by a repeat: ``no_change``)."""
+    read, listed, moved = _all_three(phase, world)
+    judge.outcome(as_result(read), f"{what}: the history read (read-only)", "read")
+    judge.expect(_texts(read) == [OTHER_TEXT, OWN_TEXT], f"{what}: page {_texts(read)}")
+    judge.outcome(as_result(listed), f"{what}: the list", "listed")
+    judge.expect(world.match in {e.match_id for e in listed.conversations}, f"{what}: not listed")
+    judge.outcome(as_result(moved), f"{what}: the read cursor", "moved", "no_change")
+
+
+def _judge_hidden(phase: ReadPhase, world: World, judge: Judge, what: str, reason: str) -> None:
+    from glow_domain.chat_projections import error_for
+
+    read, listed, moved = _all_three(phase, world)
+    for result, name in ((read, "the history read"), (moved, "the read cursor")):
+        judge.outcome(as_result(result), f"{what}: {name}", "refused", reasons={reason})
+        judge.expect(
+            error_for(result.outcome, result.reason) == ("not_found", False),
+            f"{what}: {name} is served as not_found",
+        )
+    judge.outcome(as_result(listed), f"{what}: the list", "listed")
+    judge.expect(world.match not in {e.match_id for e in listed.conversations}, f"{what}: listed")
+
+
+def d5_read_only_at_launch(phase: ReadPhase, ctx: Context, judge: Judge) -> None:
+    """D5 at launch: each cause (each member's pause, SV2's ``incomplete`` read as one, each
+    member's restriction, the other member's suspension, each member's consent withdrawal) reads
+    ``read_only`` in ``chat.history``'s launch default: the history page is served with its texts,
+    the conversation is listed, and the read cursor moves; the send stays refused with its own
+    reason. A ``removed`` profile is a deletion, so it is hidden, never read-only."""
+    from glow_chat.reads import CONVERSATION_HIDDEN
+
+    for name, _, _ in D5_CAUSES:
+        world = _caused(phase, ctx, name)
+        _judge_served(phase, world, judge, name)
+        sent = ctx.subject.send(send_request(world, key=f"k-d5-{name}"))
+        judge.outcome(sent, f"{name}: the send", "refused", reasons={SEND_REFUSAL[name]})
+    # Two causes at once, each read_only: served.
+    both = _two_causes(phase, ctx)
+    _judge_served(phase, both, judge, "own_pause and other_pause")
+    for which in ("low", "high"):
+        world = _conversation(phase)
+        _set_profile_state(world.low if which == "low" else world.high, "removed")
+        _judge_hidden(phase, world, judge, f"a removed {which} profile", CONVERSATION_HIDDEN)
+
+
+ENDED: tuple[tuple[str, str], ...] = (
+    ("block_by_high", "match_not_active"),
+    ("unmatch_by_high", "match_not_active"),
+    ("delete_high", "account_not_active"),
+    ("suspend_low", "account_not_active"),
+    ("sign_out_sender", "session_not_valid"),
+    ("expire_sender", "session_not_valid"),
+)
+
+
+def d5_ended_contact_keeps_its_refusal(phase: ReadPhase, ctx: Context, judge: Judge) -> None:
+    """D5: the block (which ends the match, D4), the unmatch, the other member's deletion (which
+    works as an unmatch), the reader's own suspension, the sign-out and the expiry keep their
+    refusals for the history read and the read cursor, never the hidden causes' one reason; the
+    list omits the conversation, or is refused with the session's reason."""
+    from glow_chat.reads import CONVERSATION_HIDDEN
+
+    for rev_id, reason in ENDED:
+        world = _conversation(phase)
+        rev = REVOCATION_BY_ID[rev_id]
+        judge.outcome(rev.act(world, ctx.subject, None), rev.title, "applied")
+        read, listed, moved = _all_three(phase, world)
+        for result, name in ((read, "the history read"), (moved, "the read cursor")):
+            judge.outcome(as_result(result), f"{rev_id}: {name}", "refused", reasons={reason})
+            judge.expect(result.reason != CONVERSATION_HIDDEN, f"{rev_id}: {name} as hidden")
+        if rev_id in ("suspend_low", "sign_out_sender", "expire_sender"):
+            # The reader's own account or session: the list itself is refused.
+            judge.outcome(as_result(listed), f"{rev_id}: the list", "refused", reasons={reason})
+        else:
+            judge.outcome(as_result(listed), f"{rev_id}: the list", "listed")
+            judge.expect(
+                world.match not in {e.match_id for e in listed.conversations},
+                f"{rev_id}: listed",
+            )
+
+
+def _publish_history(content: dict[str, Any]) -> Any:
+    from glow_domain import profile_settings as ps
+    from glow_profiles import settings_store
+
+    return settings_store.publish(
+        ps.HISTORY,
+        content,
+        staff_subject="staff:ordering-proof",
+        reason="SV4-A1-proof",
+        request_id=uuid4(),
+    )
+
+
+def d5_hidden_when_the_setting_says_so(phase: ReadPhase, ctx: Context, judge: Judge) -> None:
+    """D5: each cause reads its own value in ``chat.history``. Published hidden one key at a time,
+    under the launch consent version (a less readable publication keeps it), each cause's
+    conversation is then hidden: the history read and the read cursor refused with the one
+    reason that names no cause, served as ``not_found``, and the conversation not listed; a cause
+    whose key still reads ``read_only`` is still served, and so is a conversation with no cause."""
+    from glow_chat.reads import CONVERSATION_HIDDEN
+    from glow_domain import profile_settings as ps
+
+    worlds = {name: _caused(phase, ctx, name) for name, _, _ in D5_CAUSES}
+    both = _two_causes(phase, ctx)
+    plain = _conversation(phase)
+    content = dict(ps.LAUNCH_DEFAULTS[ps.HISTORY])
+    hidden: set[str] = set()
+    for key in ps.HISTORY_CAUSES:
+        content[key] = "hidden"
+        hidden.add(key)
+        published = _publish_history(dict(content))
+        judge.expect(published.outcome == "applied", f"publish {key} hidden: {published.outcome}")
+        for name, cause, _ in D5_CAUSES:
+            what = f"{name} with {', '.join(sorted(hidden))} hidden"
+            if cause in hidden:
+                _judge_hidden(phase, worlds[name], judge, what, CONVERSATION_HIDDEN)
+            else:
+                _judge_served(phase, worlds[name], judge, what)
+        # A hidden cause wins over a read-only one: both pauses, once own_pause is hidden.
+        _judge_hidden(phase, both, judge, f"both pauses, {key} hidden", CONVERSATION_HIDDEN)
+        _judge_served(phase, plain, judge, f"no cause, {key} hidden")
+
+
+def d5_consent_limit_fails_closed(phase: ReadPhase, ctx: Context, judge: Judge) -> None:
+    """D5's consent limit (SV2's D2; DM-96), fail-closed: once ``chat.history`` names an
+    onboarding consent version other than the launch one, every cause reads ``hidden``, though the
+    setting marks each ``read_only``; a conversation with no cause is still served. (Publishing
+    the onboarding consent's next version, then ``chat.history`` more readable under it, is the
+    only way the setting can name another version: SV2's rule.)"""
+    from glow_chat.reads import CONVERSATION_HIDDEN
+    from glow_domain import profile_settings as ps
+    from glow_profiles import settings_store
+
+    worlds = {name: _caused(phase, ctx, name) for name, _, _ in D5_CAUSES}
+    plain = _conversation(phase)
+    # Every cause hidden first, under the current version (a less readable publication keeps
+    # it), so that the publication below is more readable and must name a new consent version.
+    hidden = _publish_history(
+        {
+            **ps.LAUNCH_DEFAULTS[ps.HISTORY],
+            **{key: "hidden" for key in ps.HISTORY_CAUSES},
+            "consent_policy_version": ps.LAUNCH_DEFAULTS[ps.HISTORY]["consent_policy_version"],
+        }
+    )
+    judge.expect(hidden.outcome == "applied", f"every cause hidden first: {hidden.outcome}")
+    consent = settings_store.publish(
+        ps.ONBOARDING_CONSENT,
+        {"development": True, "text": "A synthetic onboarding consent, version 2, for the proof."},
+        staff_subject="staff:ordering-proof",
+        reason="SV4-A1-proof",
+        request_id=uuid4(),
+    )
+    judge.expect(consent.outcome == "applied", f"the consent's next version: {consent.outcome}")
+    version = str(consent.detail.get("policy_version"))
+    judge.expect(version != "consent.onboarding.v1", f"a new consent version: {version}")
+    content = {
+        **ps.LAUNCH_DEFAULTS[ps.HISTORY],
+        **{key: "read_only" for key in ps.HISTORY_CAUSES},
+        "consent_policy_version": version,
+    }
+    published = _publish_history(content)
+    judge.expect(published.outcome == "applied", f"chat.history under {version}: {published}")
+    for name, _, _ in D5_CAUSES:
+        _judge_hidden(phase, worlds[name], judge, f"{name} under {version}", CONVERSATION_HIDDEN)
+    _judge_served(phase, plain, judge, f"no cause under {version}")
 
 
 # -- the plan --------------------------------------------------------------------------------
@@ -1222,6 +1549,36 @@ NAMED: tuple[tuple[str, str, str, Callable[..., None]], ...] = (
         " not listed",
         conversation_list,
     ),
+    (
+        "read.d5_read_only_at_launch",
+        "SV4 A1 D5 each cause read-only at launch",
+        "each pause (incomplete among them), restriction, the other's suspension and each consent"
+        " withdrawal: the page, the list and the cursor served; the send refused; removed hidden",
+        d5_read_only_at_launch,
+    ),
+    (
+        "read.d5_ended_contact_keeps_its_refusal",
+        "SV4 A1 D5 the ended contact's refusals kept",
+        "block, unmatch, deletion, own suspension, sign-out and expiry keep their own reasons",
+        d5_ended_contact_keeps_its_refusal,
+    ),
+)
+# SV4 A1 (D5): run after the planted controls, since a publication of chat.history cannot return
+# to the launch value within a run (see the module's docstring).
+SETTINGS: tuple[tuple[str, str, str, Callable[..., None]], ...] = (
+    (
+        "read.d5_hidden_when_the_setting_says_so",
+        "SV4 A1 D5 each cause hidden when its setting says so",
+        "each key published hidden in turn: its causes refused with one reason, served not_found,"
+        " not listed; the rest served",
+        d5_hidden_when_the_setting_says_so,
+    ),
+    (
+        "read.d5_consent_limit_fails_closed",
+        "SV4 A1 D5 the consent limit, fail-closed",
+        "chat.history naming another consent version: every cause hidden; no cause still served",
+        d5_consent_limit_fails_closed,
+    ),
 )
 REVOCATIONS_READ: tuple[Revocation, ...] = (*REVOCATIONS, *D5_REVOCATIONS)
 CONTROL_TARGET = "read.block_by_high.read_waits"
@@ -1229,36 +1586,68 @@ LOCK_ORDER_TARGET = "read.final_check_first_lock"
 
 
 def _guarantee(rev: Revocation) -> str:
+    if served_read_only(rev.id):
+        # SV4 A1 (D5): this revocation's cause reads read_only at launch.
+        return f"SV4 A1 D5: history served read-only after {rev.kind} (DM-22 3.2)"
     return f"P06.2 C1 point c: no history after {rev.kind} (DM-22 3.2)"
 
 
+def _forced_title(rev: Revocation, name: str, title: str) -> str:
+    """The forced case's title; for a revocation read-only at launch (D5), what it shows then."""
+    if not served_read_only(rev.id):
+        return f"{rev.title} {title}"
+    return f"{rev.title} {FORCED_READ_ONLY[name]}"
+
+
+# SV4 A1 (D5): what each forced case shows for a revocation read-only at launch.
+FORCED_READ_ONLY = {
+    "read_waits": "committed while the read waits between its provider call and its final check:"
+    " served read-only",
+    "check_holds": "arrives while the final check holds its shared locks: waits, the page is"
+    " returned, and the next read is served read-only",
+    "revocation_holds": "already holds its locks when the final check takes them: the check"
+    " waits, and the read is served read-only",
+}
+
+
+def _named(
+    phase: ReadPhase, entries: tuple[tuple[str, str, str, Callable[..., None]], ...]
+) -> list[Case]:
+    return [
+        Case(
+            case_id, guarantee, title, partial(lambda run, ctx, judge: run(phase, ctx, judge), run)
+        )
+        for case_id, guarantee, title, run in entries
+    ]
+
+
 def cases_for(phase: ReadPhase) -> tuple[Case, ...]:
-    """Every read case, bound to ``phase``: the forced cases per revocation, then the
-    named cases."""
+    """Every read case but the settings cases, bound to ``phase``: the forced cases per
+    revocation, then the named cases."""
     forced = [
         Case(
             f"read.{rev.id}.{name}",
             _guarantee(rev),
-            f"{rev.title} {title}",
+            _forced_title(rev, name, title),
             partial(lambda run, rev, ctx, judge: run(rev, phase, ctx, judge), run, rev),
         )
         for rev in REVOCATIONS_READ
         for name, title, run in FORCED
     ]
-    named = [
-        Case(
-            case_id, guarantee, title, partial(lambda run, ctx, judge: run(phase, ctx, judge), run)
-        )
-        for case_id, guarantee, title, run in NAMED
-    ]
-    return (*forced, *named)
+    return (*forced, *_named(phase, NAMED))
+
+
+def settings_cases_for(phase: ReadPhase) -> tuple[Case, ...]:
+    """The settings cases (SV4 A1, D5), bound to ``phase``: they run last."""
+    return tuple(_named(phase, SETTINGS))
 
 
 def plan() -> list[dict[str, str]]:
     """The read phase's case plan, offline: id, guarantee and title of every case."""
     placeholder = ReadPhase(None, None, None)  # type: ignore[arg-type]
     return [
-        {"id": c.id, "guarantee": c.guarantee, "title": c.title} for c in cases_for(placeholder)
+        {"id": c.id, "guarantee": c.guarantee, "title": c.title}
+        for c in (*cases_for(placeholder), *settings_cases_for(placeholder))
     ]
 
 
@@ -1400,5 +1789,8 @@ def run_read_phase(ctx: Context) -> ReadReport:
         report.cases.append(run_case(ctx, case))
     for control in READ_CONTROLS:
         report.controls.append(run_read_control(phase, control))
+    # SV4 A1 (D5): last, since a publication of chat.history cannot return to the launch value.
+    for case in settings_cases_for(phase):
+        report.cases.append(run_case(ctx, case))
     report.seconds = time.monotonic() - started
     return report

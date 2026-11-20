@@ -6,8 +6,8 @@ database is opened.
 The adapter's locks, checks and writes are proven by the disposable-database proof
 (``proofs/postgres-ordering``); these tests cover what needs no database: the mapping of
 a deadlock by its SQLSTATE in ``_run`` (F4), the refusal of a self-block before any lock
-or write (F5), the grant's single ``before_commit`` signal (B1-C1 R2), and the mark of
-every dead letter that concerns a row (B1-C1 R3).
+or write (F5), and the mark of every dead letter that concerns a row (B1-C1 R3). SV4 A1
+retired the grant's test (B1-C1 R2) with the token grant (its brief's D7; OD-45).
 """
 
 import os
@@ -145,61 +145,6 @@ statements = [s for cursor in fake.cursors for s in cursor.statements]
 assert statements == ["SELECT pg_backend_pid(), now()", "SELECT clock_timestamp()"], statements
 """)
 
-    def test_r2_the_grant_signals_before_commit_once(self) -> None:
-        """B1-C1 R2: the grant's body no longer signals ``before_commit``; ``_run`` does,
-        once, after the body, as for every other writer. A refused grant commits nothing
-        and is not signalled, also as for every other writer."""
-        self.check_script("""
-from datetime import timedelta
-session_id, account_id = uuid4(), uuid4()
-
-class GrantCursor(FakeCursor):
-    # The grant's two shared locks, by primary key, answered as the locked rows.
-    def execute(self, sql, params=None):
-        if "FOR SHARE" in sql and "glow_persistence_appaccount" in sql:
-            self.statements.append(sql)
-            self.row = ("active", 1)
-        elif "FOR SHARE" in sql and "glow_persistence_accountsession" in sql:
-            self.statements.append(sql)
-            self.row = (account_id, "valid", 1, T0 + timedelta(minutes=5))
-        else:
-            super().execute(sql, params)
-
-def grant_cursor():
-    cursor = GrantCursor()
-    fake.cursors.append(cursor)
-    return cursor
-
-fake.cursor = grant_cursor
-sessions = mock.Mock()
-sessions.objects.filter.return_value.values_list.return_value.first.return_value = account_id
-identities = mock.Mock()
-
-def grant(identity_state):
-    identities.objects.filter.return_value.values_list.return_value.first.return_value = (
-        "a" * 32,
-        identity_state,
-    )
-    signals = []
-    probe = chat.TransactionProbe(
-        after_locks=lambda: signals.append("after_locks"),
-        before_commit=lambda: signals.append("before_commit"),
-    )
-    with (
-        mock.patch.object(contact, "AccountSession", sessions),
-        mock.patch.object(contact, "ChatIdentity", identities),
-    ):
-        return adapter.grant_token(session_id, probe=probe), signals
-
-granted, signals = grant("active")
-assert granted.outcome == "granted", granted
-assert granted.grant is not None and granted.grant.issued_at == T0, granted.grant
-assert signals == ["after_locks", "before_commit"], signals
-refused, signals = grant("pending")
-assert refused.outcome == "refused" and refused.reason == "no_chat_identity", refused
-assert signals == ["after_locks"], signals
-""")
-
     def test_r3_every_dead_letter_that_concerns_a_row_marks_it(self) -> None:
         """B1-C1 R3 (F3's rule): the dead letters made without a call, a provisioning or
         a channel's creation for another provider's row, and a removal for another
@@ -291,9 +236,10 @@ plan, done = dead_letter(events.CONTACT_REVOKED)
 assert done is None and plan.on_dead_letter is delivery._nothing and marks == []
 """)
 
-    def test_the_adapter_has_no_switch_and_the_grant_is_on_the_port(self) -> None:
-        """DM-13 2.1 still holds after B1, and the new grant is a port method the
-        adapter implements with the same signature."""
+    def test_the_adapter_has_no_switch_and_no_token_grant(self) -> None:
+        """DM-13 2.1 still holds after B1. SV4 A1 (its brief's D7; OD-45): the token grant is
+        gone from the port and from the adapter, and ``_lock_shared``, which the reads use,
+        stays."""
         self.check_script("""
 import inspect
 assert vars(adapter) == {"provider": "fixture"}
@@ -301,9 +247,11 @@ source = inspect.getsource(contact)
 for word in ("Design(", "design.", "lock_accounts", "check_contact_version", "filter_state"):
     assert word not in source, word
 assert "FOR SHARE" in source and "clock_timestamp()" in source
-port = inspect.signature(chat.ContactPersistence.grant_token)
-mine = inspect.signature(contact.OrmContactPersistence.grant_token)
-assert list(port.parameters) == list(mine.parameters) == ["self", "session_id", "probe"]
+for name in ("grant_token", "grant_chat_token", "TokenGrant", "chat_tokens"):
+    assert name not in source, name
+assert not hasattr(chat.ContactPersistence, "grant_token")
+assert not hasattr(contact.OrmContactPersistence, "grant_token")
+assert callable(contact.OrmContactPersistence._lock_shared)
 """)
 
 
