@@ -1,4 +1,4 @@
-# Current handoff — App Manager 12 (20 November 2026; SV4 A0 merged with PR57; A1's prompt, revision 2, with Nathan)
+# Current handoff — App Manager 12 (20 November 2026; SV4 A1 built, verified and in PR58; its exact-head review next)
 
 This file only routes: the current item, what happens next and who waits on whom. Each fact lives in one home, listed in the [documentation map](../README.md); earlier handoffs are in `docs/continuity/history/`, the last as [P06.2 to its merge](history/p06-2-handoff.md).
 
@@ -18,20 +18,20 @@ This file only routes: the current item, what happens next and who waits on whom
 - **Done:** P00 to P05 (fixture scope), M01 to M09, A01-R, P06.1, P06.DB, P06.2, P09.3a, P06.2-F, P06.3, SV1 to SV3 and SV2-R.
 - **Owner directions:** OD-01 to OD-82. **Review log:** DM-01 to DM-97. **Linear (OD-29).** Every prompt names its environment (OD-36) and glow-docs as attached (OD-74).
 
-## Waiting checkpoint (20 November 2026, 03:34 UTC, App Manager 12)
+## Waiting checkpoint (20 November 2026, 06:03 UTC, App Manager 12)
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 12 | Nathan | SV4 A1's session ([its prompt](../ephemeral/2026-11-20-sv4-a1-rules-prompt.md), revision 2) and its report | Nothing is verified or merged |
+| App Manager 12 | GitHub Actions and Codex, then Nathan | PR58's run and Codex on its head; then A1's exact-head review ([its prompt](../ephemeral/2026-11-20-sv4-a1-review-prompt.md)) | Nothing merges |
 
 ## Next actions (App Manager 12)
 
-1. **SV4 A1** (the rules; A0 merged with PR57 at `499ccbb`, `main`'s run 44657225220 passed): its prompt, revision 2, from the brief's revision 5, with Nathan (revision 1's session stopped before any change; AM12-46, AM12-47); then the session, the verification, the exact-head review, Codex and the Dev Manager's pre-merge read.
+1. **SV4 A1** (the rules; built at `bc0675d`, run 44679608400 passed; verified and integrated at `a1651fb`; PR58): Codex on PR58's head, then the exact-head review (the prompt goes to Nathan once Codex has finished), the Dev Manager's pre-merge read and the merge; then A2's prompt.
 2. **Manager records:** PF02 1.9 (AM12-31 to AM12-47); the status log's move (M09 (b)); R-07, R-10, R-26, R-28.
 
 **Carried follow-ups** live in their owning homes: [`carried-to-later-items.md`](../planning/carried-to-later-items.md) (with "Routed by M09" and "Routed by A01-R"), the P11 plan, the review log's "Deferred conditions".
 
-## Branches and PRs (20 November 2026, 03:34 UTC; listed with `git ls-remote` at this time)
+## Branches and PRs (20 November 2026, 06:03 UTC; listed with `git ls-remote` at this time)
 
-- **Open PRs:** none. `main` is at `499ccbb` (PR57).
-- **Remote branches, three:** `main`; the manager branch (`main`'s merge commit, then the receipt); `claude/dev-manager` (`b505a8e`, merged). The cleanup run 44657225140 deleted A0's, C1's and C2's branches.
+- **Open PRs:** PR58, the manager branch into `main` (full scope; SV4 A1). `main` is at `499ccbb` (PR57).
+- **Remote branches, four:** `main`; the manager branch; `claude/dev-manager` (`b505a8e`, merged); A1's `claude/sleepy-mendel-0kqgw9` (`a1651fb`, fast-forwarded).
