@@ -3,7 +3,8 @@
 No database: the profile settings' refusals and values; the job's secret check of the suite's
 output and the upload gate; the workflow's SV2 steps; the case plan; the schema check against the
 shared corpus; the value ledger; and the commands' refusals of each other's settings. The cases
-themselves run in the Database proof checks job, on the third disposable database.
+themselves run in their own suite's job, "Database proof checks (profile)", on its own disposable
+database.
 """
 
 from __future__ import annotations
@@ -38,22 +39,22 @@ from glow_ordering_proof import (
 )
 from glow_ordering_proof.profile_support import ObservedObjects, ValueLedger, synthetic_png
 from tests.fakes import FakeConnection
-from tests.test_identity_offline import KeyFiles, pem, workflow_step
+from tests.test_identity_offline import (
+    KeyFiles,
+    credentials_prelude,
+    job_databases,
+    job_secret_files,
+    pem,
+    script_lines,
+    workflow_job,
+    workflow_step,
+    writers,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 API_ROOT = REPO_ROOT / "services" / "api"
 PROFILE_SETTINGS = "glow_ordering_proof.profile_settings"
-
-
-def unquoted_step(name_prefix: str) -> str:
-    """``workflow_step`` for a step whose name the workflow does not quote."""
-    lines = (REPO_ROOT / ".github" / "workflows" / "foundation.yml").read_text().splitlines()
-    starts = [i for i, line in enumerate(lines) if line.startswith("      - ")]
-    for index, start in enumerate(starts):
-        if lines[start].startswith(f"      - name: {name_prefix}"):
-            end = starts[index + 1] if index + 1 < len(starts) else len(lines)
-            return "\n".join(lines[start:end])
-    raise AssertionError(f"no step named {name_prefix!r}")
+JOB = "database-profile"  # the profile suite's own job (SV4 A0)
 
 
 GOOD = {
@@ -169,13 +170,16 @@ SUITE_LINES = {
 
 
 class ProfileJobDirectory:
-    """A job directory as the credentials step writes it, with synthetic values only."""
+    """A job directory as the profile job's credentials step writes it: every secret file it
+    writes, read from the workflow (SV4 A0, D2), with synthetic values only."""
 
     def __init__(self) -> None:
         self.directory = tempfile.TemporaryDirectory()
         self.root = Path(self.directory.name)
+        files = job_secret_files(JOB)
+        keys = sorted(name for name in files if name.endswith(".pem"))
         self.values: dict[str, str] = {}
-        for name in profile_scan.VALUE_FILES:
+        for name in sorted(files - {profile_scan.PASSFILE, *keys}):
             self.values[name] = secrets.token_hex(24)
             self.write(name, self.values[name] + "\n")
         self.role_password = secrets.token_hex(24)
@@ -183,11 +187,11 @@ class ProfileJobDirectory:
             profile_scan.PASSFILE,
             "".join(
                 f"127.0.0.1:5433:{database}:glow_proof:{self.role_password}\n"
-                for database in ("glow_proof", "glow_identity_proof", "glow_profile_proof")
+                for database in job_databases(JOB)
             ),
         )
         self.pem_lines: list[str] = []
-        for name in profile_scan.KEY_FILES:
+        for name in keys:
             text = pem(rsa.generate_private_key(public_exponent=65537, key_size=2048))
             self.write(name, text)
             self.pem_lines.append(
@@ -235,19 +239,16 @@ class ProfileScanTests(unittest.TestCase):
             self.assertNotIn(value, printed)
 
     def test_the_values_are_every_secret_file_of_the_job(self) -> None:
+        # SV4 A0 (D2): the check lists every secret file its own job writes (its keys, its
+        # marker, the decoy database's marker, the passwords), and no other.
         self.assertEqual(
             set(profile_scan.VALUE_FILES),
-            {
-                "profile-secret-key",
-                "profile-marker",
-                "identity-secret-key",
-                "identity-marker",
-                "marker",
-                "superuser-password",
-            },
+            {"profile-secret-key", "profile-marker", "identity-marker", "superuser-password"},
         )
+        self.assertEqual(set(profile_scan.KEY_FILES), {"profile-jwt-key.pem"})
         self.assertEqual(
-            set(profile_scan.KEY_FILES), {"profile-jwt-key.pem", "identity-jwt-key.pem"}
+            {*profile_scan.VALUE_FILES, profile_scan.PASSFILE, *profile_scan.KEY_FILES},
+            job_secret_files(JOB),
         )
         values = profile_scan.job_values(self.job.root)
         for value in self.job.every_value():
@@ -386,31 +387,172 @@ class ProfileScanTests(unittest.TestCase):
 
 
 class ProfileWorkflowTests(unittest.TestCase):
-    """The Database proof checks job's SV2 steps, read as the job runs them."""
+    """The profile suite's job's steps (Database proof checks (profile), since SV4 A0), read as
+    the job runs them."""
 
-    def test_the_credentials_step_makes_the_third_database_and_its_own_keys(self) -> None:
-        step = unquoted_step("Generate the disposable database's credentials")
+    def test_the_credentials_step_makes_its_database_the_decoy_and_its_own_keys(self) -> None:
+        step = workflow_step(JOB, "Generate the disposable database's credentials")
         for line in (
             'echo "::add-mask::$profile_marker"',
+            'echo "::add-mask::$identity_marker"',
             'echo "::add-mask::$profile_secret_key"',
             'printf \'%s\\n\' "$profile_marker" > "$dir/profile-marker"',
+            'printf \'%s\\n\' "$identity_marker" > "$dir/identity-marker"',
             'printf \'%s\\n\' "$profile_secret_key" > "$dir/profile-secret-key"',
-            'python - "$dir/identity-jwt-key.pem" "$dir/profile-jwt-key.pem" <<\'PYTHON\'',
+            "python - \"$dir/profile-jwt-key.pem\" <<'PYTHON'",
         ):
             with self.subTest(line=line):
                 self.assertIn(line, step)
         self.assertIn("CREATE DATABASE glow_profile_proof OWNER glow_proof;", step)
         self.assertIn("COMMENT ON DATABASE glow_profile_proof IS 'glow-ordering-proof:%s';", step)
-        self.assertIn("127.0.0.1:5433:glow_profile_proof:glow_proof:%s", step)
+        # AG1: the decoy, in this job's PostgreSQL, carries the identity database's name and a
+        # marker of its own; the passfile names only the profile database.
+        self.assertIn("CREATE DATABASE glow_identity_proof OWNER glow_proof;", step)
+        self.assertIn("COMMENT ON DATABASE glow_identity_proof IS 'glow-ordering-proof:%s';", step)
+        self.assertEqual(job_databases(JOB), ["glow_profile_proof"])
         self.assertIn('test "$profile_marker" != "$identity_marker"', step)
         # Each key is generated, never copied: one key per path, in a loop.
-        self.assertIn("for path in sys.argv[1:]:", step)
+        self.assertEqual(step.count("for path in sys.argv[1:]:"), 1)
+        # No other suite's key, marker or settings is in this job.
+        job = "\n".join(workflow_job(JOB))
+        for other in ("identity-secret-key", "identity-jwt-key.pem", "discovery", "wrong_marker"):
+            with self.subTest(other=other):
+                self.assertNotIn(other, job)
+        # SV4 A0-C1 (the exact-head review's F2): every value, both passwords among them, is
+        # masked once it is generated and before any line that can print or write.
+        lines = script_lines(step.split("        run: |\n", 1)[1])
+        self.assertEqual(lines[0], "set +x")
+        values = [
+            "superuser_password",
+            "role_password",
+            "profile_marker",
+            "identity_marker",
+            "profile_secret_key",
+        ]
+        events = credentials_prelude(step)
+        self.assertEqual([name for kind, name in events if kind == "generated"], values)
+        self.assertEqual([name for kind, name in events if kind == "masked"], values)
+        for name in values:
+            with self.subTest(name=name):
+                self.assertLess(events.index(("generated", name)), events.index(("masked", name)))
+                self.assertEqual(len(re.findall(rf"^ *{name}=", step, flags=re.MULTILINE)), 1)
+        self.assertEqual(step.count("::add-mask::"), len(values))
+        # SV4 A0-C1 (F1): the profile database's comment takes the profile marker, and the
+        # decoy's the decoy's, in exactly this argument list; each marker file is written once,
+        # from its own database's marker.
+        role = (
+            "printf \"CREATE ROLE glow_proof LOGIN PASSWORD '%s' NOSUPERUSER NOCREATEDB"
+            " NOCREATEROLE;\\n"
+            "CREATE DATABASE glow_profile_proof OWNER glow_proof;\\n"
+            "COMMENT ON DATABASE glow_profile_proof IS 'glow-ordering-proof:%s';\\n"
+            "CREATE DATABASE glow_identity_proof OWNER glow_proof;\\n"
+            "COMMENT ON DATABASE glow_identity_proof IS 'glow-ordering-proof:%s';\\n\""
+            ' "$role_password" "$profile_marker" "$identity_marker" > "$dir/create-role.sql"'
+        )
+        self.assertEqual(writers(step, "create-role.sql"), [role])
+        distinct = (
+            'test "$profile_marker" != "$identity_marker"'
+            ' || { echo "the markers are not distinct; refusing"; exit 1; }'
+        )
+        self.assertLess(lines.index(distinct), lines.index(role))
+        self.assertEqual(
+            writers(step, "profile-marker"),
+            ['printf \'%s\\n\' "$profile_marker" > "$dir/profile-marker"'],
+        )
+        self.assertEqual(
+            writers(step, "identity-marker"),
+            ['printf \'%s\\n\' "$identity_marker" > "$dir/identity-marker"'],
+        )
 
-    def test_the_migrations_step_refuses_both_other_markers_first(self) -> None:
-        step = workflow_step("SV2: show the profile database refuses the other markers")
-        loop = step.index("for other in marker identity-marker; do")
+    def test_the_migrations_step_refuses_the_decoys_marker_first(self) -> None:
+        step = workflow_step(
+            JOB, "SV2: show the profile database refuses the decoy database's marker"
+        )
+        # SV4 A0-C1 (the exact-head review's F1): the function reads the marker file it is named,
+        # and the refused migrate is named the decoy's (identity-marker), before the profile
+        # database's own.
+        self.assertIn("        shell: bash\n", step)
+        lines = script_lines(step)
+        self.assertEqual(step.count("PROOF_DB_MARKER="), 1)
+        self.assertIn(
+            'PROOF_DB_PASSFILE="$DIR/passfile" PROOF_DB_MARKER="$(cat "$DIR/$1")" \\', lines
+        )
+        self.assertIn(
+            "PROOF_DB_HOST=127.0.0.1 PROOF_DB_PORT=5433 PROOF_DB_NAME=glow_profile_proof"
+            " PROOF_DB_USER=glow_proof \\",
+            lines,
+        )
+        refused_line = (
+            "profile identity-marker python -m django migrate --verbosity 1"
+            ' > "$DIR/profile-wrong-marker.log" 2>&1'
+        )
+        migrate_line = "profile profile-marker python -m django migrate --verbosity 1"
+        self.assertEqual(
+            [line for line in lines if "python -m django migrate" in line],
+            [refused_line, migrate_line],
+        )
+        # F2: the decoy's existence and distinctness, the counts and their comparison, the
+        # refusal, and the step's failure, each a whole line, in order, before the migrations.
+        sequence = [
+            "docker exec \"$CONTAINER\" psql -X -q -At -F ' ' -v ON_ERROR_STOP=1 -U postgres"
+            ' -d glow_profile_proof -c "$1"',
+            'decoy=$(in_profile_db "SELECT count(*) FROM pg_catalog.pg_database WHERE datname ='
+            " 'glow_identity_proof' AND starts_with(shobj_description(oid, 'pg_database'),"
+            " 'glow-ordering-proof:')\")",
+            'distinct=$(in_profile_db "SELECT shobj_description((SELECT oid FROM'
+            " pg_catalog.pg_database WHERE datname = 'glow_identity_proof'), 'pg_database') IS"
+            " DISTINCT FROM shobj_description((SELECT oid FROM pg_catalog.pg_database WHERE"
+            " datname = 'glow_profile_proof'), 'pg_database')\")",
+            'if [ "$decoy" != 1 ] || [ "$distinct" != t ]; then echo "FAIL: the decoy database'
+            ' or its own marker is missing"; exit 1; fi',
+            'in_profile_db "$per_schema" > "$DIR/profile-relations-before.txt"',
+            'outside_before=$(in_profile_db "$outside_pg")',
+            "set +e",
+            refused_line,
+            "status=$?",
+            "set -e",
+            'in_profile_db "$per_schema" > "$DIR/profile-relations-after.txt"',
+            'outside_after=$(in_profile_db "$outside_pg")',
+            "no_ledger=$(in_profile_db \"SELECT to_regclass('public.django_migrations') IS NULL\")",
+            "refusal=$(grep -m 1 -F 'RefusedDatabase: refusing this database'"
+            ' "$DIR/profile-wrong-marker.log" || true)',
+            "fail=0",
+            'if [ "$status" -eq 0 ]; then echo "FAIL: migrate with another database\'s marker'
+            ' exited 0"; fail=1; fi',
+            'if [ -n "$refusal" ]; then',
+            'echo "FAIL: the refusal message is missing (diagnostics withheld)"; fail=1',
+            'cmp -s "$DIR/profile-relations-before.txt" "$DIR/profile-relations-after.txt" \\',
+            '|| { echo "FAIL: a schema\'s relation count changed"; fail=1; }',
+            'if [ "$outside_before" != 0 ] || [ "$outside_after" != 0 ]; then',
+            'echo "FAIL: a relation exists outside information_schema and the pg_ schemas"; fail=1',
+            'if [ "$no_ledger" != t ]; then echo "FAIL: django_migrations exists"; fail=1; fi',
+            'test "$fail" = 0',
+            migrate_line,
+            "profile profile-marker python -m django makemigrations --check --dry-run",
+        ]
+        self.assertEqual([line for line in sequence if line not in lines], [])
+        at = [lines.index(line) for line in sequence]
+        self.assertEqual(at, sorted(at))
+        cmp = sequence.index('|| { echo "FAIL: a schema\'s relation count changed"; fail=1; }')
+        self.assertEqual(at[cmp], at[cmp - 1] + 1)
+        self.assertEqual(lines.count("set +e"), 1)
+        self.assertEqual(lines.count("set -e"), 1)
+        decoy = step.index("datname = 'glow_identity_proof'")
+        before = step.index('in_profile_db "$per_schema" > "$DIR/profile-relations-before.txt"')
+        refused = step.index("profile identity-marker python -m django migrate --verbosity 1")
+        after = step.index('in_profile_db "$per_schema" > "$DIR/profile-relations-after.txt"')
         migrate = step.index("profile profile-marker python -m django migrate --verbosity 1")
-        self.assertLess(loop, migrate)
+        self.assertTrue(decoy < before < refused < after < migrate)
+        for line in (
+            "grep -m 1 -F 'RefusedDatabase: refusing this database'",
+            'cmp -s "$DIR/profile-relations-before.txt" "$DIR/profile-relations-after.txt"',
+            "SELECT to_regclass('public.django_migrations') IS NULL",
+            "-U postgres -d glow_profile_proof",
+            'test "$fail" = 0',
+        ):
+            with self.subTest(line=line):
+                self.assertIn(line, step)
+        self.assertLess(step.index('test "$fail" = 0'), migrate)
         self.assertIn(
             "profile profile-marker python -m django makemigrations --check --dry-run", step
         )
@@ -418,8 +560,40 @@ class ProfileWorkflowTests(unittest.TestCase):
         self.assertIn('PROOF_IDENTITY_JWT_KEY_FILE="$DIR/profile-jwt-key.pem"', step)
         self.assertIn("DJANGO_SETTINGS_MODULE=glow_ordering_proof.profile_settings", step)
 
+    def test_the_dbshell_step_requires_a_failed_exit_and_the_refusal(self) -> None:
+        # SV4 A0-C1 (the exact-head review's F2): the dbshell step fails unless dbshell exits
+        # non-zero with the marker's refusal, under the profile settings and the profile marker.
+        step = workflow_step(JOB, "SV2: show that dbshell is refused")
+        self.assertIn("        shell: bash\n", step)
+        lines = script_lines(step)
+        sequence = [
+            "set +e",
+            'env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8 \\',
+            "PROOF_DB_HOST=127.0.0.1 PROOF_DB_PORT=5433 PROOF_DB_NAME=glow_profile_proof"
+            " PROOF_DB_USER=glow_proof \\",
+            'PROOF_DB_PASSFILE="$DIR/passfile" PROOF_DB_MARKER="$(cat "$DIR/profile-marker")" \\',
+            'PROOF_IDENTITY_SECRET_KEY_FILE="$DIR/profile-secret-key" \\',
+            'PROOF_IDENTITY_JWT_KEY_FILE="$DIR/profile-jwt-key.pem" \\',
+            "DJANGO_SETTINGS_MODULE=glow_ordering_proof.profile_settings \\",
+            'python -m django dbshell < /dev/null > "$DIR/profile-dbshell.log" 2>&1',
+            "status=$?",
+            "set -e",
+            "refusal=$(grep -m 1 -F 'RefusedDatabase: refusing dbshell'"
+            ' "$DIR/profile-dbshell.log" || true)',
+            'rm -f "$DIR/profile-dbshell.log"',
+            'echo "profile dbshell exit status: $status"',
+            'if [ "$status" -eq 0 ]; then echo "FAIL: dbshell exited 0"; exit 1; fi',
+            'if [ -z "$refusal" ]; then echo "FAIL: the dbshell refusal is missing'
+            ' (diagnostics withheld)"; exit 1; fi',
+            'echo "refusal: $refusal"',
+        ]
+        self.assertEqual([line for line in sequence if line not in lines], [])
+        at = [lines.index(line) for line in sequence]
+        self.assertEqual(at, sorted(at))
+        self.assertEqual(at[8], at[7] + 1)  # the exit status is the dbshell command's
+
     def test_the_suite_step_runs_the_check_and_sets_the_output_only_on_a_pass(self) -> None:
-        step = workflow_step("SV2: run the profile suite")
+        step = workflow_step(JOB, "SV2: run the profile suite")
         self.assertIn("        id: profile\n", step)
         self.assertIn(
             'python -m glow_ordering_proof.profile_scan "$DIR" "$DIR/profile.log"'
@@ -434,7 +608,7 @@ class ProfileWorkflowTests(unittest.TestCase):
         self.assertIn('echo "profile phase: $((finished - started)) s', step)
 
     def test_after_a_failed_check_the_step_prints_counts_only(self) -> None:
-        step = workflow_step("SV2: run the profile suite")
+        step = workflow_step(JOB, "SV2: run the profile suite")
         lines = step.splitlines()
         start = lines.index('          if [ "$scan" -eq 0 ]; then')
         withheld = lines.index("          else", start)
@@ -472,7 +646,7 @@ class ProfileWorkflowTests(unittest.TestCase):
         self.assertIn("case lines: 2 passed, 1 failed", printed)
 
     def test_the_second_run_step_counts_rows_and_requires_the_refusal(self) -> None:
-        step = workflow_step("SV2: show that a second profile run on the used database")
+        step = workflow_step(JOB, "SV2: show that a second profile run on the used database")
         self.assertIn("-d glow_profile_proof", step)
         for table in (
             "auth_user",
@@ -488,7 +662,7 @@ class ProfileWorkflowTests(unittest.TestCase):
         self.assertIn('if [ "$before" != "$after" ]; then', step)
 
     def test_the_upload_waits_for_the_check(self) -> None:
-        step = workflow_step("SV2: save the profile suite's results JSON")
+        step = workflow_step(JOB, "SV2: save the profile suite's results JSON")
         self.assertIn(
             "        if: ${{ always() && steps.profile.outputs.scan == 'passed' }}\n", step
         )

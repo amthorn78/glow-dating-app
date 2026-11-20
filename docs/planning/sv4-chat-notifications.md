@@ -1,0 +1,255 @@
+# SV4 — The chat and notifications slice, proven on disposable PostgreSQL
+
+- **Work ID:** SV4 (OD-49, N1 (a); PF01 §8, "Server slices" and "The prototype first", stage 1; the F09 to F13 flows).
+- **Status: brief, revision 3, 19 November 2026, by App Manager 12.** It designs Stage A. Stage B, the server side of notifications, is designed in a later revision once Stage A has merged. Revision 1 went to the Dev Manager for its first read (D-07) as DM-96. [DM-96](../continuity/dev-manager/reviews/2026-11-19-dm-96-sv4-stage-a-brief.md) (Dev Manager 5, answered at `15aa78d`, a read of `ccc05ec`) approved the staging, C-01, C-08, D6, D7, the routes, H-01, the carried entries and the review plan with conditions, and asked for C-02 to take revision 1's alternative (b), a block storing `unmatched`, giving the words; Nathan need decide neither C-01 nor C-02. Revision 2 applies AG1 to AG21 here as written, so no further read is needed before A0's prompt. The Dev Manager's next reads are A0's CI policy change before A0 merges, and each stage's pre-merge read. Revision 3 (the manager's, while writing A0's prompt) adds to D2 the rule for each suite's secret scan, to A0's owned paths the three scans and their offline tests, and to D11 A0's earlier tests: the proof's offline tests read the workflow's steps and each scan's list of the job's secret files, and the split changes both (AM12-39). The Dev Manager reads it at A0's pre-merge read.
+- **Owner:** Nathan Amthor, by the order he resumed on 26 October (OD-49) and PF01 1.20's stage 1 (OD-78, OD-80). **Manager:** App Manager 12. **Sessions:** one implementation session per stage (D1), each started by Nathan, in `Glow App - No Stream` (no Stream call, no provider, no credential; the chat provider is the in-memory fixture).
+- **Starting point:** `main` at `c2cffbe` (PR56), with the manager branch's Markdown records after it. Each prompt names the exact commit.
+- **Evidence home:** `docs/testing/evidence/<date>-sv4-chat-notifications.md`, written by the sessions.
+
+## Why
+
+- **PF01 §8, "Server slices":** each slice is proven on a disposable PostgreSQL in CI under P06.DB's rules (no shared or production database, CI-generated credentials, the runtime guards kept); the runtime stays sealed until integration wires it; a slice's database proof partially evidences its P11 cases, which P11A and P11B still rerun on the real target.
+- **PF01 1.20, "The prototype first":** SV4 is the first item of stage 1, the pre-integration build. Stage 1 is reached when the full journey and the safety and deletion cases run on the composed server, with the app's real client, on a disposable PostgreSQL in CI, on named stand-ins.
+- **M09's item 1** (the [M09 record](../testing/evidence/2026-11-18-m09-project-status-review.md), section 4.3): *"SV4 Stage A: chat's routes. Send, history, list and read cursor served by sealed routes; the reads follow OD-60's rule; a member can list their matches; a block retires old likes and no longer reveals its direction; the dormant token code is removed or sealed (P06.2-T, folded in). Accepted on a fifth database suite in CI."* Size L to XL. Item 2 is Stage B.
+- **The flows** (`packages/contracts/production/flows-v1.json`):
+  - **F09**, matches: *"Reciprocal likes only; one unordered pair and logical event; unilateral client match creation denied"*;
+  - **F10**, unmatch: *"Participant unmatch revokes contact without owner-policy prerequisite; unmatch never grants rematch"*;
+  - **F11**, communication: *"No send or history read after block/unmatch commit; no provider token is issued (OD-45); pending submission is not delivery; only text Glow sent is shown"*;
+  - **F13**, block: *"Block works after unmatch and while paused; unblock cannot restore match/send entitlement"*; its private projection: *"Actor receipt; block direction hidden from other user"*.
+- **Nathan's answers** that Stage A applies:
+  - **OD-45:** no provider token is issued, and the app holds no Stream credential; Glow's API serves the conversation.
+  - **OD-60, H:** reads get their own rule. A read needs a valid session of an `active` reader and the match active with no block either way (OD-12); for each cause that stops messaging (the member's own pause, the other member's pause, a restriction, a suspension, a withdrawn consent) a setting chooses hidden or read-only, read-only for every cause at launch, with one neutral line the same for every cause. A deletion works as an unmatch.
+  - **OD-12:** after an unmatch or a block, neither person can send or see the conversation.
+  - **OD-80:** no design decision about HDE. Stage A touches no HDE port.
+- **Carried to SV4** (the [carried-items file](carried-to-later-items.md), "Carried to SV4" and "Routed by M09"), with each entry's disposition in D12.
+
+## Outcome
+
+Stage A builds chat's sealed HTTP surface on SV1's actor, SV2's profile and SV3's matches, corrects three rules the server gets wrong today, and removes the token code OD-45 made dormant.
+
+1. **A block retires the pair's old likes** (C-01; D3): a like made before a block between the pair never makes a match.
+2. **A block's direction is not served** (C-02; D4): a participant is served the same about a match whether the other member blocked or unmatched them.
+3. **The reads follow OD-60's rule** (C-08; D5): read-only for the causes the setting marks read-only, hidden for unmatch, block and deletion.
+4. **The token code is removed** (P06.2-T; D7), with the refusal lists widened and the pin test's gap closed.
+5. **Chat's routes** (D8, D9): send, the conversation list, the history page, the read cursor and a member's match list, sealed, through SV1's actor.
+6. **The proof** (D10): a fifth database suite in CI, in a database job split by suite (D2).
+7. **The records:** the data model, the contract and the P11 plan's entries as built; the evidence record, with the threat model's inputs.
+
+## Design
+
+- **D1 — Scope, stages and seal.**
+  - **Three sessions, each verified, reviewed and merged on its own** (recommended), on SV3's B0 pattern (DM-71):
+    - **A0, the CI tooling** (no app code): the database job split by suite (D2), the Chromium install's retry (DM-59 item 7), and the pin test's two fixes (D7). Its own pull request.
+    - **A1, the rules** (app code, no new route): D3, D4, D5, D6 and D7, proven on the existing ordering, profile and discovery suites, whose earlier tests change as D11 lists.
+    - **A2, the routes** (app code): D8 and D9, proven on a fifth suite (D10).
+  - **The alternative** is one session for A1 and A2 together, as M09's item 1 is written. Its diff would change four existing suites' expectations and add a fifth at once, across two security boundaries (who may read a conversation; what a member learns of a block).
+  - **Sealed until integration** (PF01 1.20, stage 2), as SV1 to SV3 are: no deployed URL, no provider, no real member, no credential beyond what CI generates for one run. The mobile app is unchanged; its fixture adapters stay until AC1 to AC3.
+  - **Not in Stage A:** notifications (F12), the expired-session sweep, G-04's records and the ledger's storage (Stage B); rematch (D12); any staff route (P07).
+- **D2 — A0: the database job split by suite** (M09's C-17).
+  - **Today** one job, `database` in `.github/workflows/foundation.yml` (lines 228 to 233, `timeout-minutes: 30`), creates four databases in one PostgreSQL 17.11 and runs the ordering, identity, profile and discovery suites in order. On `main`'s run 44416436012 it took 16 minutes 32 seconds of its 30.
+  - **Recommended:** one job per suite, each starting its own PostgreSQL from the pinned digest, generating its own credentials and marker, and keeping every check the shared job runs for that suite (the wrong-marker refusal, `dbshell`'s refusal, migrations from zero against the models, the used-database refusal, the secret check before any upload). Today SV1's to SV3's suites also show that their database refuses the other suites' markers, which only a shared PostgreSQL holds; each job keeps that check by creating, in its own PostgreSQL, one more database carrying another suite's marker and showing its suite refuses it. The Foundation gate requires every suite's job. A2 adds the chat suite's job the same way.
+  - **Each suite's secret scan follows its job** (revision 3): `identity_scan.py`, `profile_scan.py` and `discovery_scan.py` each list the secret files of the one job that holds them all today, earlier suites' keys and markers included (`VALUE_FILES`, `KEY_FILES`). After the split, each scan covers every secret file its own job writes (its keys, its marker, the decoy database's marker, the role's and the superuser's passwords) and reads no file its job does not write; a value its job writes and its scan omits is a failure, shown by a reversal.
+  - **The alternative:** a matrix over suites in one job definition. It is shorter but hides per-suite steps behind conditions; the gate's result list must still name each suite.
+  - **Every step's output stays as it is:** no connection value printed, no `DATABASE_URL` name, no `docker inspect`. The CI policy's job list and its paragraph "Toolchain installs are retried once" change with it (governing Markdown; the Dev Manager reads it before A0 merges).
+  - **The Chromium retry** is DM-59 item 7's text as carried ("Carried to the next change to the Foundation workflow"): `id: chromium`, `continue-on-error: true`, a pause and one retry under `if: steps.chromium.outcome == 'failure'`, each attempt with its own `timeout-minutes`, all inside the job's 25 minutes.
+  - **A0 is full scope:** the manager classifies it with the pre-change policy, reads the complete workflow diff and the jobs' actual steps and results, and requires full checks before it merges (root `AGENTS.md`).
+- **D3 — A1: a block retires the pair's old likes** (C-01).
+  - **Today:** `glow_chat`'s `block` and `unblock` never touch a like (`services/api/glow_chat/contact.py`, lines 645 to 714 and 716 to 751), and `activate_reciprocal` makes a match whenever a `liked` row exists each way, no block is active and no match exists (lines 303 to 391). So A likes B, either blocks the other and later unblocks, B likes A, and a match and a channel are made on the old like. The app's sample rules do the opposite: a block marks both directions unmatchable (`glow_domain/interactions.py`, lines 694 to 698), and `tests/test_interactions.py`'s `test_block_unblock_retires_old_unilateral_like` (lines 480 to 487) asserts no match. No record decides to drop that rule (M09).
+  - **The rule** (recommended, the sample rules'): a like made before a block between the pair, in either direction, never counts toward a match. A like decided after the block counts.
+  - **What the member sees must not change.** A retired like must still read `liked`, at the same version, in its actor's own-versions read (`glow_discovery.interactions.read_own_versions`, lines 586 to 612), or the member who did not block learns of the block. Neither member can renew a retired like through the routes: SV3's like needs the target in the actor's current batch, and a decided target is consumed; resurfacing and undo apply to passes only (SV3's D12).
+  - **The mechanism** (recommended): a nullable `retired_at` on `DirectionalInteraction`, one migration (`0013`). `glow_chat`'s `block` sets it, under its two account locks with the database's clock, on every `liked` row between the pair, in both directions, in the same transaction, and changes nothing else of the row (not its state, version, `decided_at` or policy version). Both reciprocity checks require it null on both rows: `activate_reciprocal`'s, and SV3's like's own check before it calls `activate_reciprocal` (`glow_discovery/interactions.py`, `interact`, lines 355 to 365). That check finds any `liked` row of the target's today, and the like is refused `state_conflict` whenever activation does not apply; left as it is, the other member's later like would be refused, and the refusal would tell them that a like toward them was made before a block (DM-96). With both checks, the later like is recorded with no match, as is any like that finds no like in return. No read of the actor's own row returns `retired_at`. A pass, or a like that replaces a pass, writes it null.
+  - **The alternatives:**
+    - **(b) a time comparison** in `activate_reciprocal`: a like counts only if decided after the pair's latest block change. No migration, but `Block` has only `updated_at`, which Django's `auto_now` sets from the server's clock, while `decided_at` is the database's `clock_timestamp()`; comparing the two is unsound.
+    - **(c) any block ever between the pair refuses a match.** Simpler, but it also refuses a pair that had no likes before the block and likes afterwards, which the sample rules allow.
+  - **The reference design.** The ordering suite runs `block` on both subjects, P06.DB's reference design and the app's adapter (`proofs/postgres-ordering/glow_ordering_proof/reference.py`, `adapter.py`). If the new write changes anything that suite compares, A1 stops and reports.
+  - **Whether Nathan decides it.** The manager's reading: it restores a reviewed sample rule the server dropped by omission, changes neither D8's rule nor F13's projection, and gives no member a new action, so it is a defect fix, not a product decision. The Dev Manager rules on that reading.
+  - **The proof:** two database cases that fail without the rule, each with its reversal: a like, then a block and unblock by either member (one case each), then a like from the other member, which is recorded and answered as a like that finds no like in return, with no match made. In each, the first like reads the same state and version in its actor's own-versions read before and after the block.
+- **D4 — A1: a block's direction is not served** (C-02; DM-75).
+  - **Today:** only `glow_chat`'s `block` makes a match `restricted` (lines 691 to 703), and SV3's match read and unmatch answer serve the match's state to both participants (`glow_discovery/interactions.py`, `_match_projection`, lines 235 to 242). A member who did not block and sees `restricted` learns that the other did. The version and the answers differ too: `unmatch` takes a `restricted` match to `unmatched`, advancing its version, and answers `no_change` for an `unmatched` one (lines 753 to 794).
+  - **The requirement** (DM-75, as carried): what a participant who has not blocked is served about the match (its state, its version, and the answers to their own commands and reads) is the same whether the other member blocked or unmatched them, including after the blocker's later unblock or unmatch.
+  - **Recommended: a block ends an active match as an unmatch does** (revision 1's alternative (b); DM-96): `glow_chat`'s `block` stores `unmatched`, not `restricted`, with the same contact and version advance and the same `contact_revoked` event it writes today.
+    - So what a participant is served (the state, the version, and the answers to their own commands and reads) is the same after a block as after an unmatch, by construction. It stays the same after the blocker's later unblock, which changes no match, and after either member's later unmatch, which answers `no_change` (`already_unmatched`), as for any `unmatched` match.
+    - No projection maps a state, and no command treats one state specially. The version a member sees stops at the first end of contact, whoever ended it.
+    - The cause stays in the `Block` rows, which are never deleted, and in the `block_changed` events, for staff (P07) and for the rematch rule.
+    - The server then writes `restricted` for no command. The enum keeps it for the sample back-ends (P05.3's fixture commands and the mobile fixture adapter, which restrict a match when the pair loses eligibility) and for a later staff path, which keeps this sameness (D12).
+  - **Checked against each surface:**
+    - the send and every read check the match's state first, so a member's send or read refuses the same way after either (`contact.send`, lines 564 to 565; `reads._authorize`, lines 276 to 277);
+    - the conversation list omits both;
+    - discovery already excludes any pair with a match row in any state (`glow_discovery/predicates.py`, lines 179 to 187), so absence from a page is the same after either;
+    - the own-versions read returns the actor's own rows only;
+    - a block by the member who was blocked answers as any first block does (pinned by `block.works_after_unmatch_and_while_paused`).
+  - **The contract changes:** F10 gains the transition `block` from `active` to `unmatched`, the block's effect on an active match, with the role and flags of F10's `unmatch` rows (`participant`; no eligibility; no policy). No row is removed: the mobile fixture adapter looks up F10's rows while it runs (`apps/mobile/src/interactions/fixture-adapter.ts`, lines 39 to 42 and 204) and finds every rule it uses. `MatchProjection`'s description says that the server serves `restricted` to no member. `production-contracts.md`'s F10 and F13 paragraph and the data model's `Match` row say that a block ends an active match as an unmatch does, its cause kept in the `Block` rows.
+  - **The alternatives:**
+    - **(a) serve `restricted` as `unmatched`, and make unmatching a `restricted` match change nothing** (revision 1's recommendation): it meets the requirement on every surface below and keeps the cause on the match row. But its F10 change (the transition `unmatch` from `restricted` to `unmatched` becoming `restricted` to `restricted`) removes a row the mobile fixture adapter looks up while it runs, and that adapter's cleanup of a restricted match (`fixture-adapter.ts`, line 204; `cleanupMatches` and `unmatchIntent`, which the interactions screen and store use; the cleanup cases in `fixture-adapter.test.ts` from line 414) would then fail. Stage A changes no mobile file (DM-96);
+    - **(c) projection only:** map the state but leave `unmatch` as it is. The blocker's later unmatch would then advance the version the other member sees, which a real unmatch never does.
+  - **Whether Nathan decides it.** DM-75: if the design would change D8's rule, F13's private projection or what either member can do, the brief puts it to Nathan first. The manager's reading: the recommendation makes F13's projection hold, keeps D8's rule, and gives neither member a new action or takes one away. The Dev Manager rules on that reading.
+- **D5 — A1: the reads follow OD-60's rule** (C-08).
+  - **Today:** every read runs the send's checks (`glow_chat/reads.py`, `_authorize`, lines 228 to 298), so a pause, a restriction, a suspension or a withdrawn consent refuses the read. The setting `chat.history` exists with its launch default (`glow_domain/profile_settings.py`, lines 124 to 131 and 274 to 280) and no chat code reads it.
+  - **The read rule** (for the history read, the list and the read cursor):
+    - the reader's session is valid, unexpired and at the reader's epoch, and the reader's account is `active`;
+    - the match is `active` (so `unmatched` and `restricted`, an unmatch or a block, are hidden), and no block is active either way (hidden);
+    - the other account is not `deletion_pending` or `deleted` (hidden: a deletion works as an unmatch);
+    - then each cause below reads its value in `chat.history`, read under its pointer `FOR SHARE` after the row locks (SV2's D19 pointer order): `read_only` serves the conversation read-only, `hidden` refuses it.
+  - **The causes, mapped** (the manager's reading of OD-60 H's five keys):
+    - `own_pause`: the reader's profile is `paused`; `other_pause`: the other member's is;
+    - `restriction`: either member's profile is `restricted`. A `removed` profile is hidden, never read-only: F04 moves a profile to `removed` only on `deletion_requested`, and a deletion works as an unmatch (OD-60, H; AP-33; DM-96);
+    - `suspension`: the other account is `suspended` (a suspended reader has no valid session, so cannot read at all);
+    - `withdrawn_consent`: either member's latest onboarding decision is not `accepted`;
+    - **SV2's `incomplete`** (DM-52), not among OD-60's causes: read as a pause of that member (`own_pause` or `other_pause`), since both are a profile that is not shown and that its member can make visible again; neither is a safety restriction. The alternative is a sixth key in `chat.history`; it changes SV2's settings schema and its launch default.
+  - **The consent limit** (SV2's D2; OD-60, H; DM-96): a change that makes a cause more readable reaches a member only after they accept the consent wording that describes it, and `chat.history` names that wording's onboarding version (`consent_policy_version`). Stage A reads it fail-closed: while the setting names the launch version (`consent.onboarding.v1`), each cause reads its value; once it names any other, every cause reads `hidden`. At launch every cause is already `read_only` under the launch version, so this changes no read now. The per-member rule (each member's accepted version against the one the setting names) goes to P08 with DM-54's consent version (D12).
+  - **Read-only means:** the history page and the list serve the conversation, the read cursor moves, and the send is refused as today (its checks do not change). One neutral state, the same for every cause, marks it (D9).
+  - **The order of checks** keeps one refusal for every hidden cause, never naming which.
+  - **The read's protocol stays:** the shared locks in the send's order, the clock after the locks, the check before and after the provider call, no read inside a caller's transaction.
+- **D6 — A1: the send's expected version** (the P11 plan's C2-X2).
+  - **Today:** a send carries the match's `contact_version` (`SendCommand.contact_version`; stale is refused as `stale_contact_version`), and no contract says which projection gives it to the client.
+  - **Recommended:** `MessageIntent.meta.expected_version` is `MatchProjection.version`. Both start at 1 and are advanced together, by the block and by the unmatch only (`contact.py`, lines 693 to 694 and 779 to 780); with D4's design that stays so. A test pins the equality for every writer of either field, and the contract says that a match's version changes only when contact ends. That also settles the P11 plan's retry case: while contact continues the version cannot rise, so a retry of a committed send is never refused as stale; it can be refused only after contact has ended, as `match_not_active`, when no send is possible.
+  - **The alternative:** a `contact_version` field on `ConversationSummary`, which every conversation in the list would carry.
+- **D7 — A1: the token code removed** (P06.2-T; M05's E7; H-02).
+  - **Recommended: remove,** since OD-45 issues no token and dormant signing code is surface without a use:
+    - `grant_token` from the `ContactPersistence` port (`glow_domain/chat.py`, from line 167) and from `OrmContactPersistence` (`contact.py`, lines 407 to 458), with `_lock_shared` kept, since the reads use it;
+    - the grant rule in `glow_domain/chat_tokens.py` (`grant_chat_token`, `TokenGrant`, `TokenAccount`, `TokenSession`, `TOKEN_LIFETIME`, `NO_CHAT_IDENTITY`), keeping `revocation_cutoff_sent`, which the epoch revocation uses (D7's question below);
+    - `token_claims` and `sign_chat_token` from `glow_domain/chat_provider_stream.py` (lines 386 to 400), and its `import jwt` (line 84);
+    - the `pyjwt` pin stays: SV1 needs the package (H-02).
+  - **The alternative: seal,** with the code kept and a test that no runtime or route imports it. Smaller, but the surface stays.
+  - **Who uses it now** (read at `ccc05ec`; DM-96). Each stage's prompt repeats the search at its own commit, for every name D7 removes and for every source pin of a module the stage changes, and lists each hit by file and line:
+    - `test_chat_domain.py`: line 63 (the port's method names, `grant_token` among them) and `TokenRuleTests` (lines 228 to 290); `RevocationCutoffTests` (lines 292 to 320) stay, with the revocation;
+    - `test_chat_adapter_offline.py`: `test_r2_the_grant_signals_before_commit_once` (from line 148) and `test_the_adapter_has_no_switch_and_the_grant_is_on_the_port` (from line 294);
+    - `test_chat_provider_stream.py`: the imports (lines 56, 57 and 59), `SignerTests` (lines 1284 to 1348) and the seal test's import list (line 1362);
+    - `test_interactions_offline.py`: `ReciprocalWriterTests` (from line 1343) and its digests (`MAIN_DEFINITION_DIGESTS` and `MAIN_MODULE_DIGEST`, lines 1200 to 1295), which pin every definition in `glow_chat/contact.py` as SV3 left it, `grant_token`'s at line 1258. D3, D4 and D7 each change `contact.py`, so A1 rewrites the class against its own head and records the reason;
+    - the ordering suite (`cases.py`, line 1459; `delivery_phase.py`, line 593; `interface.py`, line 166; `adapter.py`, lines 181 to 182), and the Stream proof's live conformance (`proofs/stream-chat/glow_stream_proof/conformance.py`, lines 429 to 448). The Stream proof's own `token_claims` fields (`proof_run.py`, `mechanisms.py`) describe the SDK's tokens and are not the signer. The Stream proof's token rows are history once the signer goes; its offline tests and `checks/run_plan.py` must still pass. If either needs the signer, A1 stops and reports.
+  - **The epoch-bump question** (DM-31 item 4, open since 26 October): whether a session-epoch bump still revokes provider tokens once no client token exists. Today every bump is a suspension or a deletion (`contact.py`, `_revoke_account`, lines 804 to 860), which also deactivates the provider user, and a deactivated user's tokens are refused. **Recommended:** keep the revocation unchanged in Stage A, as defence in depth that costs one idempotent provider call per bump, and revisit it at integration when the live adapter is configured. **The alternative:** retire it, with `revoke_user_tokens` and `revocation_cutoff_sent`. It is a security boundary, so the Dev Manager decides.
+  - **With it** (the carried-items file, "Carried to P06.2-T"):
+    - the refusal lists (M05 finding 22): a `PG*` prefix rule and the Railway, Redis and `STREAM_*` names, in the API (`glow_api/configuration_profiles.py`, lines 24 to 48) and in the database proof (`proofs/postgres-ordering/glow_ordering_proof/environment.py`) together, and ADR 0004's sentence with them;
+    - the API README's lines on the dormant signer and Stage C1's modules (M05 P-13);
+    - the pin test's gap (M05 finding 13): `services/api/tests/test_toolchain_pins.py` reads `proofs/stream-chat/package.json`, with a reversal (in A0, beside N2 below).
+  - **M02's hardening** (H-01): in A0, the pin test's N2 (strip YAML comments before counting pins). The Setup script's items (N1, N4 and the Codex P2 on link destinations) and N6 are closed as declined (recommended). The first three need a change to `scripts/bootstrap-toolchain.sh` and a manual paste into both app environments, and the environments work as they are. N6 is the lint pattern `extend-exclude = ["*.md"]` in `services/api/pyproject.toml` and `proofs/postgres-ordering/pyproject.toml`; it needs no paste, and a Python file under a directory so named is full scope anyway (M02's record; DM-96). No finding is a security defect. The alternative is to do them in A0, with Nathan's paste.
+  - **The persistence docstring** (R-23): `glow_persistence/models.py`, lines 1 to 6, becomes "Models used by the sealed slices; the served runtime installs none."
+- **D8 — A2: chat's routes,** sealed, each taking its actor from SV1's `GlowActorAuthentication` only, never from the body, on SV3's patterns (`glow_discovery/interaction_views.py`): a body that is not its DTO, a query string or another content type is `invalid_request`; another method is 405; every refusal is the contract's `Error`, naming a code and never a value; nothing is cached.
+  - `POST api/v1/chat/messages`: `MessageIntent`, answering `MessageSubmission`, through `glow_chat`'s `send` unchanged (D6's version). Its refusals that come from either member's state or from the end of contact (`match_not_active`, `blocked`, `account_not_active`, `profile_unavailable`, `consent_not_current`) all answer one code, the same for each, so a member never learns which cause stopped a send (OD-60, H; D4; a deletion works as an unmatch; DM-96). D10 shows it for each cause.
+  - `GET api/v1/chat/conversations`: `ConversationList`, through `list_conversations` under D5.
+  - `POST api/v1/chat/history`: `MessagePageRequest`, answering `MessagePage`, through `read_history` under D5 (a body, as SV3's page route takes `PageRequest`).
+  - `POST api/v1/chat/read-cursor`: `ReadCursorIntent`, answering `ConversationSummary`, through `move_read_cursor`.
+  - `GET api/v1/matches`: a member's match list (D9).
+  - **The provider:** the history read needs a text reader. The views take it from a factory that only the proof's settings name (the in-memory fixture); the served runtime names none, and the views refuse to run without one. SV5 adds the refusal outside development and test for every sample adapter (C-04).
+  - **Transactions:** the reads refuse any caller's transaction, so these views are `non_atomic_requests` and are tested with `TransactionTestCase`, never `TestCase` (the P11 plan's R4).
+  - **The list's locks** (the P11 plan's C1 finding 4): before locking, the list bounds its candidates (the top 200 by latest activity), then locks only those, in order, one statement per table.
+  - **No `ChannelIntent` route:** under OD-45 the client needs no channel entitlement. `ChannelEntitlement` stays in the contract, unserved.
+- **D9 — A2: the contract's additions.**
+  - **`ConversationSummary.state` gains `read_only`** (recommended), with its count and marker kept, for D5's read-only conversations; one value for every cause. `MessagePage` is unchanged; the client reads the state from the list and the read cursor's answer. The alternative is to reuse `closed`, which the contract defines as ended, with no count and no marker.
+  - **`MatchList`** (`kind: match_list`), a new response: at most 200 `MatchProjection` entries for the member's matches the member may still see (served `active`), newest first. Today a match is read only by its ID (`GET api/v1/matches/<match_id>`). The conversation list does not stand in for it: `ConversationSummary` carries no other profile.
+  - **D4's and D6's sentences** in `production-contracts.md` and the flow registry, as `npm run generate` writes them. The production catalog's `paths` stay empty until integration.
+- **D10 — A2: the proof: a fifth database suite.**
+  - **Where it runs:** a chat suite in `proofs/postgres-ordering`, with its own settings, marker and URL configuration, on its own database (`glow_chat_proof`), in its own job (D2), applying the reviewed migrations from zero. It signs in through SV1's routes, builds members through SV2's, matches them through SV3's like, and delivers messages through `glow_chat`'s `OutboxDelivery` with the in-memory provider, as the read phase does.
+  - **The cases include:** a send, its replay and its conflict; history, list and read cursor for both members; each D5 cause read-only and, with the setting changed to `hidden`, hidden; unmatch, block, deletion hidden; D4's sameness for the member who did not block, before and after the blocker's unblock and unmatch; D3's retired likes through the routes; the match list; a wrong member's every route `not_found`; the list's bounded locks.
+  - **The run's secrets** are generated and handled as SV1's to SV3's are; the secret check covers the new suite's log and results before any upload.
+- **D11 — Earlier tests** (PF02-R14). Each stage's prompt lists, by file and case, every earlier test that pins what the stage changes, read at the prompt's commit. Known now:
+  - **A0** (revision 3): the offline tests that read the workflow or a scan's file list, read at `ccc05ec`: in `test_identity_offline.py`, `JobDirectory`, `IdentityScanTests.test_the_values_are_the_job_files` and the three `IdentityUploadGateTests`; in `test_profile_offline.py`, `ProfileJobDirectory`, `ProfileScanTests.test_the_values_are_every_secret_file_of_the_job` and the six `ProfileWorkflowTests`; in `test_discovery_offline.py`, `DiscoveryJobDirectory`, `DiscoveryScanTests.test_the_values_are_every_secret_file_of_the_job` and the seven `DiscoveryWorkflowTests`, among them `test_the_suite_runs_after_the_profile_suite`, whose order no longer holds once the suites run in separate jobs. `services/api/tests/test_toolchain_pins.py` counts the workflow's pins from the file itself, so more jobs change its counts, not its rule.
+  - **D5:** the read phase's forced cases for the seven revocations whose read becomes read-only (`read_phase.py`, `FORCED`, lines 1116 to 1133, over `REVOCATIONS_READ`, line 1226: the high account's suspension, both pauses, both restrictions, both consent withdrawals), and its list case "listed while the other is paused" (lines 1099 to 1100). The block, unmatch, deletion, sign-out and expiry cases keep their refusal.
+  - **D4:** P06.DB's reference design's block (`reference.py`, line 366) and the six ordering cases that expect `restricted` at version 2 (`cases.py`, lines 360, 758, 847, 861, 878, 910), which then expect `unmatched`; SV3's `block.works_after_unmatch_and_while_paused` (`interaction_cases.py`, lines 1046 to 1109), whose expectations at lines 1082, 1089 and 1099 read `restricted`; and the contract test's frozen F10 table (`packages/contracts/tests/test_transition_contract.py`, lines 911 to 918), which gains the new row. That file's lines 699 to 707 read one sentence of `production-contracts.md` (the oracle's trusted test prerequisites), which A1 leaves as it is.
+  - **D3:** none pins the old like's survival; the new case is added.
+  - **D7:** the token tests above.
+  - **Mobile:** the fixture adapters restrict a match when the pair loses eligibility (`apps/mobile/src/interactions/fixture-adapter.ts`), so there `restricted` has more causes, and that adapter looks up F10's rows while it runs; D4 removes none. Stage A changes no mobile file except those `npm run generate` writes (`apps/mobile/src/contracts/generated/`); AC2 and AC3 replace the fixtures. P05.3's fixture commands (`glow_domain.interactions`) still restrict a match on a block and read no flow registry, so they and their tests stay as they are.
+- **D12 — The carried entries, disposed.**
+  - **Taken in Stage A:** C-01, C-02 and C-08 (D3 to D5); P06.2-T with its refusal lists, README lines and pin test (D7); the epoch-bump question (D7, to the Dev Manager now); the history policy (D5); SV2's `incomplete` cause (D5); the Chromium retry and the job split (D2); H-01 (D7); R-23 (D7); the P11 plan's C2-X2, the retry case, the list's locks and R4 (D6, D8).
+  - **Stage B:** F12's surface and its ORM adapters with P06.3's D9 decisions; the expired-session sweep (SV1's limit and F-9); the ledger's storage, bound and retention (P06.3's F-4); DM-44's optional revoke-on-all-off; G-04's records of who received a member's messages; and D4's sameness for notifications: no notification tells a member a block from an unmatch (DM-96).
+  - **Elsewhere:**
+    - **rematch** (DM-60): not built in SV4. M09 (P-07): it stays off and unbuilt until Nathan wants it; the entry moves to "Carried to the item that builds rematch";
+    - **G-05's hold:** P08.1 designs it;
+    - **G-12:** an EU launch, as carried;
+    - **DM-54's consent version in the send check:** follows P08's rule for a new version, as carried, with D5's per-member consent limit for reads;
+    - **the epoch revocation's revisit** (D7; DM-96): integration (stage 2), when the live adapter is configured;
+    - **`read_only` on the real client** (D9; DM-96): AC3 shows a read-only conversation's history with OD-60 H's one neutral line, and no send;
+    - **a staff path that makes a match `restricted`** (D4; DM-96): P07 keeps D4's sameness, serving it to both members as `unmatched`;
+    - **SV1's identity-support docstring** (DM-50): moves to the first item whose work changes `identity_support.py`, if no SV4 stage does;
+    - **the P11 plan's live rows, the mobile store's items, the receipt order, the index, the lock-wait alarm and per-channel order:** integration (stage 2), as recorded.
+- **D13 — No new dependency** is expected. Any new package stops the session.
+- **D14 — Every test comes with its reversal,** recorded with its failing output, as SV1 to SV3's were.
+- **D15 — The seal, checked:** a test in the style of SV1 to SV3's proves that the runtime's settings, URL configuration and WSGI application import none of A2's modules, and that the database backend is the dummy one. `glow_api/` is not changed except D7's refusal list.
+
+## Owned paths (the sessions)
+
+- **A0:**
+  - `.github/workflows/foundation.yml` (the database job split; the Chromium retry);
+  - `docs/operations/ci-and-branch-policy.md` (the job list; "Toolchain installs are retried once");
+  - `services/api/tests/test_toolchain_pins.py` (N2; `proofs/stream-chat/package.json`);
+  - `proofs/postgres-ordering/README.md` (how the suites run);
+  - `proofs/postgres-ordering/glow_ordering_proof/identity_scan.py`, `profile_scan.py` and `discovery_scan.py` (each scan's list of its job's secret files, only; revision 3);
+  - `proofs/postgres-ordering/tests/test_identity_offline.py`, `test_profile_offline.py` and `test_discovery_offline.py` (their tests of the workflow's steps and of the scans' file lists, only; revision 3);
+  - the evidence record.
+- **A1:**
+  - `services/api/glow_chat/contact.py`, `reads.py`;
+  - `services/api/glow_discovery/interactions.py` (`interact`'s reciprocity check and its write of `retired_at`, only);
+  - `services/api/glow_persistence/models.py` (the docstring; `DirectionalInteraction.retired_at`) and `migrations/0013_*.py`;
+  - `services/api/glow_domain/chat.py`, `chat_tokens.py`, `chat_provider_stream.py`;
+  - `services/api/glow_api/configuration_profiles.py` (the refusal list only);
+  - `services/api/README.md`;
+  - the offline tests D7 and D11 name, and new ones;
+  - `proofs/postgres-ordering/glow_ordering_proof/` (the cases D3 to D7 and D11 name; `reference.py`'s block (D4); `environment.py`'s refusal list);
+  - `proofs/stream-chat/glow_stream_proof/conformance.py` and its tests, only as D7 requires;
+  - `packages/contracts/production/flows-v1.json` and the generated outputs, through `npm run generate` (D4's transition);
+  - `docs/architecture/production-contracts.md`, `docs/architecture/data-model.md`, `docs/adr/0004-app-database-placement.md` (D7's sentence);
+  - the evidence record.
+- **A2:**
+  - new modules in `services/api/glow_chat/` for the routes (`urls.py`, `views.py`, `contract.py`, or as the prompt names them);
+  - `services/api/glow_discovery/` for the match list's read, if it sits beside the match read;
+  - the contract (D9), through `npm run generate`;
+  - the chat suite's modules in `proofs/postgres-ordering/glow_ordering_proof/`;
+  - `.github/workflows/foundation.yml` (the chat suite's job);
+  - the sealed-runtime test, the docs D9 names, the evidence record.
+
+## Manager-owned
+
+This brief and its prompts; the carried-items file; the P11 plan; the handoff, the register, the review log and the mistakes log; Notion; the verifications.
+
+## Exclusions
+
+- **No call** to Stream, a database other than the run's disposable one, HDE, Railway or Cloudflare; no credential read, printed or used; the environment checked by names only, the `AWS_*` names unread (OD-76).
+- **No change** to HDE's ports or adapters (OD-80), to the mobile app except the files `npm run generate` writes in `apps/mobile/src/contracts/generated/`, or to `glow_api/` beyond D7's refusal list.
+- **No served route:** the production catalog's `paths` stay empty; no route is added to the runtime's URL configuration.
+- **No rematch, no notification route, no staff route.**
+- **No `playwright install`, `eas`, native build or `migrate`** in the session's own environment; CI's own steps run as the workflow says.
+
+## Dependencies and inputs
+
+SV3 (done); PF01 1.20; OD-12, OD-45, OD-60 (H), OD-61, OD-76, OD-80; the carried entries; the P11 plan's chat items; the Dev Manager's answer to DM-96.
+
+## Acceptance checks
+
+- **A0:** every suite runs in its own job and passes, each with the checks it ran before, and the gate requires each; the Chromium step retries once on failure and fails the job on a second failure; the pin test fails with a comment-only pin and with a changed pin in `proofs/stream-chat/package.json`, each with its reversal; full checks pass on the final head.
+- **A1:** D3's case fails without the rule; D4's sameness holds for every surface D4 lists, each with a reversal; each D5 cause reads read-only at launch and hidden when its setting says so, and every hidden cause refuses with one code; D6's equality test covers every writer of either version; the token code is gone, every remaining test passes, and the Stream proof's job passes; the refusal lists refuse each new name in both places; every earlier test D11 names is changed as recorded, with the reason, and no other test changes.
+- **A2:** each route answers its DTO and refuses the rest as D8 says; every case D10 lists passes on the disposable database; the seal test passes; the generated outputs equal `npm run generate`'s; the suite's job fits its timeout.
+- **Each stage:** the trusted classifier, from `main`, prints `"full": true` (reason `behavior-or-empty`) for its diff; the diff stays inside its owned paths; its run on the final head passes.
+
+## Classification expectation
+
+Full scope for each stage (code, workflow or both). Application CI, an exact-head review and Codex apply. The CI policy's change in A0 is governing Markdown, read by the Dev Manager before A0 merges.
+
+## Report format
+
+Each session's final message: its branch and head; the start gate's and the environment check's results; what it built, by D-number; each earlier test changed, with the reason; each acceptance check with its evidence; every stop, limit and deviation; the run's link and result.
+
+## Review plan
+
+- **The Dev Manager's first read** (D-07): this brief, as DM-96, before any prompt.
+- **Each stage:** the manager's verification; then an exact-head code and security review of the stage's final code head, with a written threat model for A1 and A2 (who may read a conversation; what a member learns of a block; the token surface removed); then Codex's review; a correction pass only for a defect D-07 names (application behaviour, a security boundary, a false claim); then the Dev Manager's pre-merge read, and the stage's pull request merges.
+- **A0:** an exact-head review of the complete workflow diff, the pin test and the CI policy's change (each job keeps every step and check it had, the gate requires each job, and no step prints a connection value); then Codex's review, as for every full-scope stage; then the Dev Manager's read of the CI policy's change before A0 merges (DM-96).
+
+## Sessions
+
+- **Revision 1** (19 November 2026): this brief, for the Dev Manager's first read as DM-96.
+- **Revision 2** (19 November 2026): DM-96's AG1 to AG21, applied as given by script, each old passage found once at `ccc05ec` in order.
+- **Revision 3** (19 November 2026, the manager's): D2's rule for the secret scans, A0's owned paths and A0's earlier tests (AM12-39); the acceptance checks name the classifier's real full-scope output (`"full": true`, reason `behavior-or-empty`), where revision 1 wrote `full-scope`.
+- **A0's prompt, revision 1** (19 November 2026): [`docs/ephemeral/2026-11-19-sv4-a0-ci-tooling-prompt.md`](../ephemeral/2026-11-19-sv4-a0-ci-tooling-prompt.md), for `Glow App - No Stream`; given to Nathan from the commit that holds it, its start gate run first against the live branch.
+- **A0's session** (19 November 2026; branch `claude/affectionate-curie-hzo99y`, code head `3bf55de`, records head `c77646b`; Foundation run 44463105633, success): the database job split into four per-suite jobs with their decoys, the scans, the Chromium retry and the pin test, with the CI policy and the proof's README; no stop. Merged into the manager branch at `4dfb0ac`, with "Manager verification of A0" in the record. Next: the pull request, Codex, A0's exact-head review (AG21) and the Dev Manager's pre-merge read.
+- **A0's exact-head review prompt, revision 1** (19 November 2026): [`docs/ephemeral/2026-11-19-sv4-a0-review-prompt.md`](../ephemeral/2026-11-19-sv4-a0-review-prompt.md), for `Glow App - No Stream`, after Codex's review of PR57's head.
+- **A0's exact-head review** (19 November 2026; from the prompt at `7d04d1c`): changes requested, in tests only. F1 and F2 should fix (the decoy's binding to the marker it refuses; the identity job's new steps, each job's `dbshell` and existence checks); F3 to F8 nits. Recorded in the A0 record, "Exact-head review of A0", with its disposition: correction C1 takes F1, F2, F7's D6a and the test modules' docstrings; F3 goes to the Dev Manager's pre-merge read; F5 and F8 are corrected by the manager; F7's D5 and the scans' docstrings are carried to A2.
+- **A0-C1's prompt, revision 1** (19 November 2026): [`docs/ephemeral/2026-11-19-sv4-a0-c1-correction-prompt.md`](../ephemeral/2026-11-19-sv4-a0-c1-correction-prompt.md), tests only, for `Glow App - No Stream`; given to Nathan from the commit that holds it, its start gate run first against the live branch.
+- **A0-C1's session** (19 November 2026; branch `claude/awesome-brown-lmfi8e`, code head `c78f297`, records head `b407239`; Foundation run 44562701307, success): tests only, in the three proof offline test files; F1, F2, F7's D6a and the docstrings; 58 reversals, each failing after it; no stop. The manager branch took it by fast-forward, with "Manager verification of A0-C1".
+- **A0-C1's delta review prompt, revision 1** (19 November 2026): [`docs/ephemeral/2026-11-19-sv4-a0-c1-delta-review-prompt.md`](../ephemeral/2026-11-19-sv4-a0-c1-delta-review-prompt.md), for `Glow App - No Stream`, after Codex's review of PR57's head.
+- **A0-C1's delta review** (19 November 2026; from the prompt at `78e9cc7`): changes requested, for one should-fix finding, R1 (the profile and discovery decoy-step tests leave the outside-relations and refusal checks unpinned, which C1's record said they pinned); N1 to N3 nits. Recorded in the A0 record, "Delta review of A0-C1", with its disposition: correction C2 takes R1; N1 and N2 are carried to A2; N3 is recorded.
+- **A0-C2's prompt, revision 1** (19 November 2026): [`docs/ephemeral/2026-11-19-sv4-a0-c2-correction-prompt.md`](../ephemeral/2026-11-19-sv4-a0-c2-correction-prompt.md), tests only, for `Glow App - No Stream`; given to Nathan from the commit that holds it, its start gate run first against the live branch.
+- **A0-C2's session** (19 November 2026; branch `claude/dazzling-feynman-cjl16t`, code head `5a2f137`, records head `a63e7ae`; Foundation run 44601565801, success): tests only, eight lines in each of the profile and discovery decoy-step tests, which now equal the identity test's sequence; ten reversals, each failing after it; no stop. The manager branch took it by fast-forward, with "Manager verification of A0-C2".
+- **A0-C2's delta review prompt, revision 1** (19 November 2026): [`docs/ephemeral/2026-11-19-sv4-a0-c2-delta-review-prompt.md`](../ephemeral/2026-11-19-sv4-a0-c2-delta-review-prompt.md), for `Glow App - No Stream`, after Codex's review of PR57's head.
+- **A0-C2's delta review** (19 November 2026; from the prompt at `f6f145e`): approve with nits (N-A, edits outside the pinned lines, carried to A2; N-B, the manager's wording, corrected). Recorded in the A0 record, "Delta review of A0-C2". No finding of any review of A0 is open in a correction class.
+- **DM-97, A0's pre-merge read** (19 November 2026): [`docs/ephemeral/2026-11-19-dm-97-sv4-a0-pre-merge-read.md`](../ephemeral/2026-11-19-dm-97-sv4-a0-pre-merge-read.md), for Nathan to carry to Dev Manager 6.
+- **DM-97's answer** (19 November 2026; Dev Manager 6, `b505a8e`, a read of `fc9decd`): every item approved; F3 accepted as carried, with AH1 and AH2; AH3 to AH6 add to the carried entries and two living records. App Manager 12 merged it at `d0bde3d` and applied AH1 to AH6 as given; the review log's "DM-97" lists each disposition. PR57 merges on that batch head's passing run and Codex's review.

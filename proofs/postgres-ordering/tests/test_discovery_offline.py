@@ -3,7 +3,8 @@
 No database: the discovery settings' refusals and values; the job's secret check of the suite's
 output and the upload gate; the workflow's SV3 steps; the case plan; the commands' refusals of
 each other's settings; and the scan of account locks (C1; DM-61 K3), with its planted reversals.
-The cases themselves run in the Database proof checks job, on the fourth disposable database.
+The cases themselves run in their own suite's job, "Database proof checks (discovery)", on its
+own disposable database.
 """
 
 from __future__ import annotations
@@ -14,6 +15,7 @@ import importlib
 import io
 import json
 import os
+import re
 import secrets
 import subprocess
 import sys
@@ -28,13 +30,25 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 
 from glow_ordering_proof import __main__ as commands
 from glow_ordering_proof import account_lock_scan, discovery_cases, discovery_scan, environment
-from tests.test_identity_offline import KeyFiles, pem, workflow_step
-from tests.test_profile_offline import unquoted_step
+from tests.test_identity_offline import (
+    KeyFiles,
+    credentials_prelude,
+    job_databases,
+    job_secret_files,
+    pem,
+    script_lines,
+    step_name,
+    workflow_job,
+    workflow_step,
+    workflow_steps,
+    writers,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 API_ROOT = REPO_ROOT / "services" / "api"
 PROOF = Path(__file__).resolve().parents[1] / "glow_ordering_proof"
 DISCOVERY_SETTINGS = "glow_ordering_proof.discovery_settings"
+JOB = "database-discovery"  # the discovery suite's own job (SV4 A0)
 
 GOOD = {
     environment.HOST: "127.0.0.1",
@@ -131,26 +145,28 @@ SUITE_LINES = {
 
 
 class DiscoveryJobDirectory:
-    """A job directory as the credentials step writes it, with synthetic values only."""
+    """A job directory as the discovery job's credentials step writes it: every secret file it
+    writes, read from the workflow (SV4 A0, D2), with synthetic values only."""
 
     def __init__(self) -> None:
         self.directory = tempfile.TemporaryDirectory()
         self.root = Path(self.directory.name)
+        files = job_secret_files(JOB)
+        keys = sorted(name for name in files if name.endswith(".pem"))
         self.values: dict[str, str] = {}
-        for name in discovery_scan.VALUE_FILES:
+        for name in sorted(files - {discovery_scan.PASSFILE, *keys}):
             self.values[name] = secrets.token_hex(24)
             self.write(name, self.values[name] + "\n")
         self.role_password = secrets.token_hex(24)
-        databases = ("glow_proof", "glow_identity_proof", "glow_profile_proof")
         self.write(
             discovery_scan.PASSFILE,
             "".join(
                 f"127.0.0.1:5433:{database}:glow_proof:{self.role_password}\n"
-                for database in (*databases, "glow_discovery_proof")
+                for database in job_databases(JOB)
             ),
         )
         self.pem_lines: list[str] = []
-        for name in discovery_scan.KEY_FILES:
+        for name in keys:
             text = pem(rsa.generate_private_key(public_exponent=65537, key_size=2048))
             self.write(name, text)
             self.pem_lines.append(
@@ -193,22 +209,16 @@ class DiscoveryScanTests(unittest.TestCase):
         self.job.close()
 
     def test_the_values_are_every_secret_file_of_the_job(self) -> None:
+        # SV4 A0 (D2): the check lists every secret file its own job writes (its keys, its
+        # marker, the decoy database's marker, the passwords), and no other.
         self.assertEqual(
             set(discovery_scan.VALUE_FILES),
-            {
-                "discovery-secret-key",
-                "discovery-marker",
-                "profile-secret-key",
-                "profile-marker",
-                "identity-secret-key",
-                "identity-marker",
-                "marker",
-                "superuser-password",
-            },
+            {"discovery-secret-key", "discovery-marker", "profile-marker", "superuser-password"},
         )
+        self.assertEqual(set(discovery_scan.KEY_FILES), {"discovery-jwt-key.pem"})
         self.assertEqual(
-            set(discovery_scan.KEY_FILES),
-            {"discovery-jwt-key.pem", "profile-jwt-key.pem", "identity-jwt-key.pem"},
+            {*discovery_scan.VALUE_FILES, discovery_scan.PASSFILE, *discovery_scan.KEY_FILES},
+            job_secret_files(JOB),
         )
         found = discovery_scan.job_values(self.job.root)
         for value in self.job.every_value():
@@ -254,14 +264,17 @@ class DiscoveryScanTests(unittest.TestCase):
 
 
 class DiscoveryWorkflowTests(unittest.TestCase):
-    """The Database proof checks job's SV3 steps, read as the job runs them."""
+    """The discovery suite's job's steps (Database proof checks (discovery), since SV4 A0), read
+    as the job runs them; and, since SV4 A0, each suite's job and the gate."""
 
-    def test_the_credentials_step_makes_the_fourth_database_and_its_own_keys(self) -> None:
-        step = unquoted_step("Generate the disposable database's credentials")
+    def test_the_credentials_step_makes_its_database_the_decoy_and_its_own_keys(self) -> None:
+        step = workflow_step(JOB, "Generate the disposable database's credentials")
         for line in (
             'echo "::add-mask::$discovery_marker"',
+            'echo "::add-mask::$profile_marker"',
             'echo "::add-mask::$discovery_secret_key"',
             'printf \'%s\\n\' "$discovery_marker" > "$dir/discovery-marker"',
+            'printf \'%s\\n\' "$profile_marker" > "$dir/profile-marker"',
             'printf \'%s\\n\' "$discovery_secret_key" > "$dir/discovery-secret-key"',
             "python - \"$dir/discovery-jwt-key.pem\" <<'PYTHON'",
         ):
@@ -269,15 +282,153 @@ class DiscoveryWorkflowTests(unittest.TestCase):
                 self.assertIn(line, step)
         self.assertIn("CREATE DATABASE glow_discovery_proof OWNER glow_proof;", step)
         self.assertIn("COMMENT ON DATABASE glow_discovery_proof IS 'glow-ordering-proof:%s';", step)
-        self.assertIn("127.0.0.1:5433:glow_discovery_proof:glow_proof:%s", step)
+        # AG1: the decoy, in this job's PostgreSQL, carries the profile database's name and a
+        # marker of its own; the passfile names only the discovery database.
+        self.assertIn("CREATE DATABASE glow_profile_proof OWNER glow_proof;", step)
+        self.assertIn("COMMENT ON DATABASE glow_profile_proof IS 'glow-ordering-proof:%s';", step)
+        self.assertEqual(job_databases(JOB), ["glow_discovery_proof"])
         self.assertIn('test "$discovery_marker" != "$profile_marker"', step)
-        self.assertEqual(step.count("for path in sys.argv[1:]:"), 2)
+        self.assertEqual(step.count("for path in sys.argv[1:]:"), 1)
+        job = "\n".join(workflow_job(JOB))
+        for other in ("profile-secret-key", "profile-jwt-key.pem", "identity-", "wrong_marker"):
+            with self.subTest(other=other):
+                self.assertNotIn(other, job)
+        # SV4 A0-C1 (the exact-head review's F2): every value, both passwords among them, is
+        # masked once it is generated and before any line that can print or write.
+        lines = script_lines(step.split("        run: |\n", 1)[1])
+        self.assertEqual(lines[0], "set +x")
+        values = [
+            "superuser_password",
+            "role_password",
+            "discovery_marker",
+            "profile_marker",
+            "discovery_secret_key",
+        ]
+        events = credentials_prelude(step)
+        self.assertEqual([name for kind, name in events if kind == "generated"], values)
+        self.assertEqual([name for kind, name in events if kind == "masked"], values)
+        for name in values:
+            with self.subTest(name=name):
+                self.assertLess(events.index(("generated", name)), events.index(("masked", name)))
+                self.assertEqual(len(re.findall(rf"^ *{name}=", step, flags=re.MULTILINE)), 1)
+        self.assertEqual(step.count("::add-mask::"), len(values))
+        # SV4 A0-C1 (F1): the discovery database's comment takes the discovery marker, and the
+        # decoy's the decoy's, in exactly this argument list; each marker file is written once,
+        # from its own database's marker.
+        role = (
+            "printf \"CREATE ROLE glow_proof LOGIN PASSWORD '%s' NOSUPERUSER NOCREATEDB"
+            " NOCREATEROLE;\\n"
+            "CREATE DATABASE glow_discovery_proof OWNER glow_proof;\\n"
+            "COMMENT ON DATABASE glow_discovery_proof IS 'glow-ordering-proof:%s';\\n"
+            "CREATE DATABASE glow_profile_proof OWNER glow_proof;\\n"
+            "COMMENT ON DATABASE glow_profile_proof IS 'glow-ordering-proof:%s';\\n\""
+            ' "$role_password" "$discovery_marker" "$profile_marker" > "$dir/create-role.sql"'
+        )
+        self.assertEqual(writers(step, "create-role.sql"), [role])
+        distinct = (
+            'test "$discovery_marker" != "$profile_marker"'
+            ' || { echo "the markers are not distinct; refusing"; exit 1; }'
+        )
+        self.assertLess(lines.index(distinct), lines.index(role))
+        self.assertEqual(
+            writers(step, "discovery-marker"),
+            ['printf \'%s\\n\' "$discovery_marker" > "$dir/discovery-marker"'],
+        )
+        self.assertEqual(
+            writers(step, "profile-marker"),
+            ['printf \'%s\\n\' "$profile_marker" > "$dir/profile-marker"'],
+        )
 
-    def test_the_migrations_step_refuses_the_three_other_markers_first(self) -> None:
-        step = workflow_step("SV3: show the discovery database refuses the other markers")
-        loop = step.index("for other in marker identity-marker profile-marker; do")
+    def test_the_migrations_step_refuses_the_decoys_marker_first(self) -> None:
+        step = workflow_step(
+            JOB, "SV3: show the discovery database refuses the decoy database's marker"
+        )
+        # SV4 A0-C1 (the exact-head review's F1): the function reads the marker file it is named,
+        # and the refused migrate is named the decoy's (profile-marker), before the discovery
+        # database's own.
+        self.assertIn("        shell: bash\n", step)
+        lines = script_lines(step)
+        self.assertEqual(step.count("PROOF_DB_MARKER="), 1)
+        self.assertIn(
+            'PROOF_DB_PASSFILE="$DIR/passfile" PROOF_DB_MARKER="$(cat "$DIR/$1")" \\', lines
+        )
+        self.assertIn(
+            "PROOF_DB_HOST=127.0.0.1 PROOF_DB_PORT=5433 PROOF_DB_NAME=glow_discovery_proof"
+            " PROOF_DB_USER=glow_proof \\",
+            lines,
+        )
+        refused_line = (
+            "discovery profile-marker python -m django migrate --verbosity 1"
+            ' > "$DIR/discovery-wrong-marker.log" 2>&1'
+        )
+        migrate_line = "discovery discovery-marker python -m django migrate --verbosity 1"
+        self.assertEqual(
+            [line for line in lines if "python -m django migrate" in line],
+            [refused_line, migrate_line],
+        )
+        # F2: the decoy's existence and distinctness, the counts and their comparison, the
+        # refusal, and the step's failure, each a whole line, in order, before the migrations.
+        sequence = [
+            "docker exec \"$CONTAINER\" psql -X -q -At -F ' ' -v ON_ERROR_STOP=1 -U postgres"
+            ' -d glow_discovery_proof -c "$1"',
+            'decoy=$(in_discovery_db "SELECT count(*) FROM pg_catalog.pg_database WHERE datname ='
+            " 'glow_profile_proof' AND starts_with(shobj_description(oid, 'pg_database'),"
+            " 'glow-ordering-proof:')\")",
+            'distinct=$(in_discovery_db "SELECT shobj_description((SELECT oid FROM'
+            " pg_catalog.pg_database WHERE datname = 'glow_profile_proof'), 'pg_database') IS"
+            " DISTINCT FROM shobj_description((SELECT oid FROM pg_catalog.pg_database WHERE"
+            " datname = 'glow_discovery_proof'), 'pg_database')\")",
+            'if [ "$decoy" != 1 ] || [ "$distinct" != t ]; then echo "FAIL: the decoy database'
+            ' or its own marker is missing"; exit 1; fi',
+            'in_discovery_db "$per_schema" > "$DIR/discovery-relations-before.txt"',
+            'outside_before=$(in_discovery_db "$outside_pg")',
+            "set +e",
+            refused_line,
+            "status=$?",
+            "set -e",
+            'in_discovery_db "$per_schema" > "$DIR/discovery-relations-after.txt"',
+            'outside_after=$(in_discovery_db "$outside_pg")',
+            "no_ledger=$(in_discovery_db \"SELECT to_regclass('public.django_migrations') IS"
+            ' NULL")',
+            "refusal=$(grep -m 1 -F 'RefusedDatabase: refusing this database'"
+            ' "$DIR/discovery-wrong-marker.log" || true)',
+            "fail=0",
+            'if [ "$status" -eq 0 ]; then echo "FAIL: migrate with another database\'s marker'
+            ' exited 0"; fail=1; fi',
+            'if [ -n "$refusal" ]; then',
+            'echo "FAIL: the refusal message is missing (diagnostics withheld)"; fail=1',
+            'cmp -s "$DIR/discovery-relations-before.txt" "$DIR/discovery-relations-after.txt" \\',
+            '|| { echo "FAIL: a schema\'s relation count changed"; fail=1; }',
+            'if [ "$outside_before" != 0 ] || [ "$outside_after" != 0 ]; then',
+            'echo "FAIL: a relation exists outside information_schema and the pg_ schemas"; fail=1',
+            'if [ "$no_ledger" != t ]; then echo "FAIL: django_migrations exists"; fail=1; fi',
+            'test "$fail" = 0',
+            migrate_line,
+            "discovery discovery-marker python -m django makemigrations --check --dry-run",
+        ]
+        self.assertEqual([line for line in sequence if line not in lines], [])
+        at = [lines.index(line) for line in sequence]
+        self.assertEqual(at, sorted(at))
+        cmp = sequence.index('|| { echo "FAIL: a schema\'s relation count changed"; fail=1; }')
+        self.assertEqual(at[cmp], at[cmp - 1] + 1)
+        self.assertEqual(lines.count("set +e"), 1)
+        self.assertEqual(lines.count("set -e"), 1)
+        decoy = step.index("datname = 'glow_profile_proof'")
+        before = step.index('in_discovery_db "$per_schema" > "$DIR/discovery-relations-before.txt"')
+        refused = step.index("discovery profile-marker python -m django migrate --verbosity 1")
+        after = step.index('in_discovery_db "$per_schema" > "$DIR/discovery-relations-after.txt"')
         migrate = step.index("discovery discovery-marker python -m django migrate --verbosity 1")
-        self.assertLess(loop, migrate)
+        self.assertTrue(decoy < before < refused < after < migrate)
+        for line in (
+            "grep -m 1 -F 'RefusedDatabase: refusing this database'",
+            'cmp -s "$DIR/discovery-relations-before.txt" "$DIR/discovery-relations-after.txt"',
+            "SELECT to_regclass('public.django_migrations') IS NULL",
+            "-U postgres -d glow_discovery_proof",
+            'test "$fail" = 0',
+        ):
+            with self.subTest(line=line):
+                self.assertIn(line, step)
+        self.assertLess(step.index('test "$fail" = 0'), migrate)
         self.assertIn(
             "discovery discovery-marker python -m django makemigrations --check --dry-run", step
         )
@@ -285,8 +436,40 @@ class DiscoveryWorkflowTests(unittest.TestCase):
         self.assertIn('PROOF_IDENTITY_JWT_KEY_FILE="$DIR/discovery-jwt-key.pem"', step)
         self.assertIn("DJANGO_SETTINGS_MODULE=glow_ordering_proof.discovery_settings", step)
 
+    def test_the_dbshell_step_requires_a_failed_exit_and_the_refusal(self) -> None:
+        # SV4 A0-C1 (the exact-head review's F2): the dbshell step fails unless dbshell exits
+        # non-zero with the marker's refusal, under the discovery settings and the discovery marker.
+        step = workflow_step(JOB, "SV3: show that dbshell is refused")
+        self.assertIn("        shell: bash\n", step)
+        lines = script_lines(step)
+        sequence = [
+            "set +e",
+            'env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8 \\',
+            "PROOF_DB_HOST=127.0.0.1 PROOF_DB_PORT=5433 PROOF_DB_NAME=glow_discovery_proof"
+            " PROOF_DB_USER=glow_proof \\",
+            'PROOF_DB_PASSFILE="$DIR/passfile" PROOF_DB_MARKER="$(cat "$DIR/discovery-marker")" \\',
+            'PROOF_IDENTITY_SECRET_KEY_FILE="$DIR/discovery-secret-key" \\',
+            'PROOF_IDENTITY_JWT_KEY_FILE="$DIR/discovery-jwt-key.pem" \\',
+            "DJANGO_SETTINGS_MODULE=glow_ordering_proof.discovery_settings \\",
+            'python -m django dbshell < /dev/null > "$DIR/discovery-dbshell.log" 2>&1',
+            "status=$?",
+            "set -e",
+            "refusal=$(grep -m 1 -F 'RefusedDatabase: refusing dbshell'"
+            ' "$DIR/discovery-dbshell.log" || true)',
+            'rm -f "$DIR/discovery-dbshell.log"',
+            'echo "discovery dbshell exit status: $status"',
+            'if [ "$status" -eq 0 ]; then echo "FAIL: dbshell exited 0"; exit 1; fi',
+            'if [ -z "$refusal" ]; then echo "FAIL: the dbshell refusal is missing'
+            ' (diagnostics withheld)"; exit 1; fi',
+            'echo "refusal: $refusal"',
+        ]
+        self.assertEqual([line for line in sequence if line not in lines], [])
+        at = [lines.index(line) for line in sequence]
+        self.assertEqual(at, sorted(at))
+        self.assertEqual(at[8], at[7] + 1)  # the exit status is the dbshell command's
+
     def test_the_suite_step_runs_the_check_and_sets_the_output_only_on_a_pass(self) -> None:
-        step = workflow_step("SV3: run the discovery suite")
+        step = workflow_step(JOB, "SV3: run the discovery suite")
         self.assertIn("        id: discovery\n", step)
         self.assertIn(
             'python -m glow_ordering_proof.discovery_scan "$DIR" "$DIR/discovery.log"'
@@ -301,7 +484,7 @@ class DiscoveryWorkflowTests(unittest.TestCase):
         self.assertIn('echo "discovery phase: $((finished - started)) s', step)
 
     def test_after_a_failed_check_the_step_prints_counts_only(self) -> None:
-        step = workflow_step("SV3: run the discovery suite")
+        step = workflow_step(JOB, "SV3: run the discovery suite")
         lines = step.splitlines()
         start = lines.index('          if [ "$scan" -eq 0 ]; then')
         withheld = lines.index("          else", start)
@@ -333,7 +516,7 @@ class DiscoveryWorkflowTests(unittest.TestCase):
         self.assertIn("case lines: 1 passed, 1 failed", printed)
 
     def test_the_second_run_step_counts_rows_and_requires_the_refusal(self) -> None:
-        step = workflow_step("SV3: show that a second discovery run on the used database")
+        step = workflow_step(JOB, "SV3: show that a second discovery run on the used database")
         self.assertIn("-d glow_discovery_proof", step)
         for table in (
             "auth_user",
@@ -349,23 +532,139 @@ class DiscoveryWorkflowTests(unittest.TestCase):
         self.assertIn('if [ "$before" != "$after" ]; then', step)
 
     def test_the_upload_waits_for_the_check(self) -> None:
-        step = workflow_step("SV3: save the discovery suite's results JSON")
+        step = workflow_step(JOB, "SV3: save the discovery suite's results JSON")
         self.assertIn(
             "        if: ${{ always() && steps.discovery.outputs.scan == 'passed' }}\n", step
         )
         self.assertIn("name: sv3-discovery-results", step)
         self.assertIn("path: proofs/postgres-ordering/.work/discovery-results.json", step)
 
-    def test_the_suite_runs_after_the_profile_suite(self) -> None:
-        text = (REPO_ROOT / ".github/workflows/foundation.yml").read_text(encoding="utf-8")
-        self.assertLess(
-            text.index("SV2: save the profile suite's results JSON"),
-            text.index("SV3: show the discovery database refuses the other markers"),
+    def test_each_suite_runs_in_its_own_job_after_its_migrations_and_decoy_refusal(self) -> None:
+        # SV4 A0 (D2; DM-96 AG1), replacing SV3's check that the discovery suite ran after the
+        # profile suite in one job: each suite's job starts its own PostgreSQL, creates its own
+        # database and the decoy, shows dbshell refused, refuses the decoy's marker and applies
+        # the migrations from zero, then runs its suite, refuses a second run, uploads its results
+        # only once its secret check has passed, and removes everything last, whatever happened.
+        condition = (
+            "    if: ${{ !cancelled() && (needs.scope.result != 'success'"
+            " || needs.scope.outputs.full != 'false') }}"
         )
-        self.assertLess(
-            text.index("SV3: save the discovery suite's results JSON"),
-            text.index("Remove the disposable database, its credential files"),
+        for job, label, step_id in (
+            ("database-identity", "SV1", "identity"),
+            ("database-profile", "SV2", "profile"),
+            ("database-discovery", "SV3", "discovery"),
+        ):
+            with self.subTest(job=job):
+                lines = workflow_job(job)
+                self.assertIn("    needs: scope", lines)
+                self.assertIn(condition, lines)
+                self.assertIn(f"    name: Database proof checks ({step_id})", lines)
+                (timeout,) = [line for line in lines if line.startswith("    timeout-minutes: ")]
+                self.assertLessEqual(int(timeout.split(": ")[1]), 30)
+                steps = workflow_steps(job)
+                names = [step_name(step) for step in steps]
+                order = [
+                    "Generate the disposable database's credentials",
+                    "Start PostgreSQL 17.11",
+                    "Create the non-superuser proof role",
+                    f"{label}: show that dbshell is refused under the {step_id} settings",
+                    f"{label}: show the {step_id} database refuses the decoy database's marker",
+                    f"{label}: run the {step_id} suite",
+                    f"{label}: show that a second {step_id} run on the used database",
+                    f"{label}: save the {step_id} suite's results JSON",
+                    "Remove the disposable database",
+                ]
+                at = [
+                    next(i for i, name in enumerate(names) if name.startswith(prefix))
+                    for prefix in order
+                ]
+                self.assertEqual(at, sorted(at))
+                self.assertEqual(at[-1], len(steps) - 1)
+                self.assertIn(f"        id: {step_id}\n", steps[at[5]])
+                gated = f"always() && steps.{step_id}.outputs.scan == 'passed'"
+                self.assertIn(f"        if: ${{{{ {gated} }}}}\n", steps[at[7]])
+                self.assertIn("        if: always()\n", steps[at[8]])
+        ordering = [step_name(step) for step in workflow_steps("database-ordering")]
+        order = [
+            "Generate the disposable database's credentials",
+            "Start PostgreSQL 17.11",
+            "Create the non-superuser proof role",
+            "Show that a wrong marker is refused",
+            "Show that dbshell is refused",
+            "Apply the reviewed migrations from zero",
+            "Run the suite on both subjects",
+            "Show that a second run on the used database",
+            "Save the results table's JSON",
+            "Remove the disposable database",
+        ]
+        at = [next(i for i, n in enumerate(ordering) if n.startswith(p)) for p in order]
+        self.assertEqual(at, sorted(at))
+        self.assertEqual(at[-1], len(ordering) - 1)
+
+    def test_the_gate_requires_each_suites_job(self) -> None:
+        # SV4 A0 (D2): the gate needs every suite's job and requires each one's result, success
+        # on a full-scope change and skipped on ordinary documentation, as for every other job.
+        jobs = ("database-ordering", "database-identity", "database-profile", "database-discovery")
+        gate = "\n".join(workflow_job("gate"))
+        needs = re.search(r"^    needs: \[(.*)\]$", gate, flags=re.MULTILINE)
+        assert needs is not None
+        self.assertEqual(
+            [name.strip() for name in needs.group(1).split(",")],
+            ["scope", "api", "mobile", "smoke", "artifact", "proof", *jobs],
         )
+        listed = re.search(r"jobs = \((.*?)\)", gate, flags=re.DOTALL)
+        assert listed is not None
+        self.assertEqual(
+            re.findall(r'"([a-z-]+)"', listed.group(1)),
+            ["api", "mobile", "smoke", "artifact", "proof", *jobs],
+        )
+        self.assertIn('expected = "success" if full == "true" else "skipped"', gate)
+        self.assertIn('assert results[job]["result"] == expected', gate)
+        with self.assertRaises(AssertionError):
+            workflow_job("database")
+        # SV4 A0-C1 (the exact-head review's F7, D6a): the loop checks every job in the tuple,
+        # and the gate's own script, run as the step has it, fails on each job's wrong result.
+        self.assertEqual(gate.count("jobs = ("), 1)
+        self.assertIn(
+            "          for job in jobs:\n"
+            '              assert results[job]["result"] == expected, f"Unexpected {job} result"\n',
+            gate,
+        )
+        script = gate.split("          python3 - <<'PYTHON'\n", 1)[1].split("          PYTHON", 1)[
+            0
+        ]
+        script = "\n".join(line[10:] for line in script.splitlines())
+        every = ["api", "mobile", "smoke", "artifact", "proof", *jobs]
+
+        def gate_run(full: str, results: dict[str, str]) -> subprocess.CompletedProcess[str]:
+            needs: dict[str, Any] = {
+                "scope": {"result": "success", "outputs": {"full": full}},
+                **{job: {"result": result, "outputs": {}} for job, result in results.items()},
+            }
+            return subprocess.run(
+                [sys.executable, "-I", "-c", script],
+                env={"PATH": os.environ.get("PATH", "/usr/bin:/bin"), "RESULTS": json.dumps(needs)},
+                capture_output=True,
+                text=True,
+                timeout=30,
+                check=False,
+            )
+
+        for full, expected, line in (
+            ("true", "success", "Application checks passed"),
+            ("false", "skipped", "Ordinary documentation: application jobs intentionally skipped"),
+        ):
+            passed = gate_run(full, dict.fromkeys(every, expected))
+            self.assertEqual(passed.returncode, 0, passed.stderr)
+            self.assertEqual(passed.stdout, line + "\n")
+            for job in every:
+                for wrong in ("success", "failure", "cancelled", "skipped"):
+                    if wrong == expected:
+                        continue
+                    with self.subTest(full=full, job=job, result=wrong):
+                        failed = gate_run(full, {**dict.fromkeys(every, expected), job: wrong})
+                        self.assertNotEqual(failed.returncode, 0)
+                        self.assertIn(f"AssertionError: Unexpected {job} result", failed.stderr)
 
 
 class DiscoveryPlanTests(unittest.TestCase):

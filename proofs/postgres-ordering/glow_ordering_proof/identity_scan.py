@@ -6,10 +6,11 @@ The Database proof checks job runs it after the suite::
     python -m glow_ordering_proof.identity_scan <directory> <log> <results JSON>
 
 ``<directory>`` is the job's protected temporary directory, which holds the run's secrets in
-files (D2, D10). The check reads the job's own values from it: the identity settings'
-``SECRET_KEY``, the identity database's marker, the ordering database's marker, the
-PostgreSQL superuser's password, every password in the passfile and every line of the JWT
-signing key. It looks for each in the suite's log and in its results JSON, the same values in
+files (D2, D10). The check reads the job's own values from it, every secret file the job
+writes and no other (SV4 A0, D2): the identity settings' ``SECRET_KEY``, the identity
+database's marker, the decoy database's marker (in ``marker``; DM-96 AG1), the PostgreSQL
+superuser's password, every password in the passfile and every line of the JWT signing key.
+It looks for each in the suite's log and in its results JSON, the same values in
 both, and it asks the log for the suite's own clean scan. It passes only when no value is found
 in either file and the suite reported clean.
 

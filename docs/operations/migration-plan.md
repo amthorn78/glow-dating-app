@@ -2,8 +2,8 @@
 
 This plan covers only separately owned application objects. **No connection to a shared,
 staging or production database, and no migration application outside disposable proof
-databases, has occurred.** The reviewed migrations run only in the Foundation job's
-disposable PostgreSQL and in sessions' throwaway clusters (P06.DB, P06.2). [Corrected by
+databases, has occurred.** The reviewed migrations run only in the disposable PostgreSQL of each Foundation
+database proof job (one per suite since SV4 A0) and in sessions' throwaway clusters (P06.DB, P06.2). [Corrected by
 M05, finding 35: this said no database connection, SQL execution or migration application
 had occurred; `0001` to `0003` are applied from zero in Database proof checks on every
 full-scope run since 29 September 2026, for example run 40243775584.] The app's development

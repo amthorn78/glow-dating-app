@@ -5,7 +5,7 @@
 - **Owner:** Nathan Amthor, as HDE's owner and the app's integration owner (OD-23). **Manager:** App Manager 12. **Research:** one session, started by Nathan.
 - **Revision 1, 19 November 2026.**
 - **Starting point:** `main` at `d3273f3` (PR55), with the manager branch's records after it; the prompt names the exact commit.
-- **Prompt:** [`docs/ephemeral/2026-11-19-a01-r-hde-canon-read-prompt.md`](../ephemeral/2026-11-19-a01-r-hde-canon-read-prompt.md), revision 1 (TypeSafe v8.2: Opus 5.5 at high).
+- **Prompt:** [`docs/ephemeral/2026-11-19-a01-r-hde-canon-read-prompt.md`](https://github.com/amthorn78/glow-dating-app/blob/c2cffbe6022637331d73e3558429ff70ab5aa5e3/docs/ephemeral/2026-11-19-a01-r-hde-canon-read-prompt.md), revision 1, pruned at PR56's receipt (pinned at `c2cffbe`) (TypeSafe v8.2: Opus 5.5 at high).
 - **Evidence home:** `docs/testing/evidence/<the session's date>-a01-r-hde-canon-read.md`, written by the session on its own branch. The manager adds "Manager verification of A01-R".
 
 ## Why
@@ -75,4 +75,5 @@ Ordinary documentation: one Markdown file, outside any `.claude/` directory. No 
 
 - **Revision 1** (19 November 2026): the brief and the prompt, for `Glow App - No Stream`.
 - **The research session** (19 November 2026; branch `claude/fervent-sagan-afkke2`, head `835d393`; glow-docs read at `71a008f`): its record, `docs/testing/evidence/2026-11-19-a01-r-hde-canon-read.md`.
-- **Manager verification** (19 November 2026): five citations checked, all exact; dispositions under OD-80.
+- **Manager verification** (19 November 2026): five citations checked, all exact; dispositions under OD-80, two corrected by DM-95 (AE8, AE9).
+- **CI:** the session branch's first push ran Foundation run 44443133171 (event `push`), which ran the full application jobs, as a new branch's first push does, and passed. The record merged into `main` with PR56 at `c2cffbe`; the cleanup run 44449161323 then deleted the branch.
