@@ -241,6 +241,7 @@ Each Claude manager records its own mistakes here when they are found. A mistake
 | AM12-44 | 19 Nov 2026 | follow-through | An empty Notion update call (`update_content` with no replacements) was sent for SV4's Work Register row while C2's batch was synced; the tool refused it before any write. No effect; the row's real update followed and was read back. Breaks PF02 section 7 (each Notion call carries its change), a repeat of AM12-16 | App Manager 12 |
 | AM12-45 | 19 Nov 2026 | records | The manager's verifications of A0, C1 and C2, and PR57's body, said the trusted classifier was "run outside the checkout"; the copy was outside and the checkout was the working directory (run from outside, it prints `comparison-unavailable`). Found by C2's delta review (N-B). No decision rested on it. Corrected in the record and the pull request's body. Breaks PF02-R04 (a record states what was done, exactly), a repeat of AM12-30 | C2's delta review |
 | AM12-46 | 20 Nov 2026 | accuracy | SV4's brief, revisions 1 to 3: A1's owned paths omitted three files D4 and D7 need (`gapp-api-v1.schema.json` for `MatchProjection`'s description; the ordering and Stream proofs' READMEs), and D7's list of the token code's users missed `ContactResult.grant` and the outcome `granted`, `IAT_BACKDATE_SECONDS`, the ordering suite's token-case plan test, the refusal pin in `test_chat_sealed_runtime.py`, and the Stream proof's rows that need the signer, beyond its helper. Found by the manager's own search while writing A1's prompt, before it was given. Corrected in the brief's revision 4 and the prompt. Breaks PF02-R14 (search for every reader before naming a mechanism), a repeat of AM12-37 and AM12-39 | The manager |
+| AM12-47 | 20 Nov 2026 | accuracy | A1's prompt, revision 1: its list of earlier tests, from the manager's search at its commit, omitted three tests A1's work changes (the migration leaf in `test_model_definitions.py`, which the manager had read for `0011`; the discovery suite's pinned case count, where D3's cases must go; the read phase's first-lock case for a suspension, which D5 makes read-only), with the Stream proof's count tests and `test_identity_sealed_runtime.py`'s pin. A1's session found them with its own search and stopped before any change, as its stop rule says. Corrected in the prompt's revision 2 and the brief's revision 5. Breaks PF02-R14 (search for every reader, and every test that pins a count), a repeat of AM12-46 the same day | A1's session |
 
 ## App Manager 2
 
@@ -1189,6 +1190,14 @@ Recorded by App Manager 6 on App Manager 5's behalf, from App Manager 5's relaye
 - **Prevention:** a sweep for a new rule searches for the action it forbids, by every name (here: re-run, rerun, delete, "goes to Nathan"), in every governing text, not only for the line it replaces.
 
 ## App Manager 12
+
+### AM12-47 — A1's list of earlier tests missed three it changes (accuracy)
+
+- **What happened:** A1's prompt, revision 1 (`1d55ec4`), listed the earlier tests A1 may change, from the manager's search at its commit. It omitted three that A1's work must change: the one migration leaf `test_model_definitions.py` asserts (line 323), in a file the manager had read for `0011`; the discovery suite's pinned case count (`test_discovery_offline.py`, lines 716 to 725), where D3's cases must go, since only that suite serves the like and the own-versions read; and `read.final_check_first_lock`'s suspension variant (`read_phase.py`, lines 629 to 685), which D5 makes read-only. It also gave no lines for the Stream proof's count tests, and missed `test_identity_sealed_runtime.py`'s exact pin of the refusal list. The same search, earlier that day, had already missed paths and users of the token code (AM12-46).
+- **Caught by:** A1's session, with its own search at its commit; it stopped before any change, as its stop rule says.
+- **Effect:** one session's run spent without a change; nothing was built, pushed or merged on the list.
+- **Correction:** A1's prompt, revision 2, and the brief's revision 5 name each test, with the session's points answered.
+- **Prevention:** a checklist item, for PF02-R14's check in revision 1.9 (the review log's deferred row): before a prompt lists earlier tests, search for every test that asserts a count, a migration leaf, an exact set or a slice of a list the stage extends, and name the suite each new case must go in with that suite's pins. A repeat of AM12-46.
 
 ### AM12-28 — A listing's time written before the listing (follow-through)
 
