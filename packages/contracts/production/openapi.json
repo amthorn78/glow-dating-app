@@ -295,6 +295,9 @@
       },
       "OwnInteractionVersions": {
         "$ref": "./gapp-api-v1.schema.json#/$defs/OwnInteractionVersions"
+      },
+      "MatchList": {
+        "$ref": "./gapp-api-v1.schema.json#/$defs/MatchList"
       }
     }
   },

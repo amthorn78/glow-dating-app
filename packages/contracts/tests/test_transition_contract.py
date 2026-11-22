@@ -845,7 +845,9 @@ class SV2StageATransitionTests(unittest.TestCase):
         # DM-96): F10's three unmatch rows stay as they were, in their order, and one row follows
         # them, the block's effect on an active match (block, active to unmatched), with the role
         # and flags of F10's unmatch rows; no row is removed, since the mobile fixture adapter
-        # looks up F10's rows while it runs.
+        # looks up F10's rows while it runs. Extended by SV4 A2 (its brief's D9): F09's response
+        # list and projection roles gain the match list's MatchList, projected to the participant;
+        # no transition of F09 changes.
         flows = {flow["id"]: flow for flow in FLOWS_JSON["flows"]}
 
         def entries(flow_id):
@@ -905,8 +907,9 @@ class SV2StageATransitionTests(unittest.TestCase):
             ),
             "F09": (
                 ["InteractionIntent", "OwnedObjectRequest"],
-                ["MatchProjection"],
-                {"MatchProjection": ["participant"]},
+                # SV4 A2 (its brief's D9): the match list, projected to the participant.
+                ["MatchProjection", "MatchList"],
+                {"MatchProjection": ["participant"], "MatchList": ["participant"]},
                 [
                     ("reciprocal", "none", "active", "system", True, ("reciprocal_likes",), False),
                     ("restrict", "active", "restricted", "system", False, (), False),
@@ -988,3 +991,55 @@ class SV2StageATransitionTests(unittest.TestCase):
                 self.assertNotIn("OwnInteractionVersions", flow["request_contracts"])
                 for rule in flow["transitions"]:
                     self.assertNotIn("own_versions", rule["event"])
+
+
+class SV4StageATwoContractTests(unittest.TestCase):
+    """SV4 A2 (its brief's D9): ``ConversationSummary.state`` gains ``read_only``, one state for
+    every cause the read rule serves read-only, with its count and marker kept; and the new
+    ``MatchList`` joins F09's responses, projected to the participant only. Neither adds a
+    request contract or a transition."""
+
+    def test_read_only_is_one_state_with_its_count_and_marker(self):
+        schema = json.loads((ROOT / "production/gapp-api-v1.schema.json").read_text())
+        summary = schema["$defs"]["ConversationSummary"]
+        self.assertEqual(summary["properties"]["state"]["enum"], ["open", "closed", "read_only"])
+        # Only ``closed`` drops the count and the marker.
+        self.assertEqual(
+            [rule["if"]["properties"]["state"] for rule in summary["allOf"]],
+            [{"const": "closed"}],
+        )
+
+    def test_the_match_list_is_the_participants_and_additive(self):
+        self.assertEqual(read_projection("F09", "MatchList", PARTICIPANT), "allowed")
+        for context in (
+            replace(PARTICIPANT, actor_id="carol"),
+            replace(PARTICIPANT, session_state="revoked"),
+            OWNER,
+            STAFF,
+            SYSTEM,
+            Context(None, "provider", None),
+            Context(None, "public", None),
+        ):
+            with self.subTest(context=context):
+                self.assertEqual(read_projection("F09", "MatchList", context), "not_found")
+        flows = {flow["id"]: flow for flow in FLOWS_JSON["flows"]}
+        self.assertEqual(
+            [flow_id for flow_id, flow in flows.items() if "MatchList" in flow["response_contracts"]],
+            ["F09"],
+        )
+        for flow in flows.values():
+            with self.subTest(flow=flow["id"]):
+                self.assertNotIn("MatchList", flow["request_contracts"])
+        schema = json.loads((ROOT / "production/gapp-api-v1.schema.json").read_text())
+        listed = schema["$defs"]["MatchList"]
+        self.assertEqual(listed["required"], ["kind", "matches"])
+        self.assertEqual(listed["properties"]["kind"], {"const": "match_list"})
+        self.assertEqual(listed["properties"]["matches"]["maxItems"], 200)
+        self.assertEqual(
+            listed["properties"]["matches"]["items"], {"$ref": "#/$defs/MatchProjection"}
+        )
+        self.assertFalse(listed["additionalProperties"])
+        self.assertIn(
+            {"$ref": "#/$defs/MatchList"},
+            schema["$defs"]["AppResponse"]["properties"]["data"]["oneOf"],
+        )

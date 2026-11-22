@@ -72,6 +72,8 @@ class DiscoveryRouteTests(unittest.TestCase):
                 ["api/v1/discovery/interaction/undo", "UndoView", ["post"]],
                 ["api/v1/matches/unmatch", "UnmatchView", ["post"]],
                 ["api/v1/matches/<uuid:match_id>", "MatchView", ["get"]],
+                # SV4 A2 (its brief's D9): the member's match list.
+                ["api/v1/matches", "MatchListView", ["get"]],
                 ["api/v1/blocks", "BlockView", ["post"]],
                 ["api/v1/interactions/<uuid:profile_id>", "OwnVersionsView", ["get"]],
             ],

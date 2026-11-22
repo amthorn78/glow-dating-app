@@ -632,10 +632,10 @@ def reciprocal_likes_make_one_match(ctx: DiscoveryContext) -> str:
 @case("match.no_route_creates_a_match", "8", "D10", "F09")
 def no_route_creates_a_match(ctx: DiscoveryContext) -> str:
     """No route takes a match intent (F09): the suite serves exactly SV1's identity routes, SV2's
-    member routes, Stage A's page route, Stage B's five action routes and correction B-C1's
-    own-versions read (DM-74), each with its view, and no other (so no route at any path can
-    create a match); Stage B's request DTOs are the four commands; an interaction's action is only
-    like or pass; and no path makes a match."""
+    member routes, Stage A's page route, Stage B's five action routes, correction B-C1's
+    own-versions read (DM-74) and SV4 A2's match list, a read (its brief's D9), each with its view,
+    and no other (so no route at any path can create a match); Stage B's request DTOs are the four
+    commands; an interaction's action is only like or pass; and no path makes a match."""
     from django.urls import get_resolver
     from glow_identity.urls import urlpatterns as identity_routes
     from glow_persistence.models import Match
@@ -663,6 +663,8 @@ def no_route_creates_a_match(ctx: DiscoveryContext) -> str:
         ("api/v1/blocks", "BlockView"),
         # Correction B-C1 (DM-74): the actor's own versions, a read.
         ("api/v1/interactions/<uuid:profile_id>", "OwnVersionsView"),
+        # SV4 A2 (its brief's D9): the member's match list, a read.
+        ("api/v1/matches", "MatchListView"),
     }
     everything = served(get_resolver().url_patterns)
     expected = served(identity_routes) | served(profile_routes) | stage_b
@@ -685,11 +687,13 @@ def no_route_creates_a_match(ctx: DiscoveryContext) -> str:
     body = dict(_intent(ctx, one, two, "like", ctx.page(one)), action="match")
     ctx.profiles.refused(ctx.profiles.command(one, INTERACTION, body), 400, "invalid_request", "m")
     reply = ctx.profiles.call(one, "POST", MATCHES, {"pair": [_pid(ctx, one), _pid(ctx, two)]})
-    expect(reply.status == 404, "no route at the matches path")
+    # SV4 A2 (its brief's D9): the matches path now serves the match list, a read, so a POST there
+    # is another method (405), where before no route answered (404).
+    expect(reply.status == 405, "the matches path takes no POST")
     expect(Match.objects.count() == before, "no match written")
     return (
-        f"exactly {len(expected)} routes served ({len(stage_b)} of SV3's), none taking a match"
-        " intent; matches come only from reciprocal likes"
+        f"exactly {len(expected)} routes served ({len(stage_b)} of SV3's and SV4 A2's), none"
+        " taking a match intent; matches come only from reciprocal likes"
     )
 
 
