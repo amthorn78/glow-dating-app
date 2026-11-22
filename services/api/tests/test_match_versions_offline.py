@@ -5,23 +5,30 @@ advanced together, by every writer of either, and only when contact ends: today 
 ``block`` (of an active match) and ``unmatch``. So the version a participant reads is the one a
 send expects, and while contact continues it cannot rise.
 
-Read from the source and never run: a detector scans every function in the API's code (its
-tests, migrations and virtual environment left out) for these forms of a write to either field
-of a match: an assignment to an object's ``contact_version``; an assignment to the ``version`` of
-a name bound to a ``Match`` or a queryset of them (assigned from ``Match.objects...`` or
+Read from the source and never run: in each module of the API's code (its tests, migrations and
+virtual environment left out), a detector reads the top-level ``def`` functions and the ``def``
+methods of top-level classes, anything nested in one (an ``async def`` or a class among them)
+being read as part of it. In those it finds these forms of a write to either field of a match:
+an assignment to an object's ``contact_version``; an assignment to the ``version`` of a name
+bound to a ``Match`` or a queryset of them (assigned from ``Match.objects...`` or
 ``self._lock(Match, ...)``, looped over, or a parameter annotated ``Match``); a ``save`` of such
 an object naming either field; a writing queryset or manager call (``update``, ``create``,
 ``bulk_update`` and the rest) on one, naming either; or SQL text that writes
-``glow_persistence_match``. ``WriterDetectorTests`` shows each of these forms is found.
+``glow_persistence_match``. ``WriterDetectorTests`` shows each of these forms is found but the
+``save``, whose one example also assigns ``version``; the ``save`` is held instead by
+``MatchVersionTests``' check that each pinned writer saves both fields in one ``save``.
 
-Other forms escape it, among them: a related manager's ``update``, or an ``aupdate``; a
+Other forms escape it, among them: a function it does not read (a top-level ``async def``
+function, an ``async def`` method of a top-level class, or any method of a class nested in a
+top-level class); a related manager's ``update``, or an ``aupdate``; a
 ``Match(..., version=...)``, or a ``bulk_create`` of such objects; SQL text whose table name is
-built at runtime or held in a constant; a match obtained through a helper such as
-``glow_discovery.interactions._pair_match``; a ``save()`` override or a signal; and ``Match``
-imported under another name. So the pinned set below is today's every writer by the A1 review's
-and the manager's searches of the code, not by the detector alone; the detector's reach is
-carried (the carried-items file, "Carried to SV4"; the exact-head review's AR-4). Each function
-the detector finds must be one of the pinned writers,
+built at runtime or held in a constant; an assignment to the ``version`` of a match obtained
+through a helper such as ``glow_discovery.interactions._pair_match``, or made in a ``save()``
+override or a signal (an assignment to an object's ``contact_version`` is found however the
+object was obtained); and ``Match`` imported under another name. So the pinned set below is
+today's every writer by the A1 review's and the manager's searches of the code, not by the
+detector alone; the detector's reach is carried (the carried-items file, "Carried to SV4"; the
+exact-head review's AR-4). Each function the detector finds must be one of the pinned writers,
 and each advances both by one in the same statement list and saves both in one ``save``. The
 database case is the discovery suite's ``sv4.a1.match_version_is_the_sends_contact_version``.
 """
@@ -238,7 +245,9 @@ class MatchVersionTests(unittest.TestCase):
 
 class WriterDetectorTests(unittest.TestCase):
     """The detector itself (the exact-head review lens of A1's own review): each form the module's
-    docstring lists as found is found. It shows nothing of the forms that escape (AR-4)."""
+    docstring lists as found is found, but the ``save``, whose one example also assigns
+    ``version``; ``MatchVersionTests`` holds the ``save``, by its check that each pinned writer
+    saves both fields. It shows nothing of the forms that escape (AR-4)."""
 
     FORMS = {
         "an attribute of a locked match": (
