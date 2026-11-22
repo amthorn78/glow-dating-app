@@ -18,16 +18,16 @@ This file only routes: the current item, what happens next and who waits on whom
 - **Done:** P00 to P05 (fixture scope), M01 to M09, A01-R, P06.1, P06.DB, P06.2, P09.3a, P06.2-F, P06.3, SV1 to SV3 and SV2-R.
 - **Owner directions:** OD-01 to OD-83. **Review log:** DM-01 to DM-97. **Linear (OD-29).** Every prompt names its environment (OD-36) and glow-docs as attached (OD-74).
 
-## Waiting checkpoint (22 November 2026, handover, 07:47 UTC, App Manager 12 to 13)
+## Waiting checkpoint (22 November 2026, 08:00 UTC, App Manager 13)
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 13 | itself, then Nathan | A1-C1's prompt, revision 2 ([revision 1](../ephemeral/2026-11-22-sv4-a1-c1-correction-prompt.md) withdrawn, OD-83); then C1's report | Nothing merges |
+| App Manager 13 | Nathan | A1-C1's report, from [its prompt, revision 2](../ephemeral/2026-11-22-sv4-a1-c1-correction-prompt.md) (revision 1 withdrawn, OD-83) | Nothing merges |
 
 ## Next actions (App Manager 13)
 
-1. **SV4 A1** (the rules; `bc0675d`; PR58): its exact-head review asked for changes (AR-1 blocking, AR-2, AR-3; the SV4 record). Next: A1-C1's prompt, revision 2 (GitHub through the GitHub tools; App Manager 12's loss of them was session-local), C1, its verification, PR58's run and Codex, C1's delta review, the pre-merge read, the merge; then A2.
-2. **Manager records:** PF02 1.9 (AM12-31 to AM12-49); the status log's move (M09 (b)); R-07, R-10, R-26, R-28.
+1. **SV4 A1** (the rules; `bc0675d`; PR58): its exact-head review asked for changes (AR-1 blocking, AR-2, AR-3; the SV4 record). A1-C1's prompt, revision 2, is with Nathan (the session reads GitHub with the GitHub tools where it has them, otherwise `gh api` REST `GET`, read only). Codex's review of `4618859` left one P1 thread, the same defect as AR-1, which C1 answers. Next: C1, its verification, PR58's run and Codex, C1's delta review, the pre-merge read, the merge; then A2.
+2. **Manager records:** Dev Manager 6's handover to Dev Manager 7 (`7b2c928` on `claude/dev-manager`; Nathan's words in it), to record in the register, the review log's Sessions and Notion once its session is identified; the GitHub tools absent from App Manager 13's and Dev Manager 6's sessions too, so a prompt names both routes (AM12-49's proposed rule); PF02 1.9 (AM12-31 to AM12-49); the status log's move (M09 (b)); R-07, R-10, R-26, R-28.
 
 **Carried follow-ups** live in their owning homes: [`carried-to-later-items.md`](../planning/carried-to-later-items.md) (with "Routed by M09" and "Routed by A01-R"), the P11 plan, the review log's "Deferred conditions".
 

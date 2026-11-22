@@ -1,24 +1,24 @@
 # SV4 A1-C1 prompt — the correction: the history tests on `main`, the version detector's claim, the read port's rule
 
-- **Owner:** App Manager 12. Nathan starts this session manually, in the `Glow App - No Stream` environment (OD-36), and relays its report.
-- **Revision 1, 22 November 2026. Withdrawn before it ran (OD-83): do not run it.** App Manager 13 regenerates it as revision 2.
+- **Owner:** App Manager 13. Nathan starts this session manually, in the `Glow App - No Stream` environment (OD-36), and relays its report.
+- **Revision 2, 22 November 2026** (App Manager 13, OD-83). Revision 1 ([`998116b`](https://github.com/amthorn78/glow-dating-app/blob/998116b/docs/ephemeral/2026-11-22-sv4-a1-c1-correction-prompt.md)) was withdrawn before it ran: it told the session to read GitHub only with `gh api`. Revision 2 names no single route: the session reads GitHub with the GitHub tools where it has them, otherwise with `gh api` REST `GET` calls. It also names App Manager 13 as the manager, adds Codex's P1 thread on PR58 (the same defect as AR-1), and carries a new reading. The work is unchanged.
 - **Durable brief:** [SV4 — the chat and notifications slice](../planning/sv4-chat-notifications.md), revision 6. **The findings:** the SV4 record's section "Exact-head review of A1" (`docs/testing/evidence/2026-11-19-sv4-chat-notifications.md`), with its disposition table.
 - **Where the result goes:**
   - the session's changes to the three files below, and its section "A1-C1" in the same record, on its own branch;
   - the run of record: the Foundation run on its last code commit;
   - the manager adds its verification to the record, and records the outcome in the brief's "Sessions".
 - **Model and reasoning setting** (OD-10, OD-30, OD-33, OD-34, OD-42). The reading is the recommendation; it gates nothing, and Nathan picks.
-  - **TypeSafe v8.2: Opus 5.5 at high.** Effort score 1.80 (confidence 0.85); rung probabilities low 0.00, medium 0.22, high 0.77, extra high 0.01, max 0.00, ultracode 0.00. Model probabilities Fable 5.1 0.00, Opus 5.5 0.98, Sonnet 5.5 0.02, Haiku 5.5 0.00 (confidence 0.97). Twenty-four cells, computed from the two answers: Fable 5.1 at low 0.000, Fable 5.1 at medium 0.000, Fable 5.1 at high 0.000, Fable 5.1 at extra high 0.000, Fable 5.1 at max 0.000, Fable 5.1 at ultracode 0.000, Opus 5.5 at low 0.000, Opus 5.5 at medium 0.216, Opus 5.5 at high 0.755, Opus 5.5 at extra high 0.010, Opus 5.5 at max 0.000, Opus 5.5 at ultracode 0.000, Sonnet 5.5 at low 0.000, Sonnet 5.5 at medium 0.004, Sonnet 5.5 at high 0.015, Sonnet 5.5 at extra high 0.000, Sonnet 5.5 at max 0.000, Sonnet 5.5 at ultracode 0.000, Haiku 5.5 at low 0.000, Haiku 5.5 at medium 0.000, Haiku 5.5 at high 0.000, Haiku 5.5 at extra high 0.000, Haiku 5.5 at max 0.000, Haiku 5.5 at ultracode 0.000. Sent 2026-11-22T07:34:30Z. Nathan picks the cell.
-- **The Dev Manager's read:** none before it runs. This prompt authorizes no credential use and no live provider action (the charter, "Read before it takes effect"). Under D-07 the correction goes on the list for Dev Manager 6's pre-merge read of A1.
+  - **TypeSafe v8.2: Opus 5.5 at high.** Effort score 1.71 (confidence 0.81); rung probabilities low 0.00, medium 0.29, high 0.71, extra high 0.00, max 0.00, ultracode 0.00. Model probabilities Fable 5.1 0.00, Opus 5.5 0.97, Sonnet 5.5 0.03, Haiku 5.5 0.00 (confidence 0.96). Twenty-four cells, computed from the two answers: Fable 5.1 at low 0.000, Fable 5.1 at medium 0.000, Fable 5.1 at high 0.000, Fable 5.1 at extra high 0.000, Fable 5.1 at max 0.000, Fable 5.1 at ultracode 0.000, Opus 5.5 at low 0.000, Opus 5.5 at medium 0.281, Opus 5.5 at high 0.689, Opus 5.5 at extra high 0.000, Opus 5.5 at max 0.000, Opus 5.5 at ultracode 0.000, Sonnet 5.5 at low 0.000, Sonnet 5.5 at medium 0.009, Sonnet 5.5 at high 0.021, Sonnet 5.5 at extra high 0.000, Sonnet 5.5 at max 0.000, Sonnet 5.5 at ultracode 0.000, Haiku 5.5 at low 0.000, Haiku 5.5 at medium 0.000, Haiku 5.5 at high 0.000, Haiku 5.5 at extra high 0.000, Haiku 5.5 at max 0.000, Haiku 5.5 at ultracode 0.000. Sent 2026-11-22T07:54:49Z. Nathan picks the cell.
+- **The Dev Manager's read:** none before it runs. This prompt authorizes no credential use and no live provider action (the charter, "Read before it takes effect"). Under D-07 the correction goes on the list for the Dev Manager's pre-merge read of A1.
 - **Environment** (OD-36): `Glow App - No Stream`. No Stream variable is needed, and none may be present. `amthorn78/glow-docs` is attached, read-only; this work needs nothing from it (OD-74).
-- **It runs alone** (OD-29). Then, in order: the manager's verification; PR58's run and Codex's review of its new head; a delta review of C1 (the manager workflow, "A small correction gets a delta re-review"); Dev Manager 6's pre-merge read of A1; the merge.
+- **It runs alone** (OD-29). Then, in order: the manager's verification; PR58's run and Codex's review of its new head; a delta review of C1 (the manager workflow, "A small correction gets a delta re-review"); the Dev Manager's pre-merge read of A1; the merge.
 - **Deletion condition:** prune after A1's pull request (PR58) merges and its merge receipt is recorded.
 
 **Manager:** before giving this prompt to Nathan, replace every `<START_SHA>` with the full SHA of the manager-branch commit that holds this revision, and run its start gate against the live branch (AM11-21).
 
 ---
 
-You are the **correction session A1-C1** for SV4 A1, for the Glow dating app, in the public repository `amthorn78/glow-dating-app`. Nathan Amthor, its owner, started you manually. This prompt is revision 1, from commit `<START_SHA>` of the manager branch `claude/magical-wozniak-yfmmx2`.
+You are the **correction session A1-C1** for SV4 A1, for the Glow dating app, in the public repository `amthorn78/glow-dating-app`. Nathan Amthor, its owner, started you manually. This prompt is revision 2, from commit `<START_SHA>` of the manager branch `claude/magical-wozniak-yfmmx2`.
 
 **What came before.**
 - **A1** (code head `bc0675d`; the record's section "A1") built the rules chat's routes will serve: a block retires the pair's earlier likes (D3) and ends a match as an unmatch does (D4); the reads follow OD-60's rule through `chat.history` (D5); the send's expected version is the match's (D6); the token code is removed (D7). PR58 carries it into `main`, which is at `499ccbb` (PR57, SV4 A0).
@@ -26,12 +26,13 @@ You are the **correction session A1-C1** for SV4 A1, for the Glow dating app, in
   - **AR-1, blocking.** Two tests of `ReciprocalWriterTests` compare `glow_chat/contact.py` with `main`'s merge base and assert that it differs by A1's edits. Once A1 is on `main`, they compare A1 with itself and fail. `main`'s push runs check out a local `main` (`git checkout --progress --force -B main refs/remotes/origin/main`, in run 44657225220's API checks job), so the first push run after PR58's merge would fail the API checks job and the gate. PR runs and session-branch runs skip the two tests, so no run so far shows it. The manager reproduced it: with a local `main` at `bc0675d`, the class gives `FAILED (failures=2)`; with `main` at `499ccbb`, `OK`.
   - **AR-2, should fix (a false claim).** `test_match_versions_offline.py`'s docstrings say every form a writer could take is found, "so the pinned set above cannot miss one". The review reproduced 22 forms the detector misses.
   - **AR-3, should fix (a false claim at the who-may-read boundary).** `glow_domain/chat_reads.py`'s module docstring still states the read rule D5 replaced, which A2 and P11 will wire against.
+- **Codex's review of PR58** (head `4618859`, 22 November 2026) left one unresolved P1 thread on `test_interactions_offline.py` line 1389, "Pin the history comparisons to the pre-A1 revision": the same defect as AR-1. Your fix answers it; you do not reply to it or resolve it.
 - **The manager's disposition** (the same section's table): AR-1, AR-2 and AR-3 are fixed now, by you. The detector's reach (AR-4) and the nits (AR-5 to AR-16) are recorded or carried; you do not take them up.
 
 **This correction changes tests and docstrings only.** No application behaviour, workflow, setting, contract, README or proof changes.
 
 **How you work:**
-- Nathan started you and will relay your report to the manager, App Manager 12. You are neither the manager nor a reviewer.
+- Nathan started you and will relay your report to the manager, App Manager 13. You are neither the manager nor a reviewer.
 - You may use any tools, subagents, scheduled wake-ups or other capabilities the work needs.
 - **Your boundary is scope:**
   - write only these paths:
@@ -40,7 +41,7 @@ You are the **correction session A1-C1** for SV4 A1, for the Glow dating app, in
     - `services/api/glow_domain/chat_reads.py`: its module docstring's paragraph "Whatever refuses a send refuses a read" (lines 10 to 16), only (the brief, revision 6);
     - the record, section "A1-C1" only;
   - push only your own session branch, with `git push -u origin <branch>`. Never push `main`, the manager branch or `claude/dev-manager`, and never delete a branch;
-  - on GitHub, read only, with `gh api` REST `GET` calls (the built-in GitHub MCP tools were retired on 22 November 2026): no pull request, comment, review, re-run, workflow dispatch or setting. Change nothing in Notion.
+  - on GitHub, read only: use the GitHub tools where your session has them, otherwise `gh api` REST `GET` calls, and say in the report which you used. No pull request, comment, review, thread resolution, re-run, workflow dispatch or setting. Change nothing in Notion.
 - **The stop rule.** Stop and report, with no further change, if any of these holds:
   - **a path:** the work needs any path or passage outside the list above: `.github/workflows/foundation.yml` (its `fetch-depth` above all), any other test, `glow_chat/`, the contracts, a proof, a README;
   - **an earlier test:** a test not named above would have to change, or either history test would lose an assertion it makes today;
