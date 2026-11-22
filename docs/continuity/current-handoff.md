@@ -28,7 +28,7 @@ This file only routes: the current item, what happens next and who waits on whom
 
 **Carried follow-ups** live in their owning homes: [`carried-to-later-items.md`](../planning/carried-to-later-items.md), the P11 plan, the review log's "Deferred conditions".
 
-## Branches and PRs (22 November 2026, 10:45 UTC)
+## Branches and PRs (22 November 2026, 12:40 UTC)
 
 - **Open PRs:** none; the manager branch's next PR carries A2.
-- **Remote branches, three:** `main` (`43e794a`); the manager branch; `claude/dev-manager` (`8c587ac`, merged). The branch cleanup (run 45012202931) deleted A1's, C1's and C2's session branches.
+- **Remote branches, four** (12:40 UTC): `main` (`43e794a`); the manager branch; `claude/dev-manager` (`8c587ac`, merged); A2's `claude/dazzling-hamilton-ocxuu3` (`e3f66a3`, A2's code, its run 45018516461 failed; held until A2 is integrated).
