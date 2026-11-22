@@ -29,6 +29,11 @@ neither joins the served envelope (the contract's "P05.3 internal interaction re
 bridge"). No projection carries another member's private value, a count, a reason or a block's
 direction (D8).
 
+**The match list** (SV4 A2, its brief's D9) is the new ``MatchList`` (``kind: match_list``; an added
+DTO; no existing DTO changes, and no request DTO, since the read takes nothing but its actor): at
+most 200 of the member's ``MatchProjection`` entries, unchanged, for the matches the member may
+still see, served ``active``, newest first.
+
 **The actor's own versions** (D13; DM-74; correction B-C1) are D13's new ``OwnInteractionVersions``
 (an added DTO; no existing DTO changes; no request DTO, since the read takes the profile ID in its
 path): the profile ID as asked, the actor's own directional row's state (``none``, ``liked``,
@@ -262,6 +267,19 @@ def match_projection(
         "other_profile_id": other_profile_id,
         "state": state,
     }
+
+
+MATCH_LIST = "match_list"
+# D9 (SV4 A2): the match list's ceiling, the contract's ``maxItems``.
+MATCH_LIST_LIMIT = 200
+
+
+def match_list(matches: list[dict[str, Any]]) -> dict[str, Any]:
+    """D9's ``MatchList`` (SV4 A2): at most 200 of the member's ``MatchProjection`` entries, each
+    a match the member may still see, served ``active``, newest first."""
+    if len(matches) > MATCH_LIST_LIMIT:
+        raise ValueError("a match list holds at most MATCH_LIST_LIMIT matches")
+    return {"kind": MATCH_LIST, "matches": list(matches)}
 
 
 def block_outcome(target_profile_id: str, version: int, state: str) -> dict[str, Any]:

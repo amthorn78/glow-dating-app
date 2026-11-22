@@ -1120,7 +1120,8 @@
         "OwnedObjectRequest"
       ],
       "response_contracts": [
-        "MatchProjection"
+        "MatchProjection",
+        "MatchList"
       ],
       "private_projection": "Participants only",
       "public_projection": "None",
@@ -1154,6 +1155,9 @@
       "forbidden": "Every unlisted transition; wrong actor/object; stale version; unknown required policy; denied/unknown eligibility when required.",
       "projection_roles": {
         "MatchProjection": [
+          "participant"
+        ],
+        "MatchList": [
           "participant"
         ]
       }

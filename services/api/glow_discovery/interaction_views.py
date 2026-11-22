@@ -12,6 +12,9 @@ the body or another header:
 - ``POST api/v1/matches/unmatch``: ``UnmatchIntent``, answering ``MatchProjection`` (F10; D11);
 - ``POST api/v1/blocks``: ``BlockIntent``, answering ``BlockOutcome`` (F13; D11);
 - ``GET api/v1/matches/<match_id>``: ``MatchProjection``, for a participant (F09);
+- ``GET api/v1/matches``: SV4 A2's ``MatchList`` (its brief's D9; F09), the actor's matches the
+  actor may still see, served ``active``, newest first, at most 200; a body is
+  ``invalid_request``, as a query string is;
 - ``GET api/v1/interactions/<profile_id>``: D13's ``OwnInteractionVersions``, the actor's own
   directional row and own block toward that profile, each state and version (F08, F13; DM-74;
   correction B-C1): the same 200 answer, ``none`` and ``0``, wherever the actor has no row, whether
@@ -162,6 +165,22 @@ class MatchView(_Route):
     def get(self, request: Any, match_id: UUID) -> Response:
         actor = self._actor(request)
         return self._answer(interactions.read_match(actor.account_id, match_id))
+
+
+class MatchListView(_Route):
+    """SV4 A2's ``MatchList`` (its brief's D9): the actor's own matches only."""
+
+    http_method_names = ["get"]
+
+    def get(self, request: Any) -> Response:
+        actor = self._actor(request)
+        try:
+            sent = request._request.body
+        except RequestDataTooBig:
+            raise _BadRequest() from None
+        if sent:
+            raise _BadRequest()
+        return self._answer(interactions.read_matches(actor.account_id))
 
 
 class OwnVersionsView(_Route):
