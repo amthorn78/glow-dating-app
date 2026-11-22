@@ -15,11 +15,11 @@ This file only routes: the current item, what happens next and who waits on whom
 - **Done:** P00 to P05 (fixture scope), M01 to M09, A01-R, P06.1, P06.DB, P06.2, P09.3a, P06.2-F, P06.3, SV1 to SV3, SV2-R.
 - **Owner directions:** OD-01 to OD-84. **Review log:** DM-01 to DM-98. **Linear (OD-29).** Every prompt names its environment (OD-36) and glow-docs as attached (OD-74).
 
-## Waiting checkpoint (22 November 2026, 10:45 UTC, App Manager 13)
+## Waiting checkpoint (22 November 2026, 10:50 UTC, App Manager 13)
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 13 | itself | `main`'s push run 45012202957 on `43e794a`, then A2's prompt | A2's prompt waits for the run's result |
+| App Manager 13 | itself | A2's prompt (`main`'s push run 45012202957 on `43e794a` passed) | Nothing runs |
 
 ## Next actions (App Manager 13)
 
