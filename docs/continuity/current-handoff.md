@@ -1,4 +1,4 @@
-# Current handoff — App Manager 13 (22 November 2026; SV4 A2 built and verified; its PR and review next)
+# Current handoff — App Manager 13 (22 November 2026; SV4 A2 in PR59; its exact-head review next)
 
 This file only routes: the current item, what happens next and who waits on whom. Each fact lives in one home, listed in the [documentation map](../README.md); earlier handoffs are in `docs/continuity/history/`, the last as [P06.2 to its merge](history/p06-2-handoff.md).
 
@@ -15,20 +15,20 @@ This file only routes: the current item, what happens next and who waits on whom
 - **Done:** P00 to P05 (fixture scope), M01 to M09, A01-R, P06.1, P06.DB, P06.2, P09.3a, P06.2-F, P06.3, SV1 to SV3, SV2-R.
 - **Owner directions:** OD-01 to OD-84. **Review log:** DM-01 to DM-98. **Linear (OD-29).** Every prompt names its environment (OD-36) and glow-docs as attached (OD-74).
 
-## Waiting checkpoint (22 November 2026, 13:00 UTC, App Manager 13)
+## Waiting checkpoint (22 November 2026, 12:52 UTC, App Manager 13)
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 13 | GitHub | A2's PR run and Codex's review, then A2's exact-head review prompt to Nathan | Nothing merges |
+| App Manager 13 | GitHub | PR59's run and Codex's review of the head that holds A2's exact-head review prompt, then the prompt to Nathan | Nothing merges |
 
 ## Next actions (App Manager 13)
 
-1. **SV4 A1 merged** with PR58 at `43e794a` (the SV4 record, "Merge (22 November 2026)"; DM-98). **Now: SV4 A2** (the brief's D1: the routes, D8 and D9, proven on a fifth suite, D10): its prompt, from the brief's revision 8 (A2's owned paths completed, the CI policy among them; D11's A2 bullet; D12's "Due at A2"), went to A2's session (`claude/dazzling-hamilton-ocxuu3`, code head `e3f66a3`), whose run of record 45018516461 failed on SV3's `match.no_route_creates_a_match` (A2's new route; AM13-04); it stopped, and resumed under option (a) (the brief's revision 9): code head `26aa7ca`, run of record 45022218979 (all twelve jobs passed), records `88d4ef3`, verified and merged into the manager branch at `0ff9c09`; then, a new PR, its exact-head review, DM's pre-merge read with revision 8 and the CI policy's change; built from the brief and the carried items ("Carried to SV4", with DM-98's AJ2 rule for any writer of either version field; "Carried to the next change to the Foundation workflow (DM-97)").
+1. **SV4 A1 merged** with PR58 at `43e794a` (the SV4 record, "Merge (22 November 2026)"; DM-98). **Now: SV4 A2** (the brief's D1: the routes, D8 and D9, proven on a fifth suite, D10): its prompt, from the brief's revision 8 (A2's owned paths completed, the CI policy among them; D11's A2 bullet; D12's "Due at A2"), went to A2's session (`claude/dazzling-hamilton-ocxuu3`, code head `e3f66a3`), whose run of record 45018516461 failed on SV3's `match.no_route_creates_a_match` (A2's new route; AM13-04); it stopped, and resumed under option (a) (the brief's revision 9): code head `26aa7ca`, run of record 45022218979 (all twelve jobs passed), records `88d4ef3`, verified and merged into the manager branch at `0ff9c09`; then PR59 (opened 22 November), its exact-head review ([prompt](../ephemeral/2026-11-22-sv4-a2-review-prompt.md), revision 1), DM's pre-merge read with revisions 8 and 9 and the CI policy's change; built from the brief and the carried items ("Carried to SV4", with DM-98's AJ2 rule for any writer of either version field; "Carried to the next change to the Foundation workflow (DM-97)").
 2. **Manager records:** PF02 1.9 (AM12-31 to AM12-49, AM13-01 to AM13-04; AM12-49's proposed rule: a prompt names both GitHub routes; DM-98's wording of the false-claim class); the status log's move (M09 (b)); R-07, R-10, R-26, R-28.
 
 **Carried follow-ups** live in their owning homes: [`carried-to-later-items.md`](../planning/carried-to-later-items.md), the P11 plan, the review log's "Deferred conditions".
 
-## Branches and PRs (22 November 2026, 13:00 UTC)
+## Branches and PRs (22 November 2026, 12:52 UTC)
 
-- **Open PRs:** A2's, from the manager branch into `main` (opened at this batch).
-- **Remote branches, four** (13:00 UTC): `main` (`43e794a`); the manager branch; `claude/dev-manager` (`8c587ac`, merged); A2's `claude/dazzling-hamilton-ocxuu3` (`88d4ef3`, merged at `0ff9c09`), which the branch cleanup deletes once A2's PR merges.
+- **Open PRs:** PR59 (SV4 A2), from the manager branch into `main`.
+- **Remote branches, four** (12:52 UTC): `main` (`43e794a`); the manager branch; `claude/dev-manager` (`8c587ac`, merged); A2's `claude/dazzling-hamilton-ocxuu3` (`88d4ef3`, merged at `0ff9c09`), which the branch cleanup deletes once A2's PR merges.
