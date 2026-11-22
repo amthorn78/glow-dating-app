@@ -1521,3 +1521,12 @@ At the code head, in the checkout, under `env -i` (with `GLOW_ENV=test` for Djan
 - **The escaping forms are checked on examples,** one each; the list stays "among them".
 - **The network was not restricted by the environment;** the session used PyPI for the API's lock and GitHub for its push and reads only.
 - **Nothing in the records commit was needed** to pass a check; no stop condition held.
+
+### Manager verification of A1-C2 (App Manager 13, 22 November 2026)
+
+- **The branch:** `claude/affectionate-pasteur-ge2jra`, code head `934da48`, records head `02ebfc7` (the record only), both after the prompt's commit `63aebb6`, which the branch starts at. The manager branch had moved on (`01c7fe9`, records only), so it took C2 by a merge, `860abe2`, whose non-Markdown paths equal `934da48`'s.
+- **The diff** from `63aebb6` to the code head: `services/api/tests/test_match_versions_offline.py` only, its module docstring's passage and `WriterDetectorTests`' docstring, read in full. `ast.dump` of the module with every docstring removed is the same at `63aebb6` and `934da48` (the manager's script).
+- **The claims, probed by the manager** on the unchanged detector (`934da48`'s module loaded from a scratch copy, under `env -i`): a listed form in a top-level `async def`, in an `async def` method of a top-level class and in a method of a class nested in a top-level class: nothing scanned, nothing found; the same form in an `async def` nested in a top-level `def`: found; `obj.contact_version = 3` on an object from a helper: found; `obj.version = 3` on the same object: not found. Each as the passage now says.
+- **The session's deviation, accepted:** it put "a signal" with the helper and the `save()` override, as escaping for `version` only, after its own probe showed a receiver's `contact_version` assignment is found; the prompt named only the two, and the old list had the signal, so the passage stays true.
+- **The trusted classifier,** `main`'s `scripts/change_scope.py` (`499ccbb`), extracted outside the checkout and run from it with `python3 -I --base 499ccbb… --head 860abe2… --merge-base`: `"full": true`, reason `behavior-or-empty`; one merge base, `499ccbb`.
+- **The run of record,** Foundation run 45006396587 (event `push`, head `934da48`, attempt 1), read with `gh api` (`GET` only): all eleven jobs succeeded; the API checks job's log has `Ran 654 tests … OK (skipped=2)`; the gate's log has "Application checks passed".
