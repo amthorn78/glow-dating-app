@@ -1530,3 +1530,35 @@ At the code head, in the checkout, under `env -i` (with `GLOW_ENV=test` for Djan
 - **The session's deviation, accepted:** it put "a signal" with the helper and the `save()` override, as escaping for `version` only, after its own probe showed a receiver's `contact_version` assignment is found; the prompt named only the two, and the old list had the signal, so the passage stays true.
 - **The trusted classifier,** `main`'s `scripts/change_scope.py` (`499ccbb`), extracted outside the checkout and run from it with `python3 -I --base 499ccbb… --head 860abe2… --merge-base`: `"full": true`, reason `behavior-or-empty`; one merge base, `499ccbb`.
 - **The run of record,** Foundation run 45006396587 (event `push`, head `934da48`, attempt 1), read with `gh api` (`GET` only): all eleven jobs succeeded; the API checks job's log has `Ran 654 tests … OK (skipped=2)`; the gate's log has "Application checks passed".
+
+### Delta review of A1-C2 (22 November 2026)
+
+- **Session:** C2's delta review, started by Nathan from [its prompt](https://github.com/amthorn78/glow-dating-app/blob/045014d54a4a6986f231482af0b81fa56ff0c2e2/docs/ephemeral/2026-11-22-sv4-a1-c2-delta-review-prompt.md), revision 1, from `045014d`; its report relayed to App Manager 13 on 22 November 2026. It read GitHub with `gh api` REST `GET` calls only (its session also offered GitHub MCP tools, which it did not use).
+- **Its start gate, classification and environment check:** every check passed (`HEAD` `045014d`; one merge base, `499ccbb`; the code equal to `934da48` at `HEAD` and on the live branch; no delta review recorded). `main`'s classifier (sha256 begins `b564c62f4a076f51`): `"full": true`, reason `behavior-or-empty`. None of the three HDE names and no `STREAM_*`, `PG*`, `R2_*`, `CLOUDFLARE_*`, `CF_*` or `RAILWAY_*` name; the AWS and GitHub token names present, never read. Its pip install alone was given the proxy and CA-bundle variables to reach PyPI, with `--only-binary=:all:`.
+- **Verdict: changes requested,** for one should-fix finding it placed in the prompt's correction class (a) (E-1). D1-1, N1 and N2 are otherwise answered.
+- **What it verified:** D1-1's sentence matches `functions()` and `writes()`' `ast.walk` but for E-1; N1 by eight reversals (the save branch deleted fails only the both-by-one test, for both writers; each other branch deleted fails exactly its form's example); N2 by 45 probes (all 14 listed escaping forms escape, all 13 found forms are found, the `contact_version` clause and C2's signal hold); the module's code unchanged without docstrings; every record claim it checked, the run's durations and log lines included.
+- **Its checks,** at `934da48` with the hash-locked install: `Ran 654 tests … OK`; Ruff, format (169 files) and mypy (95 files) clean; the module's 5 tests `ok`.
+- **The runs:** the run of record 45006396587, as recorded; PR58's run 45007614603 (`pull_request`, `045014d`; its API checks job on `refs/remotes/pull/58/merge`, `7bc4c09`, depth 1): all eleven jobs succeeded, `Ran 654 tests … OK (skipped=2)`, the gate "Application checks passed"; the push run 45007611048 succeeded. Codex's code review of `045014d` completed at 09:29:45 UTC with no findings; the P1 thread (comment 4657212763) unresolved, now at line 1382.
+
+**Its findings** (in its words, shortened):
+
+| ID | Severity | Where (at `934da48`) | Finding |
+|---|---|---|---|
+| E-1 | **Should fix** (the prompt's class (a)) | `test_match_versions_offline.py`, the module docstring, lines 8 to 11 and 21 to 23 | `functions()` (lines 60 to 70) keys what it finds by name, so of two `def`s with one name in a module or class only the later is read: a `@property` getter beside its setter, `@overload` stubs. A writer in the first of two `def f`, or in a property getter, gave `found={}`. Today's scanned code has one case, `glow_domain/interactions.py` lines 338 and 342 (`FixtureInteractionService.policy_version`), which writes neither field, so D6 holds. The passage says the detector reads "the `def` methods of top-level classes" and its list of functions it does not read leaves this out |
+| E-2 | Nit | The same passage | A parameter annotated `Match` binds the name only as the read function's own named parameter: a nested function's annotated parameter (though nested code is "read as part of it"), `*ms: Match`, a string annotation and `models.Match.objects…` escape. The wording is earlier text, and the list says "among them" |
+| E-3 | Nit (pre-existing, outside C2's paths) | `functions()`' docstring, line 61 | "Every top-level function and method": it skips `async def` and loses shadowed definitions. If E-1 is corrected, this line belongs with it |
+| E-4 | Nit | The same passage | Code under a top-level `if`, `try` or `with`, module-level statements and class-body statements are not read and not listed; "in those it finds" already implies it. None in the scanned code today |
+| E-5 | Nit | Lines 18 and 19, 249 and 250 | The `save` is "held by its check that each pinned writer saves both fields": what fails with the save branch deleted is the test's last assertion (the detector's output), not its text checks of the `save`; true of the test method as a whole |
+
+It also found two unlisted forms that escape, not raised as findings: a tuple-target assignment and a `setattr` of `contact_version`.
+
+**What it did not read or run:** the logs of jobs other than API checks and the gate, the artifacts and the push run's jobs; the database, mobile and proof suites; what earlier reviews covered.
+
+**The manager's check** (App Manager 13): E-1 read in the code. `functions()` assigns `found[node.name]` and `found[f"{node.name}.{item.name}"]`, so a second definition of a name replaces the first; `interactions.py` lines 338 and 342 hold the property's getter and setter.
+
+**Disposition** (App Manager 13):
+
+| Finding | Disposition | Why |
+|---|---|---|
+| E-1 | **Referred to the Dev Manager (DM-98, item 1)**, with A1's pre-merge read | The rule does not decide it (step 6, "Fix or carry, by rule"): under (a) it falls in the correction class the manager's prompt named ("a docstring claiming more than the code does, at the detector boundary"); under D-07 the reach of a static scan is carried, a correction being only for "a false claim that a decision or the merge would rest on", and D6's check rests on the searches. It is the third pass on one docstring's account of the detector. Recommended: carry, with the carried AR-4 item naming it; the alternative is a correction A1-C3 in the Dev Manager's words |
+| E-2 to E-5, and the two unlisted forms | **Carried** with AR-4 (the carried-items file, "Carried to SV4"), whatever E-1's disposition; E-3 moves with E-1 if E-1 is corrected | The reach of a static scan and records wording (D-07) |

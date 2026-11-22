@@ -1,4 +1,4 @@
-# Current handoff — App Manager 13 (22 November 2026; SV4 A1-C2 verified; its delta review next)
+# Current handoff — App Manager 13 (22 November 2026; DM-98, A1's pre-merge read, with Dev Manager 7)
 
 This file only routes: the current item, what happens next and who waits on whom. Each fact lives in one home, listed in the [documentation map](../README.md); earlier handoffs are in `docs/continuity/history/`, the last as [P06.2 to its merge](history/p06-2-handoff.md).
 
@@ -13,17 +13,17 @@ This file only routes: the current item, what happens next and who waits on whom
 - **Standing context:** OD-77 (no cost now; legal entity deferred), OD-78 (the whole system working together first), OD-79 (the app's database on HDE's PostgreSQL service; Railway components to analyze and retire), OD-80 (no HDE design decision now), OD-81 (`glow-frontend-v2` deprecated); the repository public for now (OD-51).
 - **The order** (PF01 1.20): stage 1, the pre-integration build: SV4 (two stages), SV5, SV2-L, AC1 to AC3, then P07.2, P07.3, P08.1, P08.2, P09.1; stage 2, integration, which Nathan starts; stage 3, business set-up and release. The Railway analysis (once authorized) and M09-R may run beside a code item (D-06).
 - **Done:** P00 to P05 (fixture scope), M01 to M09, A01-R, P06.1, P06.DB, P06.2, P09.3a, P06.2-F, P06.3, SV1 to SV3, SV2-R.
-- **Owner directions:** OD-01 to OD-84. **Review log:** DM-01 to DM-97. **Linear (OD-29).** Every prompt names its environment (OD-36) and glow-docs as attached (OD-74).
+- **Owner directions:** OD-01 to OD-84. **Review log:** DM-01 to DM-98 (DM-98 pending). **Linear (OD-29).** Every prompt names its environment (OD-36) and glow-docs as attached (OD-74).
 
-## Waiting checkpoint (22 November 2026, 09:30 UTC, App Manager 13)
+## Waiting checkpoint (22 November 2026, 09:55 UTC, App Manager 13)
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 13 | GitHub, then Nathan | PR58's run and Codex on the head that holds [C2's delta review prompt](../ephemeral/2026-11-22-sv4-a1-c2-delta-review-prompt.md); then the prompt to Nathan, and its report | Nothing merges |
+| App Manager 13 | Nathan, then Dev Manager 7 | DM-98's report ([the consultation](../ephemeral/2026-11-22-dm-98-sv4-a1-pre-merge-read.md): A1's pre-merge read, with E-1's disposition) | PR58 does not merge; ask Nathan whether Dev Manager 7's session is available |
 
 ## Next actions (App Manager 13)
 
-1. **SV4 A1** (PR58; the SV4 record): A1-C1 fixed AR-1 to AR-3 (code head `f69529c`, merged at `9947844`). Its delta review asked for one more docstring fix, D1-1 (with N1, N2); A1-C2 (the brief's revision 7) is done and verified (code head `934da48`, run 45006396587; merged at `860abe2`). Next: PR58's run and Codex, C2's delta review, DM-98, the merge; then A2.
+1. **SV4 A1** (PR58; the SV4 record): A1-C1 fixed AR-1 to AR-3 (code head `f69529c`, merged at `9947844`). Its delta review asked for one more docstring fix, D1-1 (with N1, N2); A1-C2 (the brief's revision 7) is done and verified (code head `934da48`, run 45006396587; merged at `860abe2`). C2's delta review (from `045014d`; PR58's run and Codex clean) found E-1 (the detector reads only the later of two `def`s with one name), which the rule does not decide; it goes to Dev Manager 7 with A1's pre-merge read, DM-98 (recommended: carry). Next: DM-98's report; then the merge, or A1-C3 if DM-98 routes E-1 to a correction; then A2.
 2. **Manager records:** PF02 1.9 (AM12-31 to AM12-49, AM13-01; AM12-49's proposed rule: a prompt names both GitHub routes); the status log's move (M09 (b)); R-07, R-10, R-26, R-28.
 
 **Carried follow-ups** live in their owning homes: [`carried-to-later-items.md`](../planning/carried-to-later-items.md), the P11 plan, the review log's "Deferred conditions".
