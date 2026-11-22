@@ -1,7 +1,6 @@
 """The case plan and the controls, offline: what the job will run, pinned."""
 
 import unittest
-from datetime import timedelta
 
 from glow_ordering_proof import cases, controls, stress
 from glow_ordering_proof.design import REFERENCE, Design
@@ -82,11 +81,12 @@ class CasePlanTests(unittest.TestCase):
         self.assertIn("named.d5_restored", added)
 
     def test_the_adapter_plan_adds_b1(self) -> None:
-        # P06.2 B1: activation against each D5 writer both ways (DM-15 6.1), the token
-        # grant against the bump and a sign-out (F1), and the F2 and F5 nits; the
-        # adapter only. The reference design's 56 cases are unchanged (6.3).
+        # P06.2 B1: activation against each D5 writer both ways (DM-15 6.1), and the F2
+        # and F5 nits; the adapter only. The reference design's 56 cases are unchanged
+        # (6.3). SV4 A1 removed B1's seven token cases (F1) with the app's token grant (its
+        # brief's D7), so none of their names is in either plan.
         self.assertEqual(len(cases.plan()), 56)
-        self.assertEqual(len(cases.plan(d5=True)), 56 + 25 + 34)
+        self.assertEqual(len(cases.plan(d5=True)), 56 + 25 + 27)
         ids = {c["id"] for c in cases.plan(d5=True)}
         self.assertFalse({c.id for c in cases.B1_CASES} & {c["id"] for c in cases.plan()})
         self.assertEqual(len(cases.B1_ACTIVATION_CASES), 6 * 4)
@@ -100,29 +100,14 @@ class CasePlanTests(unittest.TestCase):
                 ):
                     self.assertIn(f"activation.{writer}_{which}.{interleaving}", ids)
         for name in (
-            "token.pending_identity_refused",
-            "token.sequential_grant_first",
-            "token.sequential_grant_first_long_skew",
-            "token.sequential_bump_first",
-            "token.grant_holds",
-            "token.bump_holds",
-            "token.sign_out_holds",
             "named.f2_session_account_changed_under_wait",
             "named.f2_match_pair_changed_under_wait",
             "named.f5_self_block_refused",
         ):
             self.assertIn(name, ids)
+        self.assertEqual(len(cases.B1_CASES), 6 * 4 + 3)
+        self.assertEqual({i for i in ids if i.startswith("token.")}, set())
         self.assertEqual(len(ids), len(cases.plan(d5=True)))
-
-    def test_the_token_cases_skew_is_shorter_than_their_sessions(self) -> None:
-        # B1-C1 R5: under the token cases' skew a grant timed by the app clock still
-        # passes the session's expiry check, so it fails on its issue time against the
-        # bump's cut-off; the long-skew case's hour is longer than the session, so a check
-        # of the expiry against the app clock refuses there instead.
-        session = timedelta(seconds=cases.SESSION_TTL)
-        self.assertLess(cases.APP_CLOCK_SKEW, session / 2)
-        self.assertGreater(cases.APP_CLOCK_SKEW, timedelta(seconds=30))
-        self.assertGreater(cases.APP_CLOCK_SKEW_LONG, session)
 
     def test_restriction_shares_the_pause_writer(self) -> None:
         # DM-15 6.1: the pause and the restriction are one writer in the adapter

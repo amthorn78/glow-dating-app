@@ -60,8 +60,9 @@ never reads a row whose actor is the other member, so their like, pass or block 
 
 Nothing here logs or returns another member's private value, a count or a reason (D8, D17); a
 refusal names a code and an internal reason, never a value. No answer names a block's direction,
-but a match's state (``restricted`` only after a block) lets the member who did not block infer
-it: D8's gap, carried to SV4 before P11 (DM-75).
+and D8's gap is closed (SV4 A1, D4; DM-75, DM-96): no command makes a match ``restricted``, and a
+block ends it as ``unmatched``, as an unmatch does, so the member who did not block is served
+the same either way.
 """
 
 from __future__ import annotations
@@ -339,23 +340,36 @@ def interact(
                 state=state,
                 policy_version=selection.version,
                 decided_at=now,
+                retired_at=None,
             )
         else:
+            # SV4 A1 (D3): a pass, or a like that replaces a pass, is a decision of its own,
+            # which no earlier block retired.
             row.state = state
             row.version += 1
             row.policy_version = selection.version
             row.decided_at = now
+            row.retired_at = None
             row.save(
-                update_fields=["state", "version", "policy_version", "decided_at", "updated_at"]
+                update_fields=[
+                    "state",
+                    "version",
+                    "policy_version",
+                    "decided_at",
+                    "retired_at",
+                    "updated_at",
+                ]
             )
         # F07's invalidate: the named batch is consumed; the next action needs a fresh page.
         RecommendationBatch.objects.filter(pk=batch.id).update(
             state="stale", version=F("version") + 1, updated_at=Now()
         )
+        # SV4 A1 (D3; DM-96): a like a block retired is not found, so a later like is recorded
+        # with no match, as any like that finds no like in return, and never refused for it.
         if (
             state == "liked"
             and DirectionalInteraction.objects.filter(
-                actor_id=target_id, target_id=account_id, state="liked"
+                actor_id=target_id, target_id=account_id, state="liked", retired_at__isnull=True
             ).exists()
         ):
             # D10 (a): the match, under the locks already held, after the recheck above.

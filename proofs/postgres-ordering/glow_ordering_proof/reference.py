@@ -363,7 +363,9 @@ class ReferenceSubject:
                 )
             contact_version: int | None = None
             if match is not None and match.state == "active":
-                match.state = "restricted"
+                # SV4 A1 (its brief's D4): as an unmatch ends it; the cause stays in the
+                # Block rows.
+                match.state = "unmatched"
                 match.contact_version += 1
                 match.version += 1
                 match.save(update_fields=["state", "contact_version", "version", "updated_at"])

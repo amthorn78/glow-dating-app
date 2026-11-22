@@ -433,6 +433,8 @@ export interface CompatibilityProjection {
   status: 'pending' | 'unavailable' | 'unsupported' | 'stale';
 }
 /**
+ * A participant's match: the other member's profile ID and the state, with no actor and no reason. The server serves restricted to no member: a block ends an active match as unmatched, as an unmatch does, its cause kept in the Block rows (SV4 D4; DM-75, DM-96). A match's version changes only when contact ends, so it is the expected_version a send's MessageIntent.meta carries (SV4 D6).
+ *
  * This interface was referenced by `AppResponse`'s JSON-Schema
  * via the `definition` "MatchProjection".
  */

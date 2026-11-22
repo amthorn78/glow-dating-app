@@ -13,9 +13,12 @@ plan's D10 bullet).
 - **Structure** (D2, D9 to D11, D17, D19): each command locks both accounts first, reads its
   settings in one call, names no lock or pointer table, and logs codes only; ``glow_chat`` imports
   nothing from ``glow_discovery``; ``activate_reciprocal`` is called only from the like.
-- **D10's writer** (the review plan): every function and method of ``glow_chat/contact.py`` at
-  main's base is unchanged at the working tree, by AST; ``activate_reciprocal`` is the only new
-  one, and its body is ``activate_match``'s with exactly one statement inserted.
+- **D10's writer** (the review plan): ``activate_reciprocal``'s body is ``activate_match``'s with
+  exactly one statement inserted. Rewritten by SV4 A1 (its brief's D3, D4 and D7; DM-96), which
+  changes ``glow_chat/contact.py``: every other function and method is as SV3 left it, by AST
+  and by digest, but the three A1 changes (``block``, ``activate_reciprocal`` and
+  ``_lock_shared``'s docstring) and the one it removes (``grant_token``), each of those pinned at
+  A1's head; ``block`` differs from main's by D3's one statement and D4's one value.
 
 Each Django-dependent check runs in a fresh process under ``tests.discovery_offline_settings``
 (Django's dummy backend; keys generated for that process), as ``test_discovery_offline`` does. The
@@ -24,7 +27,6 @@ All data is synthetic.
 """
 
 import ast
-import copy
 import difflib
 import hashlib
 import os
@@ -1108,9 +1110,24 @@ print(json.dumps({
 INSERTED = (
     "for actor_id, target_id in ((low_id, high_id), (high_id, low_id)):\n"
     "    if not DirectionalInteraction.objects.filter(actor_id=actor_id, target_id=target_id,"
-    " state='liked').exists():\n"
+    " state='liked', retired_at__isnull=True).exists():\n"
     "        raise _Refused('not_reciprocal')"
 )
+# SV4 A1 (its brief's D3): the one statement ``block`` adds, after its clock and before the match.
+RETIRED = (
+    "DirectionalInteraction.objects.filter(Q(actor_id=low_id, target_id=high_id) |"
+    " Q(actor_id=high_id, target_id=low_id), state='liked', retired_at__isnull=True)"
+    ".update(retired_at=now)"
+)
+# SV4 A1 (D3, D4, D7): the definitions A1 changes, and the one it removes.
+A1_CHANGED = frozenset(
+    {
+        "OrmContactPersistence.block",
+        "OrmContactPersistence.activate_reciprocal",
+        "OrmContactPersistence._lock_shared",
+    }
+)
+A1_REMOVED = frozenset({"OrmContactPersistence.grant_token"})
 
 
 def definitions(tree: ast.Module) -> dict[str, ast.FunctionDef]:
@@ -1146,19 +1163,6 @@ def every_definition(tree: ast.Module) -> set[str]:
     return found
 
 
-def without_reciprocal(tree: ast.Module) -> str:
-    """The module's dump with ``activate_reciprocal`` taken out of its class."""
-    copied = copy.deepcopy(tree)
-    for node in copied.body:
-        if isinstance(node, ast.ClassDef):
-            node.body = [
-                item
-                for item in node.body
-                if not (isinstance(item, ast.FunctionDef) and item.name == "activate_reciprocal")
-            ]
-    return ast.dump(copied)
-
-
 def git(*args: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         ["git", *args],
@@ -1175,31 +1179,17 @@ def git(*args: str) -> subprocess.CompletedProcess[str]:
     )
 
 
-def main_base() -> str | None:
-    """Main as this branch's base: the newest merge base of ``HEAD`` with ``main`` or
-    ``origin/main`` (a local ``main`` can be stale), or ``None`` where the checkout holds neither
-    (CI's shallow clone)."""
-    try:
-        if git("rev-parse", "--is-inside-work-tree").returncode != 0:
-            return None
-    except (FileNotFoundError, subprocess.TimeoutExpired):
-        return None
-    bases = []
-    for ref in ("main", "origin/main"):
-        if git("rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}").returncode != 0:
-            continue
-        found = git("merge-base", "HEAD", ref)
-        if found.returncode == 0 and found.stdout.strip():
-            bases.append(found.stdout.strip())
-    for base in bases:
-        if all(git("merge-base", "--is-ancestor", other, base).returncode == 0 for other in bases):
-            return base
-    return None
+# SV4 A1's base: PR57's merge (SV4 A0), the commit A1 starts from. The history tests read
+# ``contact.py`` there, never at ``main`` or ``origin/main``, so their result does not depend on
+# whether A1 is on main (SV4 A1-C1; the exact-head review's AR-1).
+A1_BASE = "499ccbbec758ed4ef34a93ad19fa8df454fb095c"
 
 
 # D10 (a): the sha256 of ``ast.dump`` (Python 3.12, the pinned toolchain) of every function and
-# method in ``glow_chat/contact.py`` at main's 947576d (PR46's merge, Stage B's base), and of the
-# whole module there, so the comparison runs without main's history (CI's shallow clone).
+# method in ``glow_chat/contact.py`` at main's 947576d (PR46's merge, Stage B's base), so the
+# digest test needs no history and runs in CI's shallow clone; the history tests read A1's base
+# (``A1_BASE``) wherever that commit is in the checkout. SV4 A1 changes the module (its
+# docstring and one import), so its whole-module pin is A1's (``A1_MODULE_DIGEST``, below).
 MAIN_DEFINITION_DIGESTS = {
     "OrmContactPersistence.__init__": (
         "d29c433a6d01332500a406beb971ebe25fa91f4ea2d83179492136978135518a"
@@ -1292,7 +1282,20 @@ MAIN_DEFINITION_DIGESTS = {
     "_Rollback.__init__": ("a5454323019cd11e3cad67e07bfa091c10c8de694f72a187331065dd31fb87eb"),
     "new_provider_ref": ("c9330b760a05ca5ea99499229004b5d8034f32a4c79a9f5ab9bab24c4c38145f"),
 }
-MAIN_MODULE_DIGEST = "b1d45a7f611487b7caa030b13bfcd26a8dba80882235c8f549482eb1318e97c7"
+# SV4 A1 (D3, D4, D7): the sha256 of ``ast.dump`` of each definition A1 changes and of the whole
+# module, at A1's head.
+A1_DEFINITION_DIGESTS = {
+    "OrmContactPersistence._lock_shared": (
+        "5e8fbfd9e555ee89d28579fe1d040c87229c0dffcdc6b89fe4b5c362423e23c0"
+    ),
+    "OrmContactPersistence.activate_reciprocal": (
+        "f651439c3b5a656a011bb18683c77d9931a79d10d7bf0d24e85c493e368e9067"
+    ),
+    "OrmContactPersistence.block": (
+        "b7a017ba97760b250871d035e7011f3eb23914a71ba436b8623afac43f3a84dd"
+    ),
+}
+A1_MODULE_DIGEST = "f24018c5a267e96cee19c99d171aaaeea4970bd19440154d5d08e0902c22498f"
 
 
 class UndoSelectionTests(unittest.TestCase):
@@ -1341,58 +1344,187 @@ class UndoSelectionTests(unittest.TestCase):
 
 
 class ReciprocalWriterTests(unittest.TestCase):
-    """D10 (a), as the review plan reads it: every existing function and method in
-    ``glow_chat/contact.py`` unchanged from main's (by AST), ``activate_reciprocal`` the only new
-    one, and its body ``activate_match``'s with the one check added under the account locks."""
+    """D10 (a), as the review plan reads it, rewritten by SV4 A1 (its brief's D3, D4 and D7):
+    D3, D4 and D7 each change ``glow_chat/contact.py``, so the class no longer pins the whole
+    module as SV3 left it. It compares the file at ``HEAD`` with two references. The digest test
+    needs no history, so CI runs it: every function and method A1 does not change is as SV3 left
+    it (the digests pinned from main's 947576d), and A1's three changes and the module are pinned
+    by digest at A1's head, so any later change fails here. The two history tests read the file
+    at A1's base, ``A1_BASE`` (PR57's merge), never at ``main``, so they pass before and after
+    A1's merge, and run wherever that commit is in the checkout (CI's shallow clone skips them):
+    every definition A1 does not change is the base's, by AST; ``grant_token`` is gone; and
+    ``block`` differs from the base's by D3's one statement and D4's one value. And
+    ``activate_reciprocal`` is still ``activate_match``'s body with its one check inserted, now
+    with D3's ``retired_at``."""
 
     def setUp(self) -> None:
         self.head = parsed(CONTACT)
         methods = definitions(self.head)
         self.match = methods["OrmContactPersistence.activate_match"]
         self.reciprocal = methods["OrmContactPersistence.activate_reciprocal"]
+        self.block = methods["OrmContactPersistence.block"]
 
-    def test_every_writer_at_mains_base_is_unchanged_and_one_is_new(self) -> None:
-        base = main_base()
-        if base is None:
+    def test_every_writer_at_a1s_base_is_unchanged_but_a1s(self) -> None:
+        try:
+            present = git("cat-file", "-e", f"{A1_BASE}^{{commit}}").returncode == 0
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            present = False
+        if not present:
             self.skipTest(
-                "neither main nor origin/main is in this checkout (CI's shallow clone); the "
-                "comparison runs wherever main's history is present"
+                f"A1's base {A1_BASE} is not in this checkout (CI's shallow clone); the "
+                "comparison runs wherever that commit is present"
             )
-        shown = git("show", f"{base}:{CONTACT_IN_REPO}")
+        shown = git("show", f"{A1_BASE}:{CONTACT_IN_REPO}")
         self.assertEqual(shown.returncode, 0, shown.stderr)
-        main = ast.parse(shown.stdout)
-        before, after = definitions(main), definitions(self.head)
+        base = ast.parse(shown.stdout)
+        before, after = definitions(base), definitions(self.head)
         self.assertGreater(len(before), 20)
+        self.assertLessEqual(A1_CHANGED | A1_REMOVED, set(before))
         for name, node in before.items():
             with self.subTest(definition=name):
-                self.assertIn(name, after)
-                self.assertEqual(ast.dump(after[name]), ast.dump(node))
-        self.assertLessEqual(
-            set(after) - set(before), {"OrmContactPersistence.activate_reciprocal"}
+                if name in A1_REMOVED:
+                    self.assertNotIn(name, after)
+                elif name not in A1_CHANGED:
+                    self.assertIn(name, after)
+                    self.assertEqual(ast.dump(after[name]), ast.dump(node))
+        self.assertEqual(set(after), set(before) - A1_REMOVED)
+        self.assertEqual(
+            every_definition(self.head),
+            every_definition(base) - {f"{n}.body" for n in A1_REMOVED} - A1_REMOVED,
         )
-        new = every_definition(self.head) - every_definition(main)
-        self.assertTrue(
-            all(name.startswith("OrmContactPersistence.activate_reciprocal") for name in new), new
+        # The module's other statements are the base's, but its docstring and one import, from
+        # which D7 drops ``chat_tokens``.
+        mine = [ast.unparse(n) for n in self.head.body[1:] if not isinstance(n, ast.ClassDef)]
+        theirs = [ast.unparse(n) for n in base.body[1:] if not isinstance(n, ast.ClassDef)]
+        self.assertEqual(
+            [line for line in mine if line != "from glow_domain import chat"],
+            [line for line in theirs if line != "from glow_domain import chat, chat_tokens"],
         )
-        # The whole module, the new method aside, is main's: no import, constant or class
-        # attribute changed either.
-        self.assertEqual(without_reciprocal(self.head), without_reciprocal(main))
+        self.assertIn("from glow_domain import chat", mine)
+        self.assertIn("from glow_domain import chat, chat_tokens", theirs)
 
-    def test_every_writer_is_mains_by_its_pinned_digest_and_one_is_new(self) -> None:
-        # The same comparison as the test above, against digests pinned from main's 947576d, so it
-        # runs in CI too.
+        # Each class's own statements (its bases, decorators, docstring and attributes; its
+        # methods are compared above) are the base's.
+        def classes(tree: ast.Module) -> dict[str, list[str]]:
+            found: dict[str, list[str]] = {}
+            for node in tree.body:
+                if isinstance(node, ast.ClassDef):
+                    found[node.name] = (
+                        [ast.dump(node.bases[i]) for i in range(len(node.bases))]
+                        + [ast.dump(d) for d in node.decorator_list]
+                        + [
+                            ast.dump(item)
+                            for item in node.body
+                            if not isinstance(item, ast.FunctionDef)
+                        ]
+                    )
+            return found
+
+        self.assertEqual(classes(self.head), classes(base))
+
+    def test_every_writer_is_pinned_by_its_digest(self) -> None:
+        # The same comparison without main's history, so it runs in CI too: SV3's digests for
+        # every definition A1 leaves alone, A1's for the three it changes and the module.
         after = definitions(self.head)
         self.assertEqual(len(MAIN_DEFINITION_DIGESTS), 32)
-        for name, digest in MAIN_DEFINITION_DIGESTS.items():
+
+        def digest(node: ast.AST) -> str:
+            return hashlib.sha256(ast.dump(node).encode()).hexdigest()
+
+        for name, pinned in MAIN_DEFINITION_DIGESTS.items():
             with self.subTest(definition=name):
-                self.assertIn(name, after)
-                found = hashlib.sha256(ast.dump(after[name]).encode()).hexdigest()
-                self.assertEqual(found, digest)
+                if name in A1_REMOVED:
+                    self.assertNotIn(name, after)
+                elif name in A1_CHANGED:
+                    self.assertEqual(digest(after[name]), A1_DEFINITION_DIGESTS[name])
+                else:
+                    self.assertEqual(digest(after[name]), pinned)
         self.assertEqual(
-            set(after) - set(MAIN_DEFINITION_DIGESTS), {"OrmContactPersistence.activate_reciprocal"}
+            digest(after["OrmContactPersistence.activate_reciprocal"]),
+            A1_DEFINITION_DIGESTS["OrmContactPersistence.activate_reciprocal"],
         )
-        module = hashlib.sha256(without_reciprocal(self.head).encode()).hexdigest()
-        self.assertEqual(module, MAIN_MODULE_DIGEST)
+        self.assertEqual(set(A1_DEFINITION_DIGESTS), A1_CHANGED)
+        self.assertEqual(
+            set(after),
+            (set(MAIN_DEFINITION_DIGESTS) - A1_REMOVED)
+            | {"OrmContactPersistence.activate_reciprocal"},
+        )
+        self.assertEqual(digest(self.head), A1_MODULE_DIGEST)
+
+    def test_block_is_mains_with_one_statement_inserted_and_one_value_changed(self) -> None:
+        body = inner_body(self.block).body
+        text = [ast.unparse(s) for s in body]
+        retired = [i for i, line in enumerate(text) if "retired_at" in line]
+        self.assertEqual(len(retired), 1, text)
+        self.assertEqual(text[retired[0]], RETIRED)
+        # After the account locks and the clock, before the match changes (D3).
+        self.assertLess(text.index("now = self._clock(tx.cursor)"), retired[0])
+        locks = [i for i, line in enumerate(text) if "self._lock(AppAccount" in line]
+        self.assertEqual(len(locks), 2)
+        self.assertLess(max(locks), retired[0])
+        ended = [
+            node
+            for node in body
+            if isinstance(node, ast.If)
+            and ast.unparse(node.test) == "match is not None and match.state == 'active'"
+        ]
+        self.assertEqual(len(ended), 1)
+        self.assertLess(retired[0], body.index(ended[0]))
+        # D4: an active match ends as an unmatch ends it; the server writes ``restricted`` for no
+        # command.
+        self.assertEqual(ast.unparse(ended[0].body[0]), "match.state = 'unmatched'")
+        self.assertFalse(
+            [
+                node
+                for node in ast.walk(self.block)
+                if isinstance(node, ast.Constant) and node.value == "restricted"
+            ]
+        )
+        # The method around the body: its docstring and the one import, as activate_reciprocal's.
+        imports = [
+            ast.unparse(node)
+            for node in ast.walk(self.block)
+            if isinstance(node, ast.Import | ast.ImportFrom)
+        ]
+        self.assertEqual(imports, ["from glow_persistence.models import DirectionalInteraction"])
+
+    def test_block_differs_from_a1s_base_by_d3s_statement_and_d4s_value(self) -> None:
+        try:
+            present = git("cat-file", "-e", f"{A1_BASE}^{{commit}}").returncode == 0
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            present = False
+        if not present:
+            self.skipTest(
+                f"A1's base {A1_BASE} is not in this checkout (CI's shallow clone); the "
+                "comparison runs wherever that commit is present"
+            )
+        shown = git("show", f"{A1_BASE}:{CONTACT_IN_REPO}")
+        self.assertEqual(shown.returncode, 0, shown.stderr)
+        theirs = inner_body(definitions(ast.parse(shown.stdout))["OrmContactPersistence.block"])
+        mine = inner_body(self.block)
+        operations = [
+            (tag, i1, i2, j1, j2)
+            for tag, i1, i2, j1, j2 in difflib.SequenceMatcher(
+                a=[ast.dump(s) for s in theirs.body],
+                b=[ast.dump(s) for s in mine.body],
+                autojunk=False,
+            ).get_opcodes()
+            if tag != "equal"
+        ]
+        self.assertEqual(
+            [(tag, i2 - i1, j2 - j1) for tag, i1, i2, j1, j2 in operations],
+            [("insert", 0, 1), ("replace", 1, 1)],
+            operations,
+        )
+        _, _, _, j1, _ = operations[0]
+        self.assertEqual(ast.unparse(mine.body[j1]), RETIRED)
+        _, i1, _, j1, _ = operations[1]
+        old, new = theirs.body[i1], mine.body[j1]
+        assert isinstance(old, ast.If) and isinstance(new, ast.If)
+        self.assertEqual(ast.unparse(old.test), ast.unparse(new.test))
+        self.assertEqual(ast.unparse(old.body[0]), "match.state = 'restricted'")
+        self.assertEqual(ast.unparse(new.body[0]), "match.state = 'unmatched'")
+        self.assertEqual([ast.dump(s) for s in old.body[1:]], [ast.dump(s) for s in new.body[1:]])
 
     def test_activate_reciprocal_is_activate_match_with_one_statement_inserted(self) -> None:
         match_body = inner_body(self.match).body

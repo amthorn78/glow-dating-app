@@ -841,7 +841,11 @@ class SV2StageATransitionTests(unittest.TestCase):
         # F07, F09, F10 and F13 are unchanged. Rewritten by SV3 Stage B's correction B-C1 (DM-74):
         # F08's and F13's response lists and projection roles gain the own-versions read's
         # OwnInteractionVersions, projected to the owner; no transition of either changes, and
-        # F07, F09 and F10 stay exactly as they were.
+        # F07 and F09 stay exactly as they were. Extended by SV4 A1 (its brief's D4; DM-75,
+        # DM-96): F10's three unmatch rows stay as they were, in their order, and one row follows
+        # them, the block's effect on an active match (block, active to unmatched), with the role
+        # and flags of F10's unmatch rows; no row is removed, since the mobile fixture adapter
+        # looks up F10's rows while it runs.
         flows = {flow["id"]: flow for flow in FLOWS_JSON["flows"]}
 
         def entries(flow_id):
@@ -916,6 +920,7 @@ class SV2StageATransitionTests(unittest.TestCase):
                     ("unmatch", "active", "unmatched", "participant", False, (), False),
                     ("unmatch", "restricted", "unmatched", "participant", False, (), False),
                     ("unmatch", "unmatched", "unmatched", "participant", False, (), False),
+                    ("block", "active", "unmatched", "participant", False, (), False),
                 ],
             ),
             "F13": (

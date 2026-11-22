@@ -850,3 +850,719 @@ With this review, A0's corrections are closed: no finding of any review is open 
 ### Dev Manager 6's pre-merge read (DM-97, 20 November 2026)
 
 Dev Manager 6's report ([DM-97](../../continuity/dev-manager/reviews/2026-11-19-dm-97-sv4-a0-pre-merge-read.md); `b505a8e`, a read of `fc9decd`) approves the CI policy's change as written, A0 against AG1, AG1 to AG21 and revision 3's additions, C1 and C2, the manager's D-07 calls and F8's sentence. It answers F3 with option (a), with AH1 and AH2. AH1 (the F3 row above) and AH2 (the carried-items file, "Carried to the next change to the Foundation workflow (DM-97)") are applied as given, with AH3 and AH4 (its "Carried to SV4" entry), AH5 (the environment inventory) and AH6 (the migration plan), in the batch that records the disposition (App Manager 12; the review log's "DM-97"). PR57 merges once that batch's head has its passing PR run, with its non-Markdown paths still equal to `5a2f137`, Codex's completed review and the filled checklist (DM-97, section 13).
+
+### Merge (20 November 2026)
+
+- **PR57 merged** into `main` at `499ccbb` (App Manager 12, with the GitHub tools; expected head `8b18311`). DM-97's four conditions held: AH1 and AH2 applied as given at `8b18311`, in the batch that records the disposition; PR run 44655197105 on `8b18311` passed all eleven jobs, and its gate printed "Application checks passed" (01:48:25 UTC); the non-Markdown paths at `8b18311` equal `5a2f137`; Codex's code review of `8b18311` completed at 01:41:12 UTC with no findings, with no review thread; the checklist was filled.
+- **`main`'s push run 44657225220** on `499ccbb` passed all eleven jobs, and its gate printed "Application checks passed" (02:04:42 UTC).
+- **The Chromium install's first attempt** (for the carried entry "Carried to the next change to the Foundation workflow (DM-97)"): 23 s in PR run 44655197105 and 23 s in push run 44657225220; the pause and the retry were skipped in both.
+- **The cleanup run** 44657225140 (success) deleted A0's `claude/affectionate-curie-hzo99y`, C1's `claude/awesome-brown-lmfi8e` and C2's `claude/dazzling-feynman-cjl16t`.
+- **Closed with the merge** (the carried-items file): DM-59 item 7's Chromium retry; the pin test's gap (M05 finding 13); M02's N2 (H-01), with N1, N4, the Codex P2 and N6 declined (DM-96); M09's C-16 and C-17's split (the fifth job is A2's).
+
+## A1
+
+- **Session:** SV4 A1's implementation session, started by Nathan from [A1's prompt](https://github.com/amthorn78/glow-dating-app/blob/62352406e4bfc56b33321c747d9c4ccd0c10bf9b/docs/ephemeral/2026-11-20-sv4-a1-rules-prompt.md), revision 2, from `62352406e4bfc56b33321c747d9c4ccd0c10bf9b` of the manager branch `claude/magical-wozniak-yfmmx2`. The specification is the [brief](../../planning/sv4-chat-notifications.md), revision 5.
+- **Branch:** `claude/sleepy-mendel-0kqgw9`, which the push filter's `claude/**` covers. It starts at the prompt's commit.
+- **Code head:** `bc0675de3c6a4411f1d72845c69f8dc4e5706463`. **Records head:** the commit that adds this section. It was pushed after the code head's run had finished.
+- **What A1 built:**
+  - D3: a block retires the pair's earlier likes (`DirectionalInteraction.retired_at`, migration `0013`);
+  - D4: a block ends an active match as an unmatch does (`unmatched`; F10's new transition);
+  - D5: the history read, the list and the read cursor follow OD-60's rule through `chat.history`;
+  - D6: a test pinning `MatchProjection.version` to the send's `contact_version` for every writer;
+  - D7: the token grant and its signer removed, with the refusal lists, the README, ADR and docstring lines.
+- **What A1 did not touch:** any route, served feature, provider call, deployed URL, real member, HDE call or stored credential; `.github/`, `scripts/`, any dependency or pin (the `pyjwt` pin stays), any environment template, any `apps/mobile` file but the two `npm run generate` wrote.
+
+### The start gate and the environment check
+
+- **The environment** (section 1 of the prompt, names only). This session runs in the cloud environment `Glow App - No Stream` (`get_environment`).
+  - No `DATABASE_URL`, `HD_API_KEY` or `GEO_API_KEY`.
+  - No `STREAM_*`, `PG*`, `R2_*`, `CLOUDFLARE_*`, `CF_*` or `RAILWAY_*` name.
+  - The AWS names present: `AWS_ACCESS_KEY_ID`, `AWS_CA_BUNDLE` and `AWS_SECRET_ACCESS_KEY` (OD-76). None was read, printed or passed to a command.
+  - The GitHub token names present: `GH_TOKEN` and `GITHUB_TOKEN`. Neither was read.
+  - The toolchain: `Python 3.12.14` (`python3.12`), `v24.19.0` and `11.9.0` (`node` and `npm`, both in `/root/.local/bin`, first on `PATH`), `Docker version 29.10.0, build fdd4b8e`.
+  - Every repository command ran under `env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8`, plus only its own variables.
+- **The start gate** (section 2), at 03:41 UTC on 20 November 2026:
+  - `git rev-parse HEAD` printed `62352406e4bfc56b33321c747d9c4ccd0c10bf9b`;
+  - "this prompt's commit is on the live branch", "PR57's merge present" and "main's code" printed;
+  - the diff of the owned trees and the brief between the prompt's commit and the live manager branch printed nothing;
+  - `grep -c '^## A1'` on this record printed `0`, and no `0013` migration existed (`0`).
+- **The search at the session's commit** (section 3's last paragraph: every test that reads, imports or digests a module A1 changes, or names a removed function, constant, outcome, case or row) found none outside "Earlier tests". No stop applied.
+
+### What was built, by item
+
+**D3: a block retires the pair's earlier likes** (M09's C-01).
+- `DirectionalInteraction.retired_at`, a nullable `DateTimeField` with no default and no constraint (`glow_persistence/models.py`), with a paragraph in the model's docstring.
+- Migration `0013_interaction_retired_at.py`, written by `manage.py makemigrations` against the dummy backend (no connection): one `AddField`, after `0012_photo_check_seed`, so it is additive. SHA-256 `96ddbeee052fe83a1acbca38b71d9aa4d8008bb7abefa2953f5d81cd4783faea`, pinned by the new test `test_sv4_a1_migration_follows_0012`.
+- `glow_chat`'s `block`, under its two account locks and with the database's clock, read after them as before, sets `retired_at` on every `liked`, unretired row between the pair, either way, in the same transaction, with one `UPDATE` that writes nothing else of the row (not its state, version, `decided_at` or policy version).
+- Both reciprocity checks require `retired_at` null: `activate_reciprocal`'s (both rows) and `interact`'s own check before it calls `activate_reciprocal` (the target's row). A like a block retired is not found, so a later like is recorded with no match, as any like that finds no like in return, and is never refused for it.
+- `interact` writes `retired_at` null: on a new row (`create(..., retired_at=None)`), and on its update of an existing row (a like that replaces a pass), with `retired_at` in its `update_fields`.
+- No read of the actor's own row returns it: the own-versions read's fields are unchanged (the cases below read the same state and version before and after the block).
+
+**D4: a block ends an active match as an unmatch does** (C-02; DM-75).
+- `block` stores `unmatched`, where it stored `restricted`, with the same contact and version advance and the same `contact_revoked` event.
+- F10 gains the transition (`block`, `active` to `unmatched`, `participant`, no eligibility, no policy) in `packages/contracts/production/flows-v1.json`; no row is removed.
+- `MatchProjection` gains a `description` in `gapp-api-v1.schema.json`: the server serves `restricted` to no member. `npm run generate` (after `npm ci --ignore-scripts` in `packages/contracts`) changed two generated files, which are committed: `apps/mobile/src/contracts/generated/gapp-api-v1.ts` (two lines, the description's comment) and `validators.js` (one line, the schema's text).
+- `production-contracts.md`'s F10 and F13 paragraph and `data-model.md`'s `Match` row say a block ends an active match as an unmatch does, its cause kept in the `Block` rows; `interactions.py`'s module docstring (lines 62 to 64) and `contract.py`'s `match_projection` docstring (lines 255 and 256) say D8's gap is closed.
+- P06.DB's reference design's block (`reference.py`) stores `unmatched` too, with a two-line comment. Nothing else the ordering suite compares between the two subjects changed.
+
+**D5: the reads follow OD-60's rule** (C-08), in `glow_chat/reads.py`, for the history read, the list and the read cursor; the send's own checks do not change.
+- After the session's row lock and before the clock, `chat.history` is read through `glow_profiles.settings_store.read_shared` (SV2's D19 pointer order). `reads.py` names no pointer model or table. A setting the store cannot resolve refuses the read with the store's own reason.
+- The reader's account must be `active`, and the other account `active` or `suspended` (a cause); every other state refuses as before. The match must be `active` with no block either way, as before.
+- The causes, as the brief's D5 maps them: `own_pause` and `other_pause` (that member's profile `paused`, or SV2's `incomplete`); `restriction` (either profile `restricted`; a `removed` profile is hidden, never read-only); `suspension` (the other account `suspended`); `withdrawn_consent` (either member's latest onboarding decision not `accepted`).
+- `readable(causes, history)`: no cause serves the conversation; otherwise only while `consent_policy_version` names `consent.onboarding.v1` and every cause present reads `read_only`. One hidden cause hides the conversation whatever the others read; a missing key, another value or another version reads hidden (fail-closed).
+- Every hidden cause refuses with one internal reason, `conversation_hidden`, which names no cause. The block, the unmatch, the deletion, the sign-out and the expiry keep their reasons. The served layer maps every refusal to `not_found`, as `chat_projections.error_for` does.
+- Read-only serves the history page and the list, moves the read cursor, and refuses the send as before. The read's protocol (shared locks in the send's order, the clock after the locks, the check before and after the provider call, no read inside a caller's transaction) is unchanged.
+
+**D6: the send's expected version.**
+- `services/api/tests/test_match_versions_offline.py` (new) reads the code's syntax tree: the writers of `Match.version` or `Match.contact_version` are exactly `OrmContactPersistence.block` and `unmatch`; each advances both by one and saves both; both fields start at 1. Its detector finds a writer by an assignment (plain, augmented, annotated or walrus) to an object's `contact_version` or to the `version` of a name bound to a `Match` (from `Match.objects…` or `self._lock(Match, …)`, looped over, or a parameter annotated `Match`), a `save` naming either field, a writing queryset or manager call (`update`, `create`, `bulk_update` and the rest) naming either, or SQL text that writes `glow_persistence_match`; `WriterDetectorTests` checks the detector on each form and on reads.
+- The discovery case `sv4.a1.match_version_is_the_sends_contact_version` shows it on the database, for every writer of either: the activation (both 1), the unmatch and the block (both 2), and the later commands that change neither (an unblock, an unmatch of an ended match). While contact continues, a send with the read's version is authorized and its retry replayed, never stale; once contact has ended it is refused `match_not_active`.
+- `production-contracts.md` says a match's version changes only when contact ends.
+
+**D7: the token code removed** (P06.2-T; OD-45), keeping `_lock_shared` (the reads use it), `revocation_cutoff_sent` and `revoke_user_tokens`.
+- **The API:** `grant_token` (`contact.py` and the port), `ContactResult.grant`, the outcome `granted` and the `TokenGrant` import (`glow_domain/chat.py`); `chat_tokens.py` keeps only `revocation_cutoff_sent` (the grant, `TokenGrant`, `TokenRefusal`, `TOKEN_LIFETIME` and the refusal reasons removed); `chat_provider_stream.py` loses the signer `sign_chat_token`, `IAT_BACKDATE_SECONDS` and `import jwt`.
+- **The ordering suite:** the seven token cases (`B1_TOKEN_CASES`) and the helpers only they used (`APP_CLOCK_SKEW`, `APP_CLOCK_SKEW_LONG`, `skewed_app_clock` among them); the outcome `granted` in the proof's interface and its docstring; the adapter's grant and its fixture's `provision_identity`; the delivery phase's refused grant and its words; `dbreads.identity_row` and `event_times`. A search at the head found no other user of each.
+- **The Stream proof:** the ten rows that need Glow's signer retired (T1, T2, R3, D3, D7, V5, V6, V7, V8 and V12), with `_grant`, `_sign`, `_token_check` and every helper only those rows used, and `AFTER_REVOCATION_MARGIN_SECONDS`. Every other row stays, V3 and V4 (the revocation and its read-back) among them. The rows' P06.2 records stand as history. `checks/run_plan.py` needs no change and prints `run plan: fits` (36 rows; no connection).
+- **The refusal lists** (M05 finding 22), as constants of their own beside `FORBIDDEN_CONNECTION_NAMES`, which does not change: `FORBIDDEN_INHERITED_NAMES` (`DATABASE_PUBLIC_URL`, `PGPASSFILE`, `PGSERVICE`, `POSTGRES_PASSWORD`, `REDIS_PUBLIC_URL`, `REDISPASSWORD`, `STREAM_API_SECRET`) and `FORBIDDEN_INHERITED_PREFIXES` (`PG`, `POSTGRES_`, `REDIS`, `STREAM_`), with `inherited_name_refused(name)`, in `glow_api/configuration_profiles.py`. `forbidden_configuration` refuses each by presence, in the same step as the existing names, before any value is read. The proof's environment check (`glow_ordering_proof/environment.py`) holds copies, pinned equal to the API's. No name the API reads is refused (every `GLOW_*` name, `GLOW_RAILWAY_*` among them, and the public names; a test pins it).
+- **The lines:** ADR 0004's line 34 drops its parenthesis; the API README's lines on the dormant signer and Stage C1's modules (M05 P-13); the persistence module's docstring (R-23: "Models used by the sealed slices; the served runtime installs none.").
+
+### Earlier tests changed, and why
+
+Each change is one "Earlier tests" names; each keeps what the test guards.
+
+- **D3:**
+  - `services/api/tests/test_interactions_offline.py`, `ReciprocalWriterTests`: rewritten against this head, since D3, D4 and D7 each change `contact.py`. `MAIN_DEFINITION_DIGESTS` stays byte-equal to the base's and still pins every writer SV3 left; the definitions A1 changes (`block`, `activate_reciprocal`, `_lock_shared`'s docstring) and the one it removes (`grant_token`) are named, and A1's definitions and the module are pinned by digest at this head (`A1_DEFINITION_DIGESTS`, `A1_MODULE_DIGEST`), so any later change fails. New tests show `block` is the base's with D3's one statement inserted and D4's one value changed, and that `activate_reciprocal` is still `activate_match` with its one check inserted, now with `retired_at`. The class-level statements are compared too. `INSERTED` is still used by the class and stays, with `retired_at`; the dead `without_reciprocal`, `MAIN_MODULE_DIGEST` and `import copy` are removed. `StructureTests` passes unchanged.
+  - `services/api/tests/test_model_definitions.py`: the leaf assertion is `0013_interaction_retired_at`, with its comment; the new test `test_sv4_a1_migration_follows_0012` pins `0013` as generated (its digest, its one `AddField` on `directionalinteraction.retired_at`, nullable, no default, no constraint, after `0012`). No other test changed.
+  - `proofs/postgres-ordering/tests/test_discovery_offline.py`, `DiscoveryPlanTests`: the case count re-pinned to 70, `plan()[59:66]` still `B_C1_CASES` with A1's four after it; Stage A's check set keeps A1's cases out, and A1's own labels (`SV4-A1` with `D3`, `D4` or `D6`) are checked. A new `A1CaseTests` checks that every A1 case runs under the suite's ledger. `discovery_cases.py`'s `CASE_COUNT` is 70.
+- **D4:**
+  - `reference.py`'s block and the six ordering cases that expected `restricted` at version 2 (`cases.py`) now expect `unmatched`.
+  - `interaction_cases.py`, `block.works_after_unmatch_and_while_paused`: its expectations only, now `unmatched`.
+  - `packages/contracts/tests/test_transition_contract.py`: the frozen F10 table gains the row, with a comment. The sentence its lines 697 to 707 read is unchanged.
+- **D5:**
+  - `read_phase.py`: in the forced cases (`read_waits`, `check_holds`, `revocation_holds`) the seven revocations whose read becomes read-only (`READ_ONLY_AT_LAUNCH`: `suspend_high`, `pause_low`, `pause_high`, `restrict_low`, `restrict_high`, `withdraw_low`, `withdraw_high`) now expect the read served read-only, with its text checked, its wait still observed; the case's guarantee says "SV4 A1 D5: history served read-only after {kind} (DM-22 3.2)". The list case now expects the conversation listed while the other is paused (`[second.match, first.match]`).
+  - `read.final_check_first_lock`: the variant where `suspend_low` holds its first lock while the high member reads now expects that read served read-only, its lock wait still observed; the low member's own read stays refused; `FIRST_LOCK_WRITERS` is unchanged.
+  - `proofs/postgres-ordering/tests/test_read_phase.py`, `ReadPlanTests`: the plan's count is `16 * 3 + 14 + 2 + 2` (two named cases and two settings cases), and two tests are added (D5's cases planned with the settings cases last; the read-only revocations). `FirstLockReadersTests` and `ReadControlTests` pass unchanged.
+  - The block, unmatch, deletion, sign-out and expiry cases keep their refusal.
+- **D7:**
+  - `services/api/tests/test_chat_domain.py`: the port's method names lose `grant_token`; the outcomes lose `granted`; `TokenRuleTests` is retired with the grant; `timedelta`'s import, left unused, is removed. `RevocationCutoffTests` stays.
+  - `services/api/tests/test_chat_adapter_offline.py`: `test_r2_the_grant_signals_before_commit_once` is retired with the grant, with its `GrantCursor`; `test_the_adapter_has_no_switch_and_the_grant_is_on_the_port` becomes `test_the_adapter_has_no_switch_and_no_token_grant`, which asserts the switch is absent and no grant is on the port or the adapter.
+  - `services/api/tests/test_chat_provider_stream.py`: the imports (`time`, `jwt`, `TokenGrant`, the signer and `IAT_BACKDATE_SECONDS`); `SignerTests` retired with the signer; the seal test's import list (`["from .chat_provider import ("]`). `SealTests` gains `test_the_adapter_builds_no_client_and_reads_no_environment`. `test_the_adapter_imports_only_the_port_the_token_module_and_the_sdk` passes unchanged.
+  - `test_chat_sealed_runtime.py` and `test_identity_sealed_runtime.py`: unchanged, and each `test_the_connection_refusal_is_unchanged` passes, since the new names live in their own constants.
+  - `proofs/postgres-ordering/tests/test_case_plan.py`: `test_the_adapter_plan_adds_b1` is `56 + 25 + 27`, with no `token.` case, still pinning the 24 activation cases and the F2 and F5 cases (`len(B1_CASES) == 6 * 4 + 3`); `test_the_token_cases_skew_is_shorter_than_their_sessions` is retired with the cases, and its `timedelta` import.
+  - `proofs/postgres-ordering/tests/test_settings_refusals.py`: gains the new names and two tests (the copies equal the API's; each new name and family member refuses before its value is read). Its rule does not change.
+  - `proofs/stream-chat/tests/test_conformance.py`: the rows 46 to 36; the recorded set `{M5, R7}` (V7 retired); the peak connections 1 to 0; the verdict counts `{"PASS": 34, "RECORDED": 2}` where they were `{"PASS": 43, "RECORDED": 3}`; `test_the_signer_rows` becomes `test_the_revocation_read_back`, keeping its V4 checks (the cut-off sent and held as the exact second plus one); `ConformanceVerdictTest` keeps each verdict's coverage on rows that stay, showing FAIL and INCONCLUSIVE on the read-back rows (`P2`, `C2`, `M2`, `R2`, `R6`, `D6`, `V4`) where they were shown on token rows, and DIFFERENCE on `M4`; `test_a_failing_row_exits_one_after_cleanup` forces R2's failure where it forced R3's; `no_revocation_wait` and its uses removed with the margin. `tests/test_run_plan.py`: 36 rows.
+
+### New cases and tests
+
+- **The discovery suite** (`interaction_cases.py`, A1's list after B-C1's, labelled `SV4-A1` with `D3`, `D4` or `D6`):
+  - `sv4.a1.block_by_the_liker_retires_the_like` and `sv4.a1.block_by_the_other_retires_the_like` (D3): a like, then a block and an unblock by the liker or by the member who was liked, then a like from that member, which is recorded and answered as a like that finds no like in return, with no match and no `match_activated` event; `activate_reciprocal` itself refuses the pair (`not_reciprocal`); the first like reads the same state and version in its actor's own-versions read before, during and after the block (and, when the other member blocked, the liker's whole read is unchanged).
+  - `sv4.a1.block_and_unmatch_serve_the_same` (D4): two worlds, one ended by a block and one by an unmatch, compared on every surface the brief lists, with absolute expectations: the send, the history read, the list, the match read (`unmatched` at version 2), discovery's exclusion (also by the match row alone), the own-versions read, a later block by the member who was blocked, the blocker's later unblock and unmatch.
+  - `sv4.a1.match_version_is_the_sends_contact_version` (D6), above.
+- **The read phase** (`read_phase.py`):
+  - `read.d5_read_only_at_launch`: each of the nine cause settings (`own_pause`, `other_pause`, `own_incomplete`, `other_incomplete`, `own_restriction`, `other_restriction`, `other_suspension`, `own_withdrawal`, `other_withdrawal`) serves the history page, lists the conversation and moves the read cursor, while the send refuses with that cause's reason; a `removed` profile, either member's, is hidden.
+  - `read.d5_ended_contact_keeps_its_refusal`: the block, the unmatch and the deletion (`match_not_active`, `account_not_active`), the reader's own suspension (`account_not_active`, the list refused), the sign-out and the expiry (`session_not_valid`) keep their reasons, none read as hidden.
+  - `read.d5_hidden_when_the_setting_says_so` (settings case): each cause, published `hidden` in `chat.history` in turn, refuses the history read and the cursor with `conversation_hidden` and drops the list entry, alone and in a world with two causes.
+  - `read.d5_consent_limit_fails_closed` (settings case, self-contained): every cause is first published `hidden` under the launch version; then the onboarding consent's next version is published, and `chat.history` with every cause `read_only` under it (SV2's rule: a more readable publication names a new consent version); every cause then reads hidden, and a conversation with no cause is still served.
+- **The API's offline tests** (new files): `test_inherited_name_refusals.py` (6 tests), `test_match_versions_offline.py` (5), `test_read_rule_offline.py` (5).
+
+### Reversals
+
+Each reversal is a temporary edit of the code or the migration, made by a scratch script that wrote the edit, ran the cases or tests, and restored the file byte for byte (its SHA-256 checked after). All failed as intended and all were restored. The read-phase reversals each ran on a fresh throwaway database (below); the discovery reversals ran in turn on one, each case making its own members. The failing output, quoted (shortened where marked "…"):
+
+| Reversal (the edit) | What failed |
+|---|---|
+| r01: `block` retires nothing | both D3 cases: "the later like is recorded as a like found alone" |
+| r02: `interact`'s check ignores `retired_at` | both D3 cases: "the like: answers 200" |
+| r03: `activate_reciprocal` ignores `retired_at` | both D3 cases: "activate_reciprocal refuses the retired like itself (applied:)" |
+| r04: the retirement also advances the row's version | both D3 cases: "the first like reads the same state and version before and after the block"; `sv4.a1.block_and_unmatch_serve_the_same`: "the own surface is the same after a block as after an unmatch (… ('liked', 2, 'none', 0)) and (… ('liked', 1, 'none', 0)))"; `own_versions.each_state_and_version`: "after a block" |
+| r05: `block` stores `restricted` | `block.works_after_unmatch_and_while_paused`: "the block ends the match as an unmatch does (D4)"; the D4 case: "the match the block ended reads unmatched at version 2 ({'kind': 'match', 'version': 2, 'state': 'restricted'})" |
+| r06: the send names the block | the D4 case: "the send surface is the same after a block as after an unmatch (('refused', 'blocked') and ('refused', 'match_not_active'))" |
+| r07: the reads name the block | the D4 case: "the history surface is the same … (('refused', 'blocked') and ('refused', 'match_not_active'))" |
+| r08 (two edits together): the list takes every match, in any state, and keeps one that the other member blocked | the D4 case: "after the blocker's unblock: the listed surface is the same … (('listed', True) and ('listed', False))" |
+| r09: discovery excludes by an active match only (`predicates.py`) | the D4 case: "by the match row alone: the shown surface is the same after a block as after an unmatch (False and True)" |
+| r11: the blocked member's own block refused | the D4 case: "theirs: answers 200"; `block.works_after_unmatch_and_while_paused`: "the blocked's block: answers 200" |
+| r12: the blocker's unblock restores the match | the D4 case: "after the blocker's unblock: the match surface is the same … ({… 'state': 'active'}) and ({… 'state': 'unmatched'}))" |
+| r13 (two edits together): `block` stores `restricted`, and the match read (`interactions.py`) serves it as `unmatched` | the D4 case: "the ender's later unmatch answers the same" |
+| r14: the unmatch advances only the contact version | the D6 case: "after the unmatch: the match read's version is the contact version"; offline, `test_each_writer_advances_both_by_one_and_saves_both` (`OrmContactPersistence.unmatch`): "… != 'match.version += 1'" |
+| o1: the migration edited | `test_makemigrations_check_passes_without_a_database`, `test_model_and_migration_state_have_no_drift_without_a_database` ("Committed migration state differs from model definitions") and `test_sv4_a1_migration_follows_0012` (the digest) |
+| o2: `block` retires one direction only | `test_block_differs_from_mains_by_d3s_statement_and_d4s_value`, `test_block_is_mains_with_one_statement_inserted_and_one_value_changed` and `test_every_writer_is_pinned_by_its_digest` (`OrmContactPersistence.block`, and the module) |
+| d5a: the reads ignore the setting | `read.d5_hidden_when_the_setting_says_so`: "own_pause with own_pause hidden: the history read: read, expected refused (conversation_hidden); … the read cursor: moved, expected refused (conversation_hidden); … listed; …" |
+| d5b: every cause read as hidden | `read.d5_read_only_at_launch`: "own_pause: the history read (read-only): refused:conversation_hidden, expected read; … not listed; …"; `read.pause_high.check_holds`: "a read after the revocation (read-only, D5): refused:conversation_hidden, expected read" |
+| d5c: no consent limit | `read.d5_consent_limit_fails_closed`: "own_pause under consent.onboarding.v2: the history read: read, expected refused (conversation_hidden); …" |
+| d5d: each cause names itself in the reason | `read.d5_hidden_when_the_setting_says_so`: "… refused:hidden:own_pause, expected refused (conversation_hidden); …" |
+| d5e: a `removed` profile read as a restriction | `read.d5_read_only_at_launch`: "a removed low profile: the history read: read, expected refused (conversation_hidden); … a removed high profile: … listed" |
+| d5f: `incomplete` not read as a pause | `read.d5_read_only_at_launch`: "own_incomplete: the history read (read-only): refused:conversation_hidden, expected read; …" |
+| d5g: an ended contact refused as hidden | `read.d5_ended_contact_keeps_its_refusal`: "block_by_high: the history read: refused:conversation_hidden, expected refused (match_not_active); … unmatch_by_high: …" |
+| d5h: the other's suspension refused as before | `read.suspend_high.read_waits`: "the read after its final check (read-only, D5): refused:account_not_active, expected read"; `read.final_check_first_lock`: "the read by the high member (its final check arrived at the first lock of suspend_low; read-only, D5): refused:account_not_active, expected read" |
+| d5i: the list refuses every cause | `read.conversation_list`: "listed read-only while the other is paused: […]"; `read.d5_read_only_at_launch`: "own_pause: not listed; other_pause: not listed; …" |
+| o4: `readable` serves when any cause reads `read_only` | `test_one_hidden_cause_hides_the_conversation_whatever_the_others_read` |
+| rl1: the API's `REDIS` prefix dropped | the API's family tests for `REDISHOST`, `REDISPORT`, `REDISUSER`, `REDIS_PASSWORD` ("False is not true"; "0 != 1"); the proof's `test_the_inherited_names_copies_match_the_api` ("Tuples differ: ('PG', 'POSTGRES_', 'REDIS', 'STREAM_') != ('PG', 'POSTGRES_', 'STREAM_')") |
+| rl2: the API's rule not checked | `test_an_empty_value_is_refused_too`, for each of M05's names: "ConfigurationError not raised" |
+| rl3: the proof's prefixes not checked | the proof's `test_each_inherited_name_refuses_before_its_value_is_read` (`POSTGRES_USER`, `POSTGRES_DB`, `REDISHOST`, `REDISUSER`, `REDIS_PASSWORD`, `STREAM_API_KEY`): "RefusedEnvironment not raised" |
+| rl4: the proof's copy differs | `test_the_inherited_names_copies_match_the_api`: "Items in the second set but not the first" |
+
+Before the D5 reversals, `read.d5_consent_limit_fails_closed` passed on the same database as a baseline.
+
+### Commands and results
+
+All at the code head, in a clean environment (local; the run of record repeats them).
+- **The API**, with `GLOW_ENV=test`: `manage.py check` reports no issues; `manage.py test tests` gives `Ran 654 tests … OK` (645 at the prompt's commit, which has `main`'s code); `ruff check .` gives "All checks passed!", `ruff format --check .` gives "169 files already formatted", and `mypy` gives "Success: no issues found in 95 source files"; `manage.py makemigrations --check --dry-run` gives "No changes detected"; the contract tests give `Ran 53 tests … OK`.
+- **The ordering proof's offline tests:** `Ran 387 tests … OK` (383 at the prompt's commit); Ruff "All checks passed!", "71 files already formatted"; mypy "Success: no issues found in 71 source files".
+- **The Stream proof's offline tests:** `Ran 648 tests … OK`; Ruff "All checks passed!", "59 files already formatted"; mypy "Success: no issues found in 57 source files"; `checks/run_plan.py` prints `run plan: fits`. Only its offline tests and `checks/run_plan.py` ran; no live command.
+- **The contracts:** `npm run check` in `packages/contracts`: `tests 902`, `pass 902`, `fail 0`. `apps/mobile`'s `npm run check` (typecheck, lint and 691/691 tests) passed.
+- **The trusted classifier**, from `main` (`499ccbb`), extracted to a scratch directory outside the checkout (SHA-256 `b564c62f…`), run from the checkout as `python3 -I <copy>/change_scope.py --base 499ccbbec758ed4ef34a93ad19fa8df454fb095c --head bc0675de3c6a4411f1d72845c69f8dc4e5706463 --merge-base`: `"full": true`, reason `behavior-or-empty`. `git merge-base --all` gives one base, `499ccbb`.
+- **The diff:** `git diff --name-only 6235240 bc0675d` lists 46 paths, each in A1's owned paths as the prompt lists them (the limits below name the lines of the Stream proof's README). This section is the records commit's only change.
+- **The removed names:** `grep -rnE` over `services/api`, `proofs` and `packages` for `grant_token`, `grant_chat_token`, `TokenGrant`, `TokenAccount`, `TokenSession`, `TOKEN_LIFETIME`, `NO_CHAT_IDENTITY`, `token_claims`, `sign_chat_token` and `IAT_BACKDATE_SECONDS` finds:
+  - the absence assertions in `test_chat_adapter_offline.py` (lines 250 to 253) and the names in `test_interactions_offline.py`'s `A1_REMOVED`, its digest entry and two docstrings;
+  - the Stream proof's own `token_claims` fields in `proof_run.py` and `mechanisms.py` (the check's exception);
+  - the Stream proof's own `IAT_BACKDATE_SECONDS` in `mechanisms.py` (lines 109 and 112), which the check does not except (Limits);
+  - the API README's line 82, which says `sign_chat_token` was removed by SV4 A1.
+
+  `import jwt` is gone from `chat_provider_stream.py`.
+- **npm:** no package or lock changed; `npm ci --ignore-scripts` from the existing locks only, in `packages/contracts`, `apps/mobile` and `proofs/stream-chat`.
+
+### Local database runs (iteration, not evidence)
+
+Under P06.DB's D4: the pinned image `postgres@sha256:d74eeac9…`, pulled from Docker Hub after `429` answers and retries with a wait; loopback only; a generated password and the run's marker, never printed; none of `DATABASE_URL`, `HD_API_KEY`, `GEO_API_KEY` or any `PG*` name in the process environment; each container removed afterwards. No Docker daemon was running in the session, so `dockerd` was started in the background (again after the container restarted). Migrations reached each database only through the proof's own commands; `manage.py migrate` was never run.
+
+At the code head's content before the last review fixes (each case those fixes touched was run again afterwards, and passed):
+
+| Suite | Before (at the prompt's commit) | After |
+|---|---|---|
+| Ordering, reference design | 56/56 | 56/56 |
+| Ordering, adapter | 115/115 | 108/108 (the seven token cases retired) |
+| Ordering, read phase | 62/62 | 66/66 |
+| Discovery | 66 (A0's run of record) | 70/70 (290 s) |
+| Profile | 77 (A0's run of record) | 77/77 (139 s) |
+| Identity | 49 (A0's run of record) | 49/49 (47 s) |
+
+The ordering suite's whole run took 596 s locally (579 s at the prompt's commit, with the delivery phase's 13/13 checks). After the last fixes, `read.d5_read_only_at_launch`, `read.final_check_first_lock`, `read.suspend_high.revocation_holds` and `read.pause_low.read_waits` passed again on a fresh database. Afterwards no container remained.
+
+### The run of record
+
+**Foundation run [44679608400](https://github.com/amthorn78/glow-dating-app/actions/runs/44679608400)** on `bc0675de3c6a4411f1d72845c69f8dc4e5706463` (a push run, attempt 1) concluded **success**. It was created at 05:13:40 UTC on 20 November 2026 and its gate finished at 05:23:39, 9 minutes 59 seconds in all. Nothing was pushed to the branch until it had finished. The durations are from the jobs' and steps' timestamps (whole seconds); A0's are from its run of record, 44463105633.
+
+| Job | Conclusion | Duration | A0's | Timeout |
+|---|---|---|---|---|
+| Change scope | success | 9 s | 6 s | 3 min |
+| API checks | success | 74 s | 76 s | 10 min |
+| Mobile checks | success | 580 s (9 min 40 s) | 561 s | 25 min |
+| API mobile smoke | success | 83 s | 75 s | 10 min |
+| API artifact checks | success | 25 s | 27 s | 15 min |
+| Stream proof checks | success | 78 s | 92 s | 10 min |
+| **Database proof checks (ordering)** | success | **389 s (6 min 29 s)** | 539 s | 30 min |
+| **Database proof checks (identity)** | success | **115 s (1 min 55 s)** | 103 s | 30 min |
+| **Database proof checks (profile)** | success | **148 s (2 min 28 s)** | 151 s | 30 min |
+| **Database proof checks (discovery)** | success | **316 s (5 min 16 s)** | 190 s | 30 min |
+| Foundation gate | success: "Application checks passed" | 3 s | 3 s | 2 min |
+
+**Each suite's own step, and its cases before and after A1:**
+
+| Suite | Step | Cases at A0's run | Cases here | What its log shows |
+|---|---|---|---|---|
+| Ordering | 320 s (459 s at A0) | reference 56, adapter 115, read 62 | reference 56, adapter 108, read 66 | every read case's row `PASS` (the tail read, from `read.final_check_first_lock` to the four `read.d5_*` cases), the three planted read controls "failed as intended: yes", and `== VERDICT: PASS ==` |
+| Identity | "identity phase: 42 s" | 49 | 49 | `[identity] cases: 49/49 passed in 41.7 s`, `IDENTITY VERDICT: PASS` |
+| Profile | "profile phase: 85 s" | 77 | 77 | `[profile] cases: 77/77 passed in 84.0 s`, `PROFILE VERDICT: PASS` |
+| Discovery | "discovery phase: 238 s" | 66 | 70 | `[discovery] cases: 70/70 passed in 236.2 s`, the four `sv4.a1.*` cases `PASS` (2.0, 2.0, 5.1 and 4.2 s), `DISCOVERY VERDICT: PASS` |
+
+**What else the logs show** (read with `get_job_logs`, tails only; no line read held an `::add-mask::` command or a long hexadecimal value):
+- **Ordering:** the second run refused, `rows (proof log, adapter calls, worlds, app accounts, outbox events) before: 10325 13682 5763 11561 26688; after: 10325 13682 5763 11561 26688`, `second run exit status: 1`, `refusing a used database: …`; `container removed: glow-proof-db-ordering-44679608400-1`, `credential and marker files removed`, `no proof container remains`.
+- **Identity, profile and discovery**, each: `ROW LOCKS (D14): PASS` with `0 refused`; the scans clean (`identity secret scan: clean (754 secrets held; …)`; `profile secret scan: clean (1601 secrets held; …)` and `profile value scan: clean (919 member values held; …)`; `discovery secret scan: clean (2627 secrets held; 0 found in 1599 log records, 202 writes and the results JSON)` and `discovery value scan: clean (1408 member values held: …)`); the second run refused with its rows unchanged (identity `53 53 63 32 50`; profile `143 143 109 72 1746 1087`; discovery `1234 1234 1228 117 407 3240`) and `exit status: 1`; the container and files removed and `no proof container remains`.
+- **The API checks job:** `manage.py check` "System check identified no issues", Ruff "All checks passed!" and "169 files already formatted", mypy "Success: no issues found in 95 source files", and the contract tests `Ran 53 tests … OK`. Its `manage.py test` step passed in the runner's own environment, so no name the new rule refuses was present there.
+- **The Stream proof's job:** its offline tests, Ruff, mypy and `checks/run_plan.py` passed; the plan printed `run plan: fits`.
+- **The retries:** every first Python install succeeded, and the DM-41 retry steps were skipped; in Mobile checks, "Install Chromium for rendered fixture checks" succeeded in 203 s on its first attempt, the pause and the retry (DM-59 item 7) were skipped, and "Render and exercise account onboarding" took 284 s.
+
+**Not read:** the ordering job's per-subject count lines (`[reference] cases: …`, `[adapter] cases: …`, `[read] cases: …`) come before its full results table, which the tool's tail did not reach, and the artifacts were not downloaded (their links are to blob storage outside GitHub). The counts above are the plans the job's offline tests pin (`56 + 25 + 27` for the adapter, `16 * 3 + 14 + 2 + 2` for the read phase), which passed in that job, and the verdict is `PASS` only if every case of both subjects, every delivery check and the read phase passed (`results.py`, `RunReport.verdict`). The discovery phase took 104 s longer than at A0's run; A1's four cases account for 13.3 s of it, and the rest was not investigated (the job is well within its timeout).
+
+### Limits and deviations
+
+- **Lines outside A1's owned paths that D3, D5 or D7 makes stale, left unchanged.** The work needs none of them (no test reads them), so this session judged them outside the stop rule's "the work needs a path outside the list"; they are listed for the manager to route, and a stricter reading would make the first a stop:
+  - `services/api/glow_domain/chat_reads.py`, lines 10 to 16: "Whatever refuses a send refuses a read", with the pre-D5 checks (neither member suspended, neither profile paused or restricted, both consents accepted) and "as B1's grant". `reads.py`'s module docstring states D5's rule;
+  - `services/api/glow_domain/notifications.py`, lines 13 and 14, and the docstring at line 928, which cite that sentence for the notification composer's checks (the composer's own checks do not change);
+  - `services/api/glow_persistence/models.py`, `ChatIdentity`'s docstring (lines 966 to 968, "granted a token"): `models.py` is owned only for its module docstring and `retired_at`;
+  - `services/api/glow_discovery/interactions.py`, line 35 ("A like that finds the target's `liked` row makes the match"), now an unretired `liked` row: the file is owned only for `interact`'s check and write and lines 62 to 64;
+  - `services/api/tests/test_dependency_pins.py`, lines 7 and 8 ("`pyjwt` (the signer uses it directly)"): the pin stays for SV1, and the file is not in "Earlier tests";
+  - `proofs/stream-chat/README.md`, line 103 ("the adapter imports only its port, its token module and the SDK"): the adapter no longer imports the token module. The test that line names, `test_the_adapter_imports_only_the_port_the_token_module_and_the_sdk`, passes unchanged as required; it asserts only that no Django, persistence, `glow_chat` or `glow_api` module is imported, so its name is stale too;
+  - `apps/mobile/src/interactions/fixture-adapter.ts` (lines 128 and 232) still stores `restricted` on a block. The brief's "Mobile: none" keeps it; the fixture now differs from the server's D4.
+- **A deviation: two more lines of the Stream proof's README.** The owned path is its "paragraph on the conformance rows, only as D7 requires" (line 250). Lines 249 and 252, the bullets beside it, were changed too: line 249 said "Three" rows are RECORDED and named the third (now retired with the signer), and line 252 said the run peaks at one connection (now none). Both were made false by D7's retirement, and the tests that pin them changed with it.
+- **The removed-names check does not hold literally:** it finds the Stream proof's own `IAT_BACKDATE_SECONDS` (`proofs/stream-chat/glow_stream_proof/mechanisms.py`, lines 109 and 112), a constant of the proof's live mechanisms, not the API's, in a file outside A1's owned paths. Its live commands were not run. The API's constant is gone.
+- **The Stream proof's live harness can still mint tokens:** `glow_stream_proof/server_api.py` line 245 calls the SDK's `create_token` for the proof's live commands. D7 removes Glow's signer, not the proof's live harness, which is outside A1's owned paths and was not run.
+- **D3's null write on `interact`'s update is unobservable:** only a `liked` row is retired; a pass over the actor's own like is `state_conflict` and undo withdraws only a pass, so no route turns a retired like into another decision. The write is in the code as the brief says; no case can show it.
+- **The read-only marker is D9's, A2's:** until A2, a conversation served read-only is listed like an open one, with no marker.
+- **The refusal families were drawn from M05's names by prefix** (`PG`, `POSTGRES_`, `REDIS`, and `STREAM_`). Railway's and Stream's own pages listing their variables were not read in this session; a Railway or Stream name with another prefix is refused only if one of the lists names it.
+- **The API job's environment:** `manage.py test` in CI runs in the runner's environment, not under `env -i`. A `PG*`, `POSTGRES_*`, `REDIS*` or `STREAM_*` name there would now refuse the configuration. The run of record shows none present (the API checks job passed).
+- **A later change to `contact.py`** fails `ReciprocalWriterTests` by design (A1's definitions and module are pinned by digest at this head), so A2's "Earlier tests" must name that class if A2 changes `contact.py`.
+- **`data-model.md`'s diff is larger than its change** (69 lines in, 60 out): the paragraphs D3, D4, D6 and D7 changed were reflowed.
+- **The local database runs are iteration only.** They ran with Docker 29.10.0 started in the session, from the pinned image, before the last review fixes; the cases those fixes touched were run again, not the whole suites. The run of record is CI's.
+
+### Manager verification of A1 (App Manager 12, 20 November 2026)
+
+- **The branch:** `claude/sleepy-mendel-0kqgw9`, code head `bc0675d`, records head `a1651fb` (the record only), both after the prompt's commit `6235240`, which the branch starts at; the manager branch, still at `6235240`, took both by fast-forward.
+- **The diff** from `6235240` to the code head: 46 paths, each in A1's owned paths (the brief, revision 5). The partly owned files were read in the diff: `glow_discovery/interactions.py` changes only `interact`'s write of `retired_at`, its reciprocity check and the docstring's lines 62 to 64; `glow_discovery/contract.py` only `match_projection`'s docstring; `glow_api/configuration_profiles.py` only the refusal constants, their check and its use in the presence step (`FORBIDDEN_CONNECTION_NAMES` unchanged); `glow_persistence/models.py` only the module docstring, `DirectionalInteraction`'s docstring and `retired_at`. `test_model_definitions.py` changes only the leaf assertion, its comment and the new `0013` test; `MAIN_DEFINITION_DIGESTS` in `test_interactions_offline.py` is byte-equal to the base's (checked by script), and `MAIN_MODULE_DIGEST` is removed, as the record says. `test_chat_sealed_runtime.py` and `test_identity_sealed_runtime.py` are unchanged.
+- **The trusted classifier,** `main`'s `scripts/change_scope.py` (`499ccbb`; sha256 `b564c62f…`, equal to `main`'s), extracted outside the checkout and run from it with `python3 -I --base 499ccbb… --head bc0675d… --merge-base`: `"full": true`, reason `behavior-or-empty`.
+- **Re-run by the manager** in a scratch worktree of the code head, each in a virtual environment installed from its own lock with `pip install --require-hashes` (`pip check` clean), under `env -i` (with `GLOW_ENV=test` for the API, as the workflow sets it):
+  - the API: `manage.py check` no issues; `manage.py test tests` 654 tests OK; Ruff "All checks passed!", "169 files already formatted"; mypy "no issues found in 95 source files"; the contracts' unittests 53 OK; `makemigrations --check --dry-run` "No changes detected";
+  - the ordering proof: 387 tests OK; Ruff clean, "71 files already formatted"; mypy "no issues found in 71 source files";
+  - the Stream proof (after `npm ci --ignore-scripts` from its lock): 648 tests OK; Ruff clean, "59 files already formatted"; mypy "no issues found in 57 source files"; `node --check` on each client script; `checks/run_plan.py` "run plan: fits";
+  - the contracts: `node scripts/generate.mjs --check` "Generated types and runtime validators match schemas."
+- **Read in the code:** D3's write in `block` is a queryset `update(retired_at=now)` on the pair's unretired `liked` rows, both ways, after both account locks and with the database's clock, so it writes nothing else of a row; both reciprocity checks filter `retired_at__isnull=True`. D4: `block` stores `unmatched`, with the same advance and event. D5 (`reads.py`): the read rule, the cause mapping, the fail-closed consent check (`readable`), one reason `conversation_hidden` for every hidden cause, and `chat.history` read through `settings_store.read_shared` after the row locks, as the brief says.
+- **The removed names** are gone from the API, the ordering proof and the contracts, except the tests' assertions of their absence and SV3's pinned record of `grant_token`'s digest. The search's one other hit, `IAT_BACKDATE_SECONDS` in the Stream proof's `mechanisms.py`, is that harness's own constant for the SDK's back-dating, not Glow's signer; the prompt's check, the manager's, named it without that exception.
+- **The run of record,** Foundation run 44679608400 (event `push`, head `bc0675d`), read with the GitHub tools: all eleven jobs succeeded, and the gate's log ends "Application checks passed". The database jobs took 389 s (ordering), 115 s (identity), 148 s (profile) and 316 s (discovery), each of 30 minutes. The Chromium install's first attempt took 203 s, the pause and the retry skipped (the carried-items file, "Carried to the next change to the Foundation workflow (DM-97)").
+- **The deviation** (the Stream proof's README, lines 249 and 252, beside the owned line 250): accepted. Both bullets sit in the conformance rows' section and would otherwise state what D7 made false.
+- **The lines outside A1's owned paths** that D3, D5 or D7 makes stale (the record's "Limits and deviations") are carried, with the note that A2's "Earlier tests" names `ReciprocalWriterTests` if A2 changes `contact.py` (the carried-items file, "Carried to SV4"). The exact-head review is asked to classify them under D-07.
+
+### Exact-head review of A1 (20 to 22 November 2026)
+
+- **Session:** the exact-head review, started by Nathan from [A1's review prompt](https://github.com/amthorn78/glow-dating-app/blob/ff2539beb3cc84d9f7d022c91de6e7222d9d8f97/docs/ephemeral/2026-11-20-sv4-a1-review-prompt.md), revision 1, from `ff2539b`. Its report was relayed to App Manager 12 on 22 November 2026. It ran the checks, the reversals, a local database run and the CI reads itself, with nine reviewer agents over the focus items, each finding sent to a separate verifier told to refute it; four verifiers hit a usage limit on 20 November and were run again on 22 November from the run's journal, the reviews replayed from cache.
+- **Its start gate, classification and environment check:** every start-gate check passed (`HEAD` `ff2539b`; one merge base, `499ccbb`; the prompt's commit on the live branch; the non-Markdown paths equal to `bc0675d` at `HEAD` and on the live branch; no review recorded). `main`'s classifier, extracted outside the checkout and run from it with `python3 -I --merge-base`, printed `"full": true`, reason `behavior-or-empty`. None of `DATABASE_URL`, `HD_API_KEY` or `GEO_API_KEY`, and no `STREAM_*`, `PG*`, `R2_*`, `CLOUDFLARE_*`, `CF_*` or `RAILWAY_*` name; present and never read: `AWS_ACCESS_KEY_ID`, `AWS_CA_BUNDLE`, `AWS_SECRET_ACCESS_KEY`, `GH_TOKEN`, `GITHUB_TOKEN`. Python 3.12.14, Node v24.19.0, npm 11.9.0, Docker 29.10.0.
+- **Verdict: changes requested.** The application's behaviour holds on every item: D3 to D7 hold in the code; no reader the rule refuses is served, no hidden cause is named, no token path is reachable, and the seal and HDE's boundary are unchanged. One blocking finding (AR-1, a test that fails on `main` once A1 is there), two should-fix findings in a correction class (AR-2, AR-3), one should-fix finding outside the classes (AR-4) and twelve nits (AR-5 to AR-16).
+
+**What it verified** (its focus items, shortened):
+- **D3:** `block` retires every unretired `liked` row between the pair, both ways, after both account locks and the database's clock, writing only `retired_at`, with or without a match; both reciprocity checks require it null. No reader of a `liked` row (activation, discovery's predicates and pages, the own-versions read, notifications, the proofs' oracles) counts a retired like, reveals `retired_at` or answers either member differently. A later like is recorded with no match and never refused for the retired one; the first like reads the same state and version before and after.
+- **D4:** `block` stores `unmatched` with the same advance and the same `contact_revoked` event as `unmatch`; `block_changed` is never delivered; the provider effect is an unmatch's. No server path writes a `restricted` match or treats one apart. F10's new row, the frozen table, `MatchProjection`'s description and the generated files agree.
+- **D5:** the rule holds condition by condition; every hidden cause refuses as `conversation_hidden` after every other check, so the order names no cause, and the served layer is `chat_projections.error_for`. No lock inversion or crossing; the `_Pointers` shim gives the store what its D19 check uses; a setting the store cannot resolve refuses with the store's own reason, which names no cause. The send and the read's protocol are unchanged; `final_check_first_lock`'s suspension variant serves the high member's read read-only, its lock wait still observed.
+- **D6:** the test finds both writers that exist today (only `block` and `unmatch` write either field); many idioms would escape it (AR-4), and its docstrings claim it cannot miss one (AR-2).
+- **D7:** every removed name is gone, with the code only it used; `jwt` remains only through allauth, for SV1's sessions; the epoch revocation is unchanged and still proven. The refusal lists are checked in the same presence step, before any value, for every profile, and refuse nothing the API reads. It read Railway's and Stream's variable pages (Stream's video page answered 404): every Postgres, Redis and Stream name is refused; MySQL, MongoDB and OpenTelemetry names escape, which M05 did not mean and no package in either lock uses; `RAILWAY_*` must not be refused, since Railway injects it into every service. A lowercase `stream_api_secret` passes the case-sensitive check; contained, since `getstream` is a development dependency only and the adapter builds no client. The Stream proof keeps every verdict kind on rows that stay.
+- **The earlier tests:** each change is one A1's prompt names; the plan counts match the code (56 + 25 + 27, read 66, discovery 70); no new test is vacuous; `MAIN_DEFINITION_DIGESTS` is byte-equal to the base's; every reversal the record lists fails as recorded. But AR-1.
+- **The migration:** `0013` is one `AddField` (`DateTimeField(null=True)`), after `0012_photo_check_seed`; the model matches; `makemigrations --check` is clean.
+- **The seal and the boundary:** the 40 non-Markdown paths are all in A1's owned paths, with the partial-file limits; no lock, requirements file, `package.json`, Dockerfile, workflow, script, settings, URL or WSGI file changed; HDE untouched.
+- **The records** hold, except AR-5, AR-6, AR-9, AR-16 and AR-1's limit.
+- **The lines outside A1's paths:** `chat_reads.py` lines 10 to 16 are a false claim at the who-may-read boundary (AR-3); the others A1's record lists are records to carry. Three more: `tests/test_notifications.py` line 316; `test_chat_sealed_runtime.py` lines 11 to 13 and 130 (AR-14); `proofs/stream-chat/README.md` line 248 (AR-15).
+
+**Its checks,** in scratch copies of `bc0675d`, each package installed from its lock with `pip install --require-hashes`, under `env -i`:
+- the API: `manage.py check` no issues; `manage.py test tests` `Ran 654 tests … OK (skipped=2)`, the two skips AR-1's history tests (no `main` in its copy); Ruff, format (169 files) and mypy (95 files) clean; the contracts' unittests 53 OK; `makemigrations --check --dry-run` "No changes detected";
+- the ordering proof 387 OK; the Stream proof 648 OK and `checks/run_plan.py` "run plan: fits"; the contracts' `generate.mjs --check` passed;
+- the prompt's reversals: R1 (`readable` always true) fails two read-rule tests; R2 (each prefix removed) fails each way, except that removing `PG` from both lists passes the proof's tests, which refuse every `PG*` name through `LIBPQ_PREFIX`; R3 (a third writer, three forms) fails the D6 test; R4 (`retired_at__isnull=True` removed from `activate_reciprocal`) fails a structure test and the digest only, no behavioural offline test (the database case r03 catches it);
+- a local run under P06.DB's D4 (informational): the ordering run PASS (reference 56/56, adapter 108/108, delivery 13/13, read phase 66/66, three planted controls failing as intended; 475 s); the discovery run 70/70 (218.7 s), all four `sv4.a1.*` cases passing. Everything it started was removed.
+
+**The runs:**
+- **The run of record,** 44679608400 (`push`, `bc0675d`): eleven jobs, success, with the record's durations; the gate printed "Application checks passed".
+- **PR58's run** 44685126123 (`pull_request`, `ff2539b`): eleven jobs, success (Change scope 10 s, API checks 89 s, Mobile checks 520 s, API mobile smoke 95 s, API artifact checks 27 s, Stream proof checks 77 s, Database (ordering) 396 s, (identity) 99 s, (profile) 150 s, (discovery) 231 s, Foundation gate 3 s); the gate printed "Application checks passed" at 06:12:57 UTC (read by App Manager 12 with the GitHub tools on 20 November). The run on `dc9352e` before it, 44684672998, was cancelled when the next push superseded it.
+- **Codex's code review of `ff2539b`** completed at 06:06:00 UTC with no findings; PR58 had no review thread and no review.
+
+**Its findings** (in its words, shortened):
+
+| ID | Severity | Where (at `bc0675d`) | Finding |
+|---|---|---|---|
+| AR-1 | **Blocking** | `services/api/tests/test_interactions_offline.py`, lines 1378 to 1427 and 1498 to 1527; `main_base()`, 1181 to 1200 | Two history tests compare `contact.py` with `main`'s merge base and assert that it differs by A1's edits. Once A1 is on `main` they compare A1 with itself and fail. `main`'s push runs check out a local `main`, so the first push run after the merge fails API checks and the gate. PR runs skip them; SV3's form stayed green after its merge because it asserted "unchanged". The record's limit (line 1093) claims the class fails only on a later change |
+| AR-2 | Should fix | `tests/test_match_versions_offline.py`, lines 8 to 15 and 231 to 232; the record's line 917 | The docstrings say every form a writer could take is found, "so the pinned set above cannot miss one"; the verifier reproduced 22 forms that escape |
+| AR-3 | Should fix | `glow_domain/chat_reads.py`, lines 10 to 16 (outside A1's owned paths; the record's line 1079) | The read port's contract still states the rule D5 replaced (the other member suspended, a paused or restricted profile and a withdrawn consent refusing a read; "B1's grant"), which A2 and P11 will wire against |
+| AR-4 | Should fix | `test_match_versions_offline.py`, lines 57 to 58, 61 to 93, 147 to 150, 156 to 159 | The detector misses ordinary idioms: a match from `_pair_match`, a related manager's `update`, `Match(..., version=)`, `bulk_create`, an f-string table name, the table-name constant `_lock_shared` uses, a `save()` override, a signal, `Match as M`. The reviewer classes it outside the classes (D6's acceptance check holds at this head); its verifier, a missing test at the boundary |
+| AR-5 | Nit | `reads.py`, lines 53 to 55; the record's line 913 | "Every refusal is served as `not_found`": sign-out and expiry map to `unauthenticated`. Nothing leaks |
+| AR-6 | Nit | The record's line 958; `interaction_cases.py`, 2156 to 2187 | After the end of contact the D4 case compares the two worlds only, not fixed values |
+| AR-7 | Nit | `test_interactions_offline.py`, line 1461 | `test_block_is_mains_with_one_statement_inserted_and_one_value_changed` never reads `main` |
+| AR-8 | Nit | `contact.py`, lines 350 to 351 | The comment's list of directional-row writers omits `block`; the lock argument holds |
+| AR-9 | Nit | `docs/architecture/data-model.md`, lines 342 to 343 | "That device's token lives until it expires (one hour)" describes a token no code issues |
+| AR-10 | Nit | `configuration_profiles.py`, 184 to 196 | A supplied name matched by a prefix is echoed in the diagnostic; no value |
+| AR-11 | Nit | `proofs/postgres-ordering/tests/test_settings_refusals.py`, 95 to 108 | The proof's "unreadable" environment is a `dict` subclass, so a value read through `items()` passes; the API's test is sound |
+| AR-12 | Nit | `interaction_cases.py`, 2009 to 2072 | No database case for a like committed while a block waits, or a match made after an unblock |
+| AR-13 | Nit | `reads.py`, lines 11 to 13 | No database case for a publication of `chat.history` during a read |
+| AR-14 | Nit | `test_chat_sealed_runtime.py`, 11 to 13 and 130; `test_conformance.py`, line 104; `proofs/stream-chat/README.md`, line 103 | Still say the adapter imports "the token module"; test names claim an allow-list their bodies do not check |
+| AR-15 | Nit | `proofs/stream-chat/README.md`, line 248 | The Identifiers bullet lists notes and errors that can no longer arise |
+| AR-16 | Nit | The record's lines 905, 948, 1084, 1085 and the reversal table | Citations: `contract.py` 256 and 257; the conformance test is `proofs/stream-chat/tests/test_conformance.py`; README line 103 names no test; `fixture-adapter.ts` line 128 is the lost-eligibility path, not a block; rl3 failed for seven names; the table has no r10 |
+
+**Its deviation:** the GitHub MCP tools were retired during its session, so it read `main`'s push run 44657225220 (the run list, its jobs and one job log) with read-only `gh api` GET calls, where the prompt reserved `gh` for searches. Nothing was written. **Accepted:** the system's instruction of 22 November 2026 now routes GitHub reads through `gh api` REST, and every call was a read.
+
+**What it did not read or run:** Stream's authentication page (linked, not fetched) and its video page (404); the Stream proof's live commands; the identity and profile suites locally (CI ran them); the CI-only database steps locally; CI's artifacts. DM-96's sections, SV2's D2 and D19 and some files whole were read by its reviewer agents, not by the reviewer itself.
+
+**The manager's checks** (App Manager 12, 22 November 2026):
+- **AR-1, reproduced.** In a scratch clone (`git clone --no-local`, its remote removed), with a local `main` at `bc0675d`, `ReciprocalWriterTests` gave `Ran 6 tests … FAILED (failures=2)`: `test_block_differs_from_mains_by_d3s_statement_and_d4s_value` ("Lists differ: [] != [('insert', 0, 1), ('replace', 1, 1)]") and `test_every_writer_at_mains_base_is_unchanged_but_a1s` (A1's changed and removed names, `grant_token` among them, not in `main`'s). With `main` at `499ccbb`: `Ran 6 tests … OK`. `main`'s push run 44657225220, API checks job 136026366254 (read with `gh api`): its checkout ran `git checkout --progress --force -B main refs/remotes/origin/main` (log line 114), and SV3's two history tests printed `... ok` (lines 1809 and 1810). `main_base()` has no other user, and every Foundation job but Change scope checks out at the default depth.
+- **AR-2 and AR-4, read.** The module docstring says every writer "is found", and `WriterDetectorTests`' that the pinned set "cannot miss one". The manager's search at `ff2539b`: only `block` (`contact.py`, lines 664 to 666) and `unmatch` (750 to 752) write either field of the database's `Match`; the two activations create it with the defaults, and `glow_domain/interactions.py`'s `Match(...)` is P05.3's in-memory fixture. So D6's acceptance check holds at this head.
+- **AR-3, read.** `chat_reads.py`'s lines 10 to 16 say that a suspension of either member, a paused or restricted profile and a withdrawn consent refuse a read, under "B1's grant", with the history question still open; `reads.py`'s rule (lines 40 to 55; `readable` and the causes) serves each read-only at launch. No test reads that module's docstring.
+
+**Disposition** (App Manager 12; the manager workflow's step 6, "What a correction pass is for" and "Fix or carry, by rule", under D-07):
+
+| Finding | Disposition | Why |
+|---|---|---|
+| AR-1 | **Fixed before the merge**, by correction A1-C1 | Blocking: the first push run on `main` after the merge would fail API checks and the gate. It misses A1's prompt's rule that every earlier test passes, and the record's limit (line 1093) claims more than the test does. The fix compares with A1's pinned base, `499ccbb`, and changes no design, interface, contract or dependency, so it goes on the list for the Dev Manager's pre-merge read |
+| AR-2 | **Fixed**, by A1-C1 (the two docstrings) | A false claim a decision rests on: D6's acceptance check ("covers every writer") is read through the detector. C1 makes the claim the detector's; the detector's reach is AR-4 |
+| AR-3 | **Fixed**, by A1-C1 (that paragraph only; the brief's revision 6 adds it to the owned paths) | A false claim at the who-may-read boundary, which A2 and P11 wire against |
+| AR-4 | **Carried**, to SV4 A2 if it adds a writer of either field, otherwise the next change to the detector (the carried-items file, "Carried to SV4") | The reach of a static scan, which the rule carries; D6's acceptance check holds at `bc0675d` by the review's and the manager's searches. The reviewer's classification, not its verifier's |
+| AR-5, AR-7 to AR-10, AR-14, AR-15 | **Carried**, with A1's stale lines, to SV4 A2 if it changes the file, otherwise the next change to it | Wording that misleads no decision. AR-5's codes are `error_for`'s, which A2 serves, and A2's authentication answers a signed-out reader first |
+| AR-11 to AR-13 | **Carried**, to SV4 A2's chat suite (AR-12, AR-13) and the next change to the proof's refusal test (AR-11) | Tests of concurrency and of a test double; the code is right |
+| AR-6, AR-16 | **Recorded here** | The record's wording; the corrected citations are in the findings table |
+| A1's limit on the variable pages ("Limits and deviations") | **Closed** | The review read Railway's and Stream's pages |
+| The review's deviation | **Accepted** (above) | |
+
+The manager's verification carried A1's limit on `ReciprocalWriterTests` without checking the history tests' result once A1 is on `main` (AM12-48).
+
+## A1-C1
+
+- **Session:** SV4 A1's correction session A1-C1, started by Nathan in the cloud environment `Glow App - No Stream` (`get_environment`), from [A1-C1's prompt](https://github.com/amthorn78/glow-dating-app/blob/656ce032803b42da7a771185ce0016b5364f433f/docs/ephemeral/2026-11-22-sv4-a1-c1-correction-prompt.md), revision 2, from `656ce032803b42da7a771185ce0016b5364f433f` of the manager branch `claude/magical-wozniak-yfmmx2`. The specification is the [brief](../../planning/sv4-chat-notifications.md), revision 6; the findings are AR-1 to AR-3 of "Exact-head review of A1", above.
+- **Branch:** `claude/beautiful-brahmagupta-13ncpo`, which the push filter's `claude/**` covers. It starts at the prompt's commit.
+- **Code head:** `f69529c0594889d26caa19eccfe6b7eda73bee56`. **Records head:** the commit that adds this section, pushed after the code head's run had finished.
+- **What C1 changes:** tests and docstrings only, in three files: `services/api/tests/test_interactions_offline.py`, `services/api/tests/test_match_versions_offline.py` and `services/api/glow_domain/chat_reads.py`. No application behaviour, workflow, setting, contract, README or proof changes.
+
+### The start gate and the environment check
+
+- **The environment** (section 1 of the prompt, names only):
+  - none of `DATABASE_URL`, `HD_API_KEY` or `GEO_API_KEY`;
+  - no `STREAM_*`, `PG*`, `R2_*`, `CLOUDFLARE_*`, `CF_*` or `RAILWAY_*` name;
+  - the AWS names present: `AWS_ACCESS_KEY_ID`, `AWS_CA_BUNDLE` and `AWS_SECRET_ACCESS_KEY` (OD-76). None was read, printed or passed to a command;
+  - the GitHub token names present: `GH_TOKEN` and `GITHUB_TOKEN`. Neither was read;
+  - the toolchain: `Python 3.12.14` (`python3.12`);
+  - every repository command ran under `env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8`, plus `GLOW_ENV=test` for the API's Django commands.
+- **The start gate** (section 2), at about 08:05 UTC on 22 November 2026, with `<START_SHA>` read as `656ce03…` (below, "Limits and deviations"):
+  - `git rev-parse HEAD` printed `656ce032803b42da7a771185ce0016b5364f433f`;
+  - "this prompt's commit is on the live branch", "A1's code head", "no code on the live branch after bc0675d" and "A1's base is in this checkout" printed;
+  - `grep -c` printed `1` for "Exact-head review of A1" and `0` for "A1-C1".
+- **Read before any change:** root `AGENTS.md` and `CLAUDE.md`; `services/api/README.md`'s setup and checks; this record's "A1", "Manager verification of A1" and "Exact-head review of A1"; the brief's D5, D6, D11, "Owned paths" and "Acceptance checks"; `test_interactions_offline.py` from `git()` to the end of `ReciprocalWriterTests`, with its constants; `test_match_versions_offline.py` whole; `chat_reads.py`'s module docstring; `reads.py`'s module docstring, `readable`, `_history`, `_causes` and `_authorize`.
+- **`main_base()`'s users,** searched at the prompt's commit (`grep -rn main_base --include=*.py`): only the two history tests.
+
+### What was changed, by item
+
+**AR-1: the history tests read A1's base** (`services/api/tests/test_interactions_offline.py`).
+- `main_base()` is removed: nothing else used it.
+- A new constant, `A1_BASE = "499ccbbec758ed4ef34a93ad19fa8df454fb095c"`, sits where `main_base()` was, with a comment naming it (PR57's merge, SV4 A0, the commit A1 starts from) and saying that the history tests read `contact.py` there, never at `main` or `origin/main`.
+- Each history test checks for the commit (`git cat-file -e 499ccbb…^{commit}`, with `git` missing or timing out read as absent), skips with the reason "A1's base 499ccbbec758ed4ef34a93ad19fa8df454fb095c is not in this checkout (CI's shallow clone); the comparison runs wherever that commit is present", and otherwise reads the file with `git show 499ccbb…:services/api/glow_chat/contact.py`. `fetch-depth` does not change.
+- The tests, renamed to name A1's base:
+
+  | Old name | New name |
+  |---|---|
+  | `test_every_writer_at_mains_base_is_unchanged_but_a1s` | `test_every_writer_at_a1s_base_is_unchanged_but_a1s` |
+  | `test_block_differs_from_mains_by_d3s_statement_and_d4s_value` | `test_block_differs_from_a1s_base_by_d3s_statement_and_d4s_value` |
+
+- **Every assertion stays**, against the base. A script compared the class at the prompt's commit with the class at the code head, by AST: the first test makes 12 assertions before and after, the second 7, each identical (the first test's local tree renamed from `main` to `base`); every statement after each test's `git show` is the same; the class's four other tests are unchanged. The first test's two comments say "the base's" where they said "main's".
+- `ReciprocalWriterTests`' docstring says what the class compares with: the digest test needs no history, so CI runs it (SV3's digests from `947576d` and A1's at its head, so any later change fails); the two history tests read `A1_BASE`, never `main`, so they pass before and after A1's merge, and run wherever that commit is present (CI's shallow clone skips them).
+- The comment above `MAIN_DEFINITION_DIGESTS`: "so the comparison runs without main's history (CI's shallow clone)" became "so the digest test needs no history and runs in CI's shallow clone; the history tests read A1's base (`A1_BASE`) wherever that commit is in the checkout". The rest of the comment and the digests are unchanged.
+- Codex's P1 thread on PR58 ("Pin the history comparisons to the pre-A1 revision", line 1389 at `4618859`) names the same defect; this fix answers it. The thread was not replied to or resolved.
+
+**AR-2: the detector's claim** (`services/api/tests/test_match_versions_offline.py`, the module docstring's passage from "Read from the source" to "Each must be one of the pinned writers," and `WriterDetectorTests`' docstring).
+- The module docstring keeps the list of the forms the detector finds, and that `WriterDetectorTests` shows each is found.
+- A new paragraph names the forms that escape it: a related manager's `update`, or an `aupdate`; a `Match(..., version=...)`, or a `bulk_create` of such objects; SQL text whose table name is built at runtime or held in a constant; a match obtained through a helper such as `glow_discovery.interactions._pair_match`; a `save()` override or a signal; and `Match` imported under another name. It says the pinned set is today's every writer by the A1 review's and the manager's searches of the code, not by the detector alone, and that the detector's reach is carried (the carried-items file, "Carried to SV4"; AR-4).
+- "cannot miss one" is gone, with every other sentence that claimed the detector is complete. `WriterDetectorTests`' docstring now reads: "each form the module's docstring lists as found is found. It shows nothing of the forms that escape (AR-4)."
+- **The named forms checked:** a scratch script outside the checkout ran the unchanged detector (`writes`) on one example of each of the ten forms named; it found none of them (`missed []` for each).
+- No assertion, detector or test changed: `ast.dump` of the module with every docstring removed is the same at the prompt's commit and at the code head. The module still has 5 tests, all passing.
+
+**AR-3: the read port's rule** (`services/api/glow_domain/chat_reads.py`, the module docstring's paragraph "Whatever refuses a send refuses a read", only).
+- The paragraph now states the rule `glow_chat.reads` applies (its module docstring, `_authorize`, `_causes` and `readable`; the brief's D5). The history read, the list and the read-cursor command check rows read under the send's shared locks, in the send's order:
+  - the reader's valid, current session of an `active` account;
+  - the match `active`, with no block either way;
+  - the other account `active` or `suspended` (`READABLE_OTHER_STATES`); a deletion works as an unmatch, and a `removed` profile is hidden;
+  - then each cause reads its value in `chat.history`: either member's pause, with SV2's `incomplete` read as one; a restriction of either profile; the other's suspension; either member's withdrawn consent. At launch each cause reads `read_only` (the launch default in `profile_settings.py`), which serves the conversation read-only; `hidden`, as the setting says, refuses it; the consent limit fails closed;
+  - every hidden cause refuses with one reason, which names no cause.
+- It points to `glow_chat.reads`' module docstring for the rule and its causes in full, and names `glow_domain.chat_projections.error_for` as the mapping to the served code, with no other claim about the codes. It names no grant and no open history question. Its heading keeps "point c", which the module's first line cites, "as the SV4 brief's D5 revises it".
+- Nothing else in the module changed: `ast.dump` with every docstring removed is the same at the prompt's commit and at the code head, and `git diff` touches only that paragraph.
+
+### Proofs and reversals
+
+Each ran in a scratch clone outside the checkout, under `env -i` with `GLOW_ENV=test`, with the session's virtual environment (installed from `requirements-dev.lock` with `--require-hashes`), as `manage.py test tests.test_interactions_offline.ReciprocalWriterTests -v 2`.
+
+| Proof | Set-up | Result |
+|---|---|---|
+| (a) A1 on `main` | `git clone --no-local`, remote removed, `HEAD` at `f69529c`, local `main` at `bc0675d` | `Ran 6 tests … OK`; both history tests `... ok` |
+| (a), at A1's head | the same, `HEAD` at `bc0675d` | `Ran 6 tests … FAILED (failures=2)`: `test_block_differs_from_mains_by_d3s_statement_and_d4s_value` and `test_every_writer_at_mains_base_is_unchanged_but_a1s` (AR-1, as the manager reproduced it) |
+| (b) Before the merge | the same, `HEAD` at `f69529c`, local `main` at `499ccbb` | `Ran 6 tests … OK`; both history tests `... ok` |
+| (c) CI's clone | `git clone --depth 1` of `f69529c` (shallow: `true`; `499ccbb` absent) | `Ran 6 tests … OK (skipped=2)`: both history tests `skipped "A1's base 499ccbbec758ed4ef34a93ad19fa8df454fb095c is not in this checkout (CI's shallow clone); the comparison runs wherever that commit is present"`; the other four `... ok` |
+
+**Reversals,** in clone (b), with `499ccbb` present. Each edited a copy of `contact.py`, ran the class and restored the file from a saved copy; its SHA-256 (`06e36c67…`) was checked equal after each, and the clone's `git status` was clean.
+
+| Reversal | The history test that failed | Also failed (expected) |
+|---|---|---|
+| (r1) A1's `retired_at` statement removed from `block` | `test_block_differs_from_a1s_base_by_d3s_statement_and_d4s_value`, line 1514: "Lists differ: [('replace', 1, 1)] != [('insert', 0, 1), ('replace', 1, 1)]" | `test_block_is_mains_with_one_statement_inserted_and_one_value_changed` (line 1458, "0 != 1"); `test_every_writer_is_pinned_by_its_digest` (`OrmContactPersistence.block`, line 1439, and the module, line 1452). `FAILED (failures=4)` |
+| (r2) one statement (`self._signal(tx.probe, "before_unblock")`) added to `unblock` | `test_every_writer_at_a1s_base_is_unchanged_but_a1s`, subtest `OrmContactPersistence.unblock`, line 1389 (the `ast.dump` comparison) | `test_every_writer_is_pinned_by_its_digest` (`OrmContactPersistence.unblock`, line 1441, and the module, line 1452). `FAILED (failures=3)` |
+
+### Commands and results
+
+At the code head, in the checkout, under `env -i` (with `GLOW_ENV=test` for Django), after `pip install --require-hashes -r requirements-dev.lock` in `services/api` (`pip check`: "No broken requirements found."):
+- `manage.py check`: "System check identified no issues (0 silenced)."
+- `manage.py test tests`: `Ran 654 tests … OK`, no skips. At the prompt's commit, in the same checkout: `Ran 654 tests … OK`, no skips. In both the history tests ran: before, because the checkout held a local `main` at `499ccbb`; after, because it holds `499ccbb`. In CI's shallow clone both skip, before and after.
+- `ruff check .`: "All checks passed!"; `ruff format --check .`: "169 files already formatted"; `mypy`: "Success: no issues found in 95 source files".
+- **The trusted classifier,** `main`'s `scripts/change_scope.py` (`499ccbb`; SHA-256 `b564c62f4a076f51…`), extracted to a scratch directory outside the checkout and run from it as `python3 -I <copy>/change_scope.py --base 499ccbbec758ed4ef34a93ad19fa8df454fb095c --head f69529c0594889d26caa19eccfe6b7eda73bee56 --merge-base`: `"full": true`, reason `behavior-or-empty`. `git merge-base --all` gives one base, `499ccbb`.
+- **The diff:** `git diff --name-only 656ce03 f69529c` lists the three files; this section is the records commit's only change. `ast.dump` with docstrings removed is unchanged for `chat_reads.py` and `test_match_versions_offline.py`.
+- **GitHub** was read only with `gh api` REST `GET` calls (the session has no GitHub MCP tools): the run's status and jobs, and job logs.
+
+### The run of record
+
+**Foundation run [45001765683](https://github.com/amthorn78/glow-dating-app/actions/runs/45001765683)** on `f69529c0594889d26caa19eccfe6b7eda73bee56` (a push run, attempt 1) concluded **success**. It was created at 08:13:09 UTC on 22 November 2026 and its gate finished at 08:20:25, 7 minutes 16 seconds in all. Nothing was pushed to the branch until it had finished. Read with `gh api` REST `GET` (the run, its jobs, and the gate's and the API checks job's logs, by `grep` for the lines below only).
+
+| Job | Conclusion | Duration |
+|---|---|---|
+| Change scope | success | 4 s |
+| API checks | success | 68 s |
+| Mobile checks | success | 418 s |
+| API mobile smoke | success | 68 s |
+| API artifact checks | success | 22 s |
+| Stream proof checks | success | 73 s |
+| Database proof checks (ordering) | success | 420 s |
+| Database proof checks (identity) | success | 98 s |
+| Database proof checks (profile) | success | 145 s |
+| Database proof checks (discovery) | success | 197 s |
+| Foundation gate | success: "Application checks passed" | 5 s |
+
+- **The API checks job** checked out the session branch (`git checkout --progress --force -B claude/beautiful-brahmagupta-13ncpo …`, log line 114), at the default depth. `manage.py test` gave `Ran 654 tests … OK (skipped=2)`: the two skips are the history tests, each `skipped "A1's base 499ccbbec758ed4ef34a93ad19fa8df454fb095c is not in this checkout (CI's shallow clone); …"` (log lines 1800 and 1802), and `test_every_writer_is_pinned_by_its_digest ... ok` (line 1803). The contract tests gave `Ran 53 tests … OK`.
+- **Not read:** the other jobs' logs and the artifacts. The durations are from the jobs' timestamps, in whole seconds.
+
+### What C1 changes in section "A1"
+
+- **A1's limit on `ReciprocalWriterTests`** (line 1093: "A later change to `contact.py` fails `ReciprocalWriterTests` by design") now holds. The history tests compare with A1's base, so a later change to `contact.py` fails them (reversal r2), and A1's merge does not (proof (a)). The digest test held it already.
+- **The detector's forms in line 917** stand. The forms it misses are now in the module's docstring, and the pinned set rests on the searches (AR-4, carried).
+
+### Limits and deviations
+
+- **The prompt as given:** Nathan's message to this session was "resume", with no prompt text. The session read A1-C1's prompt, revision 2, from the live manager branch, and took `<START_SHA>` to be `656ce03…`: the commit that holds revision 2, its last change on the branch (the branch's head, `52b0d13`, holds the same file). The start gate passed against it.
+- **The environment's network is unrestricted** (`get_environment`), not limited to PyPI. The session used PyPI for the API's lock only, GitHub for its push and its reads, and no other host.
+- **Wording outside the owned passages, left unchanged.** The work needs neither line, and neither is a claim the tests fail:
+  - `test_interactions_offline.py`'s module docstring (line 21) still says "``block`` differs from main's by D3's one statement and D4's one value"; `main` there was A1's base, which the history test now names;
+  - the digest test's comment (line 1426) says "The same comparison without main's history".
+  - `test_block_is_mains_with_one_statement_inserted_and_one_value_changed` keeps its name (AR-7, carried).
+- **The history tests skip outside a Git checkout too** (no `git`, or not a repository), as `main_base()` did; only where `499ccbb` is present do they run.
+- **The named escaping forms were checked on examples,** one each, against the unchanged detector; the list is not complete ("among them").
+
+### Manager verification of A1-C1 (App Manager 13, 22 November 2026)
+
+- **The branch:** `claude/beautiful-brahmagupta-13ncpo`, code head `f69529c`, records head `7b194aa` (the record only), both after the prompt's commit `656ce03`, which the branch starts at. The manager branch had moved on (`dfdca34`, `52b0d13`, records only), so it took C1 by a merge, `9947844`, whose non-Markdown paths equal `f69529c`'s.
+- **The diff** from `656ce03` to the code head: the three files the prompt names, and nothing else; the records commit changes only this record. Read in full: in `test_interactions_offline.py`, `main_base()` removed, `A1_BASE` added, the two history tests renamed and reading `A1_BASE`, every assertion kept, and the class's docstring and the comment above `MAIN_DEFINITION_DIGESTS` rewritten; in `test_match_versions_offline.py`, the module docstring's passage and `WriterDetectorTests`' docstring only; in `chat_reads.py`, the one paragraph only.
+- **AR-3's paragraph,** read against `glow_chat/reads.py`'s module docstring, `PAUSED_STATES` and `READABLE_OTHER_STATES` at the code head: it states the same conditions and causes, names no grant and no open question, and makes no claim about the served codes beyond naming `error_for`.
+- **The trusted classifier,** `main`'s `scripts/change_scope.py` (`499ccbb`; sha256 begins `b564c62f4a076f51`), extracted outside the checkout and run from it with `python3 -I --base 499ccbb… --head 9947844… --merge-base`: `"full": true`, reason `behavior-or-empty`; one merge base, `499ccbb`.
+- **Re-run by the manager,** in a scratch clone (`git clone --no-local`, remote removed) with the API's hash-locked environment, under `env -i` with `GLOW_ENV=test`, `ReciprocalWriterTests`, verbose:
+  - `HEAD` at `f69529c`, local `main` at `bc0675d`: `Ran 6 tests … OK`, both history tests `... ok`;
+  - A1 merged into `main`, simulated (a local `main` at `499ccbb` with `f69529c` merged into it, `HEAD` on that merge): `Ran 6 tests … OK`, both history tests `... ok`, so the first push run after PR58's merge no longer depends on them;
+  - `HEAD` and `main` at `bc0675d` (A1 itself): `FAILED (failures=2)`, AR-1 as reported.
+- **The run of record,** Foundation run 45001765683 (event `push`, head `f69529c`, attempt 1), read with `gh api` (`GET` only): all eleven jobs succeeded; the API checks job's log has `Ran 654 tests … OK (skipped=2)`, the two skips the history tests with their stated reason, and the digest test `ok`; the gate's log has "Application checks passed". The records commit's push run, 45002425276, succeeded too.
+- **The session's deviations, accepted:** it was started with "resume" in place of the prompt's text and read revision 2 from the live branch, using `656ce03`, the commit that holds it, as `<START_SHA>`; the prompt it followed is the one given. It read GitHub with `gh api` `GET` calls, as revision 2 allows. Its environment's network is unrestricted (the manager's `get_environment` of `Glow App - No Stream` shows the same; the environment inventory now records it); it used PyPI and GitHub only.
+- **The stale wording C1 left outside its owned passages** (its "Limits and deviations"): the module docstring's "``block`` differs from main's" (line 21), the digest test's comment "without main's history" (line 1426) and the name `test_block_is_mains_…` (AR-7). Each now reads "main's" where it means A1's base or SV3's `947576d`; none is a claim a decision rests on. **Carried** with AR-7, to SV4 A2 if it changes the file, otherwise the next change to it (the carried-items file, "Carried to SV4").
+- **Codex's P1 thread on PR58** (comment 4657212763, posted on `998116b` at 07:40:57 UTC, line 1389; corrected after C1's delta review, N5, AM13-01) names AR-1; C1 answers it. It stays unresolved until Codex's review of the new head and C1's delta review confirm the fix.
+
+### Delta review of A1-C1 (22 November 2026)
+
+- **Session:** C1's delta review, started by Nathan from [its prompt](https://github.com/amthorn78/glow-dating-app/blob/ff17c6131f7d04b845c645bce330afd5b8b95014/docs/ephemeral/2026-11-22-sv4-a1-c1-delta-review-prompt.md), revision 1, from `ff17c61`; its report relayed to App Manager 13 on 22 November 2026. It read GitHub with `gh api` REST `GET` calls only (no GitHub tools in its session).
+- **Its start gate, classification and environment check:** every check passed (`HEAD` `ff17c61`; one merge base, `499ccbb`; the prompt's commit on the live branch; the code equal to `f69529c` at `HEAD` and on the live branch; no delta review recorded). `main`'s classifier (sha256 begins `b564c62f4a076f51`), extracted outside the checkout and run from it with `python3 -I --merge-base`: `"full": true`, reason `behavior-or-empty`. None of the three HDE names and no `STREAM_*`, `PG*`, `R2_*`, `CLOUDFLARE_*`, `CF_*` or `RAILWAY_*` name; the AWS and GitHub token names present, never read.
+- **Verdict: changes requested,** for one should-fix finding in a correction class (D1-1). AR-1 and AR-3 are answered in full; nothing was weakened; every test, reversal and run claim it checked holds.
+- **What it verified:**
+  - **AR-1:** with A1 merged into a local `main` (and `origin/main`) at `499ccbb`, `ReciprocalWriterTests` passes, both history tests run; with `656ce03`'s tests in that merged tree, `FAILED (failures=2)`; with no `main` ref at all, it passes; in a `--depth 1` clone both skip with their reason. The file's only `git` calls are `cat-file -e A1_BASE^{commit}` and `show A1_BASE:…`. By AST, the history tests keep their 12 and 7 assertions (the local renamed `main` to `base`), the other four tests and `setUp` are unchanged, and `MAIN_DEFINITION_DIGESTS` is unchanged.
+  - **The history tests still catch their targets:** ten reversals, r1 to r10, each failing (r10, a change to `block`'s docstring, fails the digest test only, by design); r1 and r2 match the record's lines and messages; r1 to r3 fail the same way after the simulated merge.
+  - **AR-2, partly:** "cannot miss one" is gone; the ten escaping forms named each escape; the pinned set rests on the searches with AR-4 carried; the code is unchanged without docstrings. But D1-1.
+  - **AR-3:** the paragraph matches `reads.py`'s rule condition by condition, `LAUNCH_DEFAULTS`' `read_only` included; it names no grant, no open question, nothing about the codes beyond `error_for`. Three fail-closed details are left out (N3).
+  - **Nothing outside:** only the three files; no assertion removed or loosened.
+  - **The workflow:** the API checks job checks out at depth 1, so `main`'s push run after the merge fetches only the merge commit and the history tests skip.
+- **Its checks,** in a scratch clone of `f69529c` with the hash-locked install: `Ran 654 tests … OK` (with `499ccbb`), `Ran 654 tests … OK (skipped=2)` (depth 1); Ruff "All checks passed!", format "169 files already formatted", mypy "no issues found in 95 source files".
+- **The runs:** the run of record 45001765683 and the records-head run 45002425276, as recorded; PR58's run 45002885670 (`pull_request`, `ff17c61`): all eleven jobs succeeded, its API checks job (`refs/remotes/pull/58/merge`, `f8fa7e4`, depth 1) `Ran 654 tests … OK (skipped=2)`, the gate "Application checks passed" at 08:35:15 UTC; the push run 45002880812 succeeded. Codex's code review of `ff17c61` completed at 08:29 UTC with no findings and no new thread; the P1 thread (comment 4657212763) stays unresolved, now at line 1382.
+
+**Its findings** (in its words, shortened):
+
+| ID | Severity | Where (at `f69529c`) | Finding |
+|---|---|---|---|
+| D1-1 | **Should fix** (a correction class) | `tests/test_match_versions_offline.py`, line 8; the record's "A1-C1", AR-2's third bullet | "a detector scans every function in the API's code" claims more than `functions()` (lines 53 to 63) does: it collects only top-level `def` functions and the `def` methods of top-level classes, so an `async def` function or method, or a method of a nested class, is never scanned. Three probes of listed forms in those positions gave `found={}`. The API has no `async def` today, so D6's check holds; but the carried AR-4 item tells A2 to keep its writers to the forms the detector finds |
+| N1 | Nit | The same file, line 15 and lines 240 to 241 | "`WriterDetectorTests` shows each of these forms is found": the save form's one example also writes `match.version += 1`; with the save branch deleted from `writes`, `WriterDetectorTests` still passes and `MatchVersionTests.test_each_writer_advances_both_by_one_and_saves_both` fails for both writers |
+| N2 | Nit | The same file, lines 17 to 24 | A match from a helper and a `save()` override escape only for `version`; a `contact_version` assignment through either is found (the safe direction). Line 24 is a ragged wrap |
+| N3 | Nit | `glow_domain/chat_reads.py`, lines 10 to 22 | Three refusals left out, all on the refusing side: a missing profile refuses as hidden; a missing key or any value but `read_only` reads `hidden`; an unresolvable `chat.history` refuses with the store's reason. "valid, current session" shortens "valid, unexpired, at the reader's epoch" |
+| N4 | Nit | The record's "What C1 changes in section A1", first bullet | "a later change to `contact.py` fails them": some later changes fail only the digest test (the module docstring, `activate_reciprocal`, `_lock_shared`, `block` outside its inner body; its r10). Line 1093's limit holds by the digest test, which CI runs |
+| N5 | Nit | The record's "A1-C1" and "Manager verification of A1-C1", and C1's prompts | Codex's P1 thread is cited at `4618859`; it was posted on `998116b` (review 6011084956, 07:40:57 UTC, `original_line` 1389), before `4618859` existed. Both carry `bc0675d`'s code, so the line is right |
+
+**What it did not read or run:** the logs of the jobs other than API checks and the gates, and the artifacts; the database, mobile and proof suites (C1 changes none); AR-1 at `bc0675d` itself (the control with `656ce03`'s tests stands in); the rest of `test_interactions_offline.py`; the documentation map, PF00, PF01 and the handoff.
+
+**The manager's check** (App Manager 13): D1-1 read in the code. `functions()` (lines 53 to 63 at `f69529c`) walks `tree.body` for `ast.FunctionDef` and, inside each top-level `ast.ClassDef`, for `ast.FunctionDef`; a top-level `ast.AsyncFunctionDef` and a class nested in a top-level class are never reached (anything nested inside a scanned function is read with it, through `writes()`' `ast.walk`). No module the detector scans holds an `async def` (the manager's search of `services/api`, its tests, migrations and virtual environment left out).
+
+**Disposition** (App Manager 13; the manager workflow's step 6, under D-07):
+
+| Finding | Disposition | Why |
+|---|---|---|
+| D1-1 | **Fixed before the merge**, by correction A1-C2 (the module docstring's passage only) | A false claim at the detector boundary, the same class as AR-2, which A2 relies on through the carried AR-4 item. Docstrings only: no design, interface, contract or dependency changes, so it goes on the list for the Dev Manager's pre-merge read |
+| N1, N2 | **Fixed with D1-1**, in the same passage | N1's sentence claims more than `WriterDetectorTests` shows, by the review's reversal; N2's precision and wrap are in the lines C2 rewrites. Neither would take a correction alone |
+| N3 | **Carried**, with AR-5, to SV4 A2, which wires `chat_reads` (the carried-items file, "Carried to SV4") | Every omission is on the refusing side, and the paragraph points to `glow_chat.reads` for the rule in full; it never says a refused reader is served |
+| N4 | **Recorded here** | The session's record wording; the conclusion it supports holds by the digest test |
+| N5 | **Corrected** in "Manager verification of A1-C1" (AM13-01). C1's prompts, already run, stay as they were; the record carries the correct commit | The manager's citation, from Codex's summary comment rather than the thread's own commit |
+
+The carried AR-4 item now names `async def` functions and methods, and methods of nested classes, among the forms the detector misses.
+
+## A1-C2
+
+- **Session:** SV4 A1's correction session A1-C2, started by Nathan from A1-C2's prompt (`docs/ephemeral/2026-11-22-sv4-a1-c2-correction-prompt.md`), revision 1, from `63aebb6f21dd9a19d8b9fc8f376e6673f8780c0d` of the manager branch `claude/magical-wozniak-yfmmx2`. The findings are D1-1, N1 and N2 of "Delta review of A1-C1", above, as the manager disposed them.
+- **Branch:** `claude/affectionate-pasteur-ge2jra`, which the push filter's `claude/**` covers. It starts at the prompt's commit.
+- **Code head:** `934da48e74150934b364421a3570f61b6f568f72`. **Records head:** the commit that adds this section, pushed after the code head's run had finished.
+- **What C2 changes:** two docstrings in `services/api/tests/test_match_versions_offline.py` (the module docstring's passage from "Read from the source" to "Each function the detector finds must be one of the pinned writers," and `WriterDetectorTests`' docstring), and this section. No code, detector, test, assertion, application behaviour, workflow, setting, contract or proof changes.
+
+### The start gate and the environment check
+
+- **The environment** (section 1, names only):
+  - none of `DATABASE_URL`, `HD_API_KEY` or `GEO_API_KEY`;
+  - no `STREAM_*`, `PG*`, `R2_*`, `CLOUDFLARE_*`, `CF_*` or `RAILWAY_*` name;
+  - the AWS names present: `AWS_ACCESS_KEY_ID`, `AWS_CA_BUNDLE` and `AWS_SECRET_ACCESS_KEY` (OD-76). None was read, printed or passed to a command;
+  - the GitHub token names present: `GH_TOKEN` and `GITHUB_TOKEN`. Neither was read;
+  - the toolchain: `Python 3.12.14` (`python3.12`);
+  - every repository command ran under `env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8`, plus `GLOW_ENV=test` for the API's Django commands.
+- **The start gate** (section 2), at about 09:00 UTC on 22 November 2026:
+  - `git rev-parse HEAD` printed `63aebb6f21dd9a19d8b9fc8f376e6673f8780c0d`;
+  - "this prompt's commit is on the live branch", "C1's code head" and "no code on the live branch after f69529c" printed. The live branch's head was `01c7fe9`, after the prompt's commit, with no non-Markdown change after `f69529c`;
+  - `grep -c` printed `1` for "Delta review of A1-C1" and `0` for "A1-C2".
+- **Read before any change:** root `AGENTS.md` and `CLAUDE.md`; this record's "A1-C1", "Manager verification of A1-C1" and "Delta review of A1-C1"; `test_match_versions_offline.py` whole.
+
+### The passage, before and after
+
+**Before** (module docstring, lines 8 to 24 at the prompt's commit):
+
+```text
+Read from the source and never run: a detector scans every function in the API's code (its
+tests, migrations and virtual environment left out) for these forms of a write to either field
+of a match: an assignment to an object's ``contact_version``; an assignment to the ``version`` of
+a name bound to a ``Match`` or a queryset of them (assigned from ``Match.objects...`` or
+``self._lock(Match, ...)``, looped over, or a parameter annotated ``Match``); a ``save`` of such
+an object naming either field; a writing queryset or manager call (``update``, ``create``,
+``bulk_update`` and the rest) on one, naming either; or SQL text that writes
+``glow_persistence_match``. ``WriterDetectorTests`` shows each of these forms is found.
+
+Other forms escape it, among them: a related manager's ``update``, or an ``aupdate``; a
+``Match(..., version=...)``, or a ``bulk_create`` of such objects; SQL text whose table name is
+built at runtime or held in a constant; a match obtained through a helper such as
+``glow_discovery.interactions._pair_match``; a ``save()`` override or a signal; and ``Match``
+imported under another name. So the pinned set below is today's every writer by the A1 review's
+and the manager's searches of the code, not by the detector alone; the detector's reach is
+carried (the carried-items file, "Carried to SV4"; the exact-head review's AR-4). Each function
+the detector finds must be one of the pinned writers,
+```
+
+**After** (lines 8 to 31 at the code head; line 32, "and each advances both by one …", continues it unchanged):
+
+```text
+Read from the source and never run: in each module of the API's code (its tests, migrations and
+virtual environment left out), a detector reads the top-level ``def`` functions and the ``def``
+methods of top-level classes, anything nested in one (an ``async def`` or a class among them)
+being read as part of it. In those it finds these forms of a write to either field of a match:
+an assignment to an object's ``contact_version``; an assignment to the ``version`` of a name
+bound to a ``Match`` or a queryset of them (assigned from ``Match.objects...`` or
+``self._lock(Match, ...)``, looped over, or a parameter annotated ``Match``); a ``save`` of such
+an object naming either field; a writing queryset or manager call (``update``, ``create``,
+``bulk_update`` and the rest) on one, naming either; or SQL text that writes
+``glow_persistence_match``. ``WriterDetectorTests`` shows each of these forms is found but the
+``save``, whose one example also assigns ``version``; the ``save`` is held instead by
+``MatchVersionTests``' check that each pinned writer saves both fields in one ``save``.
+
+Other forms escape it, among them: a function it does not read (a top-level ``async def``
+function, an ``async def`` method of a top-level class, or any method of a class nested in a
+top-level class); a related manager's ``update``, or an ``aupdate``; a
+``Match(..., version=...)``, or a ``bulk_create`` of such objects; SQL text whose table name is
+built at runtime or held in a constant; an assignment to the ``version`` of a match obtained
+through a helper such as ``glow_discovery.interactions._pair_match``, or made in a ``save()``
+override or a signal (an assignment to an object's ``contact_version`` is found however the
+object was obtained); and ``Match`` imported under another name. So the pinned set below is
+today's every writer by the A1 review's and the manager's searches of the code, not by the
+detector alone; the detector's reach is carried (the carried-items file, "Carried to SV4"; the
+exact-head review's AR-4). Each function the detector finds must be one of the pinned writers,
+```
+
+**`WriterDetectorTests`' docstring,** before (lines 240 and 241):
+
+```text
+"""The detector itself (the exact-head review lens of A1's own review): each form the module's
+docstring lists as found is found. It shows nothing of the forms that escape (AR-4)."""
+```
+
+After (lines 247 to 250):
+
+```text
+"""The detector itself (the exact-head review lens of A1's own review): each form the module's
+docstring lists as found is found, but the ``save``, whose one example also assigns
+``version``; ``MatchVersionTests`` holds the ``save``, by its check that each pinned writer
+saves both fields. It shows nothing of the forms that escape (AR-4)."""
+```
+
+### What was changed, by item
+
+- **D1-1, what the detector scans.** "scans every function in the API's code" is gone. The passage says the detector reads, in each module it scans, the top-level `def` functions and the `def` methods of top-level classes, anything nested in one (an `async def` or a class) read as part of it, as `functions()` and `writes()` do. The escape list now opens with the functions it does not read: a top-level `async def` function, an `async def` method of a top-level class, and any method of a class nested in a top-level class. No sentence says every function is scanned.
+- **N1, what `WriterDetectorTests` shows.** The module's sentence and the class's docstring now say its cases show every listed form but the `save`, whose one example also assigns `version`, and that the `save` is held by `MatchVersionTests`' check that each pinned writer saves both fields (`test_each_writer_advances_both_by_one_and_saves_both`). The two docstrings agree.
+- **N2, the escape list's precision.** A match obtained through a helper, a `save()` override and a signal now escape for an assignment to `version`, with the note that an assignment to an object's `contact_version` is found however the object was obtained. The passage is rewrapped to the module's width (96 characters at most); its one short line, "top-level class); a related manager's ``update``, or an ``aupdate``; a", is there because the literal ``` ``Match(..., version=...)`` ``` that follows is kept whole.
+- **Kept:** the list of the forms the detector finds, word for word but its opening clause; the other escaping forms; that the pinned set rests on the A1 review's and the manager's searches, not the detector alone; that the detector's reach is carried (the carried-items file; AR-4); the closing "Each function the detector finds must be one of the pinned writers,", which line 32 continues.
+
+### Probes and the reversal
+
+Each ran the unchanged detector (`functions()` then `writes()`, loaded from the checkout's module at the prompt's commit) on source in a scratch file outside the checkout, with the session's hash-locked virtual environment, under `env -i`. The listed form in p1 is `match = self._lock(Match, pk)` then `match.version += 1`.
+
+| Probe | Source | Output | Expected |
+|---|---|---|---|
+| p1a | the form in a top-level `async def f(self, pk)` | `scanned=[] found={}` | found nothing: yes |
+| p1b | the form in an `async def` method of a top-level class `C` | `scanned=[] found={}` | found nothing: yes |
+| p1c | the form in a `def` method of class `D` nested in top-level class `C` | `scanned=[] found={}` | found nothing: yes |
+| p1d | the form in an `async def f` nested in a top-level `def g()` | `scanned=['g'] found={'g': ['match.version += 1']}` | found: yes |
+| p2a | `obj = _pair_match(a, b)` then `obj.contact_version = 2` | `found={'f': ['obj.contact_version = 2']}` | found: yes |
+| p2b | `self.contact_version = 2` in `Match.save()` (an override) | `found={'Match.save': ['self.contact_version = 2']}` | found: yes |
+| control | the same two, assigning `version` | `{'f': []}` and `{'Match.save': []}` | escape: yes |
+| signal | a `@receiver(post_save, ...)` function assigning `instance.match.version += 1`, then `instance.match.contact_version += 1` | `{'h': []}`, then `{'h': ['instance.match.contact_version += 1']}` | escape for `version`, found for `contact_version` (the basis for "or a signal" in N2's clause) |
+
+**The reversal (p3).** The module was copied to a scratch directory outside the checkout; on the copy, the save branch of `writes` (the three lines from `if node.func.attr == "save" ...`, line 160) was deleted, and `API_ROOT` was pointed at the checkout's `services/api` so the copy reads the same sources (`diff` showed only those two changes). `python -m unittest -v` on the copy: `Ran 5 tests … FAILED (failures=2)`. Both `WriterDetectorTests` tests `... ok`; `test_both_fields_start_at_one` and `test_the_writers_of_either_field_are_the_pinned_ones` `... ok`; `test_each_writer_advances_both_by_one_and_saves_both` failed for both subtests, `OrmContactPersistence.block` and `OrmContactPersistence.unmatch`, at its last assertion (the found lines lack the `match.save(update_fields=[...])` line). The copy was deleted afterwards; the checkout's `git status` showed no change.
+
+### Commands and results
+
+At the code head, in the checkout, under `env -i` (with `GLOW_ENV=test` for Django), after `pip install --require-hashes -r requirements-dev.lock` in `services/api` (`pip check`: "No broken requirements found."):
+- `manage.py check`: "System check identified no issues (0 silenced)."
+- `manage.py test tests`: `Ran 654 tests … OK`, no skips (this checkout holds `499ccbb`, so the history tests ran).
+- `manage.py test tests.test_match_versions_offline -v 2`: the module's 5 tests, each `... ok`.
+- `ruff check .`: "All checks passed!"; `ruff format --check .`: "169 files already formatted"; `mypy`: "Success: no issues found in 95 source files".
+- **The trusted classifier,** `main`'s `scripts/change_scope.py` (`499ccbb`; SHA-256 begins `b564c62f4a076f51`), extracted to a scratch directory outside the checkout and run from it as `python3 -I <copy>/change_scope.py --base 499ccbbec758ed4ef34a93ad19fa8df454fb095c --head 934da48e74150934b364421a3570f61b6f568f72 --merge-base`: `"full": true`, reason `behavior-or-empty`. `git merge-base --all` gives one base, `499ccbb`.
+- **The diff:** `git diff --name-only 63aebb6 934da48` lists only `services/api/tests/test_match_versions_offline.py`; `git diff` touches only the two docstrings; this section is the records commit's only change. `ast.dump` of the module with every docstring removed is equal at `63aebb6` and at `934da48` (`True`); with docstrings it differs, as it must.
+- **GitHub** was read only with `gh api` REST `GET` calls (no GitHub MCP tool was used): the run, its jobs, and the gate's and the API checks job's logs.
+
+### The run of record
+
+**Foundation run [45006396587](https://github.com/amthorn78/glow-dating-app/actions/runs/45006396587)** on `934da48e74150934b364421a3570f61b6f568f72` (a push run on `claude/affectionate-pasteur-ge2jra`, attempt 1) concluded **success**. It was created at 09:12:24 UTC on 22 November 2026 and finished at 09:21:31. Nothing was pushed to the branch until it had finished.
+
+| Job | Conclusion | Duration |
+|---|---|---|
+| Change scope | success | 5 s |
+| API checks | success | 85 s |
+| Mobile checks | success | 422 s |
+| API mobile smoke | success | 65 s |
+| API artifact checks | success | 25 s |
+| Stream proof checks | success | 67 s |
+| Database proof checks (ordering) | success | 532 s |
+| Database proof checks (identity) | success | 96 s |
+| Database proof checks (profile) | success | 158 s |
+| Database proof checks (discovery) | success | 227 s |
+| Foundation gate | success: "Application checks passed" (log line 94) | 3 s |
+
+- **The API checks job:** `Ran 654 tests … OK (skipped=2)` (log lines 2175 and 2177; the two skips are the history tests in CI's shallow clone, as C1 recorded), and the contract tests `Ran 53 tests`.
+- **Not read:** the other jobs' logs and the artifacts. The durations are from the jobs' timestamps, in whole seconds.
+
+### Limits and deviations
+
+- **"or a signal" in N2's clause.** The prompt names the helper and the `save()` override as escaping only for `version`. The old list also named a signal; a probe showed a signal receiver is the same case (its `contact_version` assignment is found, its `version` assignment escapes), so the clause covers it too, rather than leave a signal listed as escaping for both.
+- **One short line** in the rewrapped passage (above, N2), forced by keeping the literal ``` ``Match(..., version=...)`` ``` unbroken.
+- **The reversal's copy** points `API_ROOT` at the checkout, a second edit beside the deleted branch, so that the copy outside the checkout reads the same sources.
+- **The probes** load the module from the checkout to call its functions; they read code, they do not decide review scope (the classifier did, from `main`'s copy).
+- **The escaping forms are checked on examples,** one each; the list stays "among them".
+- **The network was not restricted by the environment;** the session used PyPI for the API's lock and GitHub for its push and reads only.
+- **Nothing in the records commit was needed** to pass a check; no stop condition held.
+
+### Manager verification of A1-C2 (App Manager 13, 22 November 2026)
+
+- **The branch:** `claude/affectionate-pasteur-ge2jra`, code head `934da48`, records head `02ebfc7` (the record only), both after the prompt's commit `63aebb6`, which the branch starts at. The manager branch had moved on (`01c7fe9`, records only), so it took C2 by a merge, `860abe2`, whose non-Markdown paths equal `934da48`'s.
+- **The diff** from `63aebb6` to the code head: `services/api/tests/test_match_versions_offline.py` only, its module docstring's passage and `WriterDetectorTests`' docstring, read in full. `ast.dump` of the module with every docstring removed is the same at `63aebb6` and `934da48` (the manager's script).
+- **The claims, probed by the manager** on the unchanged detector (`934da48`'s module loaded from a scratch copy, under `env -i`): a listed form in a top-level `async def`, in an `async def` method of a top-level class and in a method of a class nested in a top-level class: nothing scanned, nothing found; the same form in an `async def` nested in a top-level `def`: found; `obj.contact_version = 3` on an object from a helper: found; `obj.version = 3` on the same object: not found. Each as the passage now says.
+- **The session's deviation, accepted:** it put "a signal" with the helper and the `save()` override, as escaping for `version` only, after its own probe showed a receiver's `contact_version` assignment is found; the prompt named only the two, and the old list had the signal, so the passage stays true.
+- **The trusted classifier,** `main`'s `scripts/change_scope.py` (`499ccbb`), extracted outside the checkout and run from it with `python3 -I --base 499ccbb… --head 860abe2… --merge-base`: `"full": true`, reason `behavior-or-empty`; one merge base, `499ccbb`.
+- **The run of record,** Foundation run 45006396587 (event `push`, head `934da48`, attempt 1), read with `gh api` (`GET` only): all eleven jobs succeeded; the API checks job's log has `Ran 654 tests … OK (skipped=2)`; the gate's log has "Application checks passed".
+
+### Delta review of A1-C2 (22 November 2026)
+
+- **Session:** C2's delta review, started by Nathan from [its prompt](https://github.com/amthorn78/glow-dating-app/blob/045014d54a4a6986f231482af0b81fa56ff0c2e2/docs/ephemeral/2026-11-22-sv4-a1-c2-delta-review-prompt.md), revision 1, from `045014d`; its report relayed to App Manager 13 on 22 November 2026. It read GitHub with `gh api` REST `GET` calls only (its session also offered GitHub MCP tools, which it did not use).
+- **Its start gate, classification and environment check:** every check passed (`HEAD` `045014d`; one merge base, `499ccbb`; the code equal to `934da48` at `HEAD` and on the live branch; no delta review recorded). `main`'s classifier (sha256 begins `b564c62f4a076f51`): `"full": true`, reason `behavior-or-empty`. None of the three HDE names and no `STREAM_*`, `PG*`, `R2_*`, `CLOUDFLARE_*`, `CF_*` or `RAILWAY_*` name; the AWS and GitHub token names present, never read. Its pip install alone was given the proxy and CA-bundle variables to reach PyPI, with `--only-binary=:all:`.
+- **Verdict: changes requested,** for one should-fix finding it placed in the prompt's correction class (a) (E-1). D1-1, N1 and N2 are otherwise answered.
+- **What it verified:** D1-1's sentence matches `functions()` and `writes()`' `ast.walk` but for E-1; N1 by eight reversals (the save branch deleted fails only the both-by-one test, for both writers; each other branch deleted fails exactly its form's example); N2 by 45 probes (all 14 listed escaping forms escape, all 13 found forms are found, the `contact_version` clause and C2's signal hold); the module's code unchanged without docstrings; every record claim it checked, the run's durations and log lines included.
+- **Its checks,** at `934da48` with the hash-locked install: `Ran 654 tests … OK`; Ruff, format (169 files) and mypy (95 files) clean; the module's 5 tests `ok`.
+- **The runs:** the run of record 45006396587, as recorded; PR58's run 45007614603 (`pull_request`, `045014d`; its API checks job on `refs/remotes/pull/58/merge`, `7bc4c09`, depth 1): all eleven jobs succeeded, `Ran 654 tests … OK (skipped=2)`, the gate "Application checks passed"; the push run 45007611048 succeeded. Codex's code review of `045014d` completed at 09:29:45 UTC with no findings; the P1 thread (comment 4657212763) unresolved, now at line 1382.
+
+**Its findings** (in its words, shortened):
+
+| ID | Severity | Where (at `934da48`) | Finding |
+|---|---|---|---|
+| E-1 | **Should fix** (the prompt's class (a)) | `test_match_versions_offline.py`, the module docstring, lines 8 to 11 and 21 to 23 | `functions()` (lines 60 to 70) keys what it finds by name, so of two `def`s with one name in a module or class only the later is read: a `@property` getter beside its setter, `@overload` stubs. A writer in the first of two `def f`, or in a property getter, gave `found={}`. Today's scanned code has one case, `glow_domain/interactions.py` lines 338 and 342 (`FixtureInteractionService.policy_version`), which writes neither field, so D6 holds. The passage says the detector reads "the `def` methods of top-level classes" and its list of functions it does not read leaves this out |
+| E-2 | Nit | The same passage | A parameter annotated `Match` binds the name only as the read function's own named parameter: a nested function's annotated parameter (though nested code is "read as part of it"), `*ms: Match`, a string annotation and `models.Match.objects…` escape. The wording is earlier text, and the list says "among them" |
+| E-3 | Nit (pre-existing, outside C2's paths) | `functions()`' docstring, line 61 | "Every top-level function and method": it skips `async def` and loses shadowed definitions. If E-1 is corrected, this line belongs with it |
+| E-4 | Nit | The same passage | Code under a top-level `if`, `try` or `with`, module-level statements and class-body statements are not read and not listed; "in those it finds" already implies it. None in the scanned code today |
+| E-5 | Nit | Lines 18 and 19, 249 and 250 | The `save` is "held by its check that each pinned writer saves both fields": what fails with the save branch deleted is the test's last assertion (the detector's output), not its text checks of the `save`; true of the test method as a whole |
+
+It also found two unlisted forms that escape, not raised as findings: a tuple-target assignment and a `setattr` of `contact_version`.
+
+**What it did not read or run:** the logs of jobs other than API checks and the gate, the artifacts and the push run's jobs; the database, mobile and proof suites; what earlier reviews covered.
+
+**The manager's check** (App Manager 13): E-1 read in the code. `functions()` assigns `found[node.name]` and `found[f"{node.name}.{item.name}"]`, so a second definition of a name replaces the first; `interactions.py` lines 338 and 342 hold the property's getter and setter.
+
+**Disposition** (App Manager 13):
+
+| Finding | Disposition | Why |
+|---|---|---|
+| E-1 | **Referred to the Dev Manager (DM-98, item 1)**, with A1's pre-merge read | The rule does not decide it (step 6, "Fix or carry, by rule"): under (a) it falls in the correction class the manager's prompt named ("a docstring claiming more than the code does, at the detector boundary"); under D-07 the reach of a static scan is carried, a correction being only for "a false claim that a decision or the merge would rest on", and D6's check rests on the searches. It is the third pass on one docstring's account of the detector. Recommended: carry, with the carried AR-4 item naming it; the alternative is a correction A1-C3 in the Dev Manager's words |
+| E-2 to E-5, and the two unlisted forms | **Carried** with AR-4 (the carried-items file, "Carried to SV4"), whatever E-1's disposition; E-3 moves with E-1 if E-1 is corrected | The reach of a static scan and records wording (D-07) |
+
+### Dev Manager 7's pre-merge read (DM-98, 22 November 2026)
+
+Dev Manager 7's report ([DM-98](../../continuity/dev-manager/reviews/2026-11-22-dm-98-sv4-a1-pre-merge-read.md); `8c587ac`, a read of `13487ba`) answers E-1 with option (a), carry, approved with AJ1 to AJ3: the workflow's step 6 says a review prompt's correction classes "are drawn from" D-07's three, so the prompt's wider class is read inside D-07, and the merge and D6's acceptance check rest on the searches, not the docstring (its own walk of the 103 scanned modules found one shadowed pair, `policy_version`, writing neither field, no `async def` at the walk's level, and nested classes that are all `Meta`). It approves the brief's revisions 4 to 7, A1 as settled (with AJ4, the environment inventory, and AJ5, recommended, the P11 plan), and C1, C2 and the manager's D-07 calls. E-1's disposition above is therefore **carried**, with E-2 to E-5, in the carried-items file's AR-4 entry as AJ1 and AJ2 word it; AJ3 puts D6's equality in front of P07's staff path. AJ1 to AJ5 are applied as given. The delta review prompts' correction classes were wider than D-07 (AM13-03).

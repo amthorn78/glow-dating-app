@@ -12,6 +12,7 @@ from __future__ import annotations
 import ast
 import contextlib
 import importlib
+import inspect
 import io
 import json
 import os
@@ -684,8 +685,9 @@ class DiscoveryPlanTests(unittest.TestCase):
                 for check in entry.checks
             }
 
-        # Stage A's own cases: those in neither Stage B's list nor B-C1's.
-        stage_a = covered(False, STAGE_B_CASES + B_C1_CASES)
+        # Stage A's own cases: those in neither Stage B's list nor B-C1's, nor SV4 A1's
+        # (re-pinned by A1, whose cases carry SV4's labels, D3 and D4 among them).
+        stage_a = covered(False, STAGE_B_CASES + B_C1_CASES + A1_CASES)
         for check in ("1", "2", "3", "4", "5", "6", "12", "13", "14"):
             with self.subTest(check=check):
                 self.assertIn(check, stage_a)
@@ -712,17 +714,27 @@ class DiscoveryPlanTests(unittest.TestCase):
         for decision in ("12", "D2", "D8", "D11", "D12", "D13", "D14", "F08", "F13"):
             with self.subTest(b_c1_decision=decision):
                 self.assertIn(decision, b_c1)
+        # SV4 A1's own cases: each names SV4-A1 and none of SV3's stages' checks, and together
+        # they carry D3, D4 and D6.
+        for entry in discovery_cases.CASES:
+            if entry.case_id in A1_CASES:
+                with self.subTest(a1_case=entry.case_id):
+                    self.assertIn("SV4-A1", entry.checks)
+                    self.assertFalse(STAGE_CHECKS & set(entry.checks))
+        self.assertEqual(covered(True, A1_CASES), {"SV4-A1", "D3", "D4", "D6"})
 
     def test_the_case_count_is_pinned(self) -> None:
         # Re-pinned by SV3 Stage B's item 6 (DM-73): Stage A's 40, and Stage B's 19 named below.
         # Re-pinned by Stage B's correction B-C1 (DM-74): B-C1's 7, named below, after Stage B's.
-        self.assertEqual(discovery_cases.CASE_COUNT, 66)
+        # Re-pinned by SV4 A1: A1's 4, named below, after B-C1's.
+        self.assertEqual(discovery_cases.CASE_COUNT, 70)
         self.assertEqual(len(discovery_cases.plan()), discovery_cases.CASE_COUNT)
         # C2's two new cases (the exact-head review's F1 and F2).
         for case_id in ("pages.one_snapshot_statements", "distance.choice_no_longer_offered"):
             self.assertIn(case_id, discovery_cases.plan())
         self.assertEqual(discovery_cases.plan()[40:59], STAGE_B_CASES)
-        self.assertEqual(discovery_cases.plan()[59:], B_C1_CASES)
+        self.assertEqual(discovery_cases.plan()[59:66], B_C1_CASES)
+        self.assertEqual(discovery_cases.plan()[66:], A1_CASES)
 
     def test_the_routes_are_the_apis(self) -> None:
         # Rewritten by SV3 Stage B's item 6 (DM-73): the exact routes Stage A's and Stage B's URL
@@ -817,6 +829,30 @@ B_C1_CASES = (
     "own_versions.recovery_like_after_undo",
     "own_versions.recovery_block_after_unblock",
 )
+# SV4 A1's cases (its brief's D3, D4 and D6), registered after B-C1's, in this order.
+A1_CASES = (
+    "sv4.a1.block_by_the_liker_retires_the_like",
+    "sv4.a1.block_by_the_other_retires_the_like",
+    "sv4.a1.block_and_unmatch_serve_the_same",
+    "sv4.a1.match_version_is_the_sends_contact_version",
+)
+# The checks of SV3's stages, which A1's cases never carry.
+STAGE_CHECKS = {str(n) for n in range(1, 16)} | {"B-C1"}
+
+
+class A1CaseTests(unittest.TestCase):
+    """SV4 A1: its cases are the module's too, so each runs under ``_Ledger``, as
+    ``ClientVersionTests`` shows for Stage B's and B-C1's."""
+
+    def test_every_a1_case_runs_under_the_ledger(self) -> None:
+        from glow_ordering_proof import interaction_cases
+
+        mine = [e for e in discovery_cases.CASES if e.case_id in A1_CASES]
+        self.assertEqual([e.case_id for e in mine], list(A1_CASES))
+        for entry in mine:
+            with self.subTest(case=entry.case_id):
+                self.assertEqual(entry.run.__code__.co_qualname, "_as_a_client.<locals>.wrapped")
+                self.assertEqual(inspect.unwrap(entry.run).__module__, interaction_cases.__name__)
 
 
 class ClientVersionTests(unittest.TestCase):

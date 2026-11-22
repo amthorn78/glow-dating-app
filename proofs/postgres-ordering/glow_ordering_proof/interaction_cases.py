@@ -20,6 +20,12 @@ case if a command was sent with a version that was never served and the command 
 before its version was judged (401, 400, 403, 404, 405, ``idempotency_conflict``) or as stale
 (``stale_version``, the deliberate stale probes). B-C1's own cases (``own_versions.*``) follow
 Stage B's.
+
+**SV4 A1** (its brief's D3, D4 and D6; DM-96) registers its own cases after B-C1's
+(``sv4.a1.*``), labelled with SV4's checks: a like a block retired never makes a match, and its
+actor reads it as before (D3, a block by either member); what a member who did not end contact
+is served is the same after a block as after an unmatch, on every surface D4 lists (D4); and the
+match read's version is the send's contact version for every writer of either (D6).
 """
 
 from __future__ import annotations
@@ -1047,9 +1053,10 @@ def unmatch_revokes_contact(ctx: DiscoveryContext) -> str:
 def block_after_unmatch_and_paused(ctx: DiscoveryContext) -> str:
     """F13: a block, through ``glow_chat``'s ``block``, works after an unmatch and while the actor
     is paused; it refuses a send; an unblock restores no match and no send. The blocked member's
-    own block answers as any first block does. A restricted match reads the same to both
-    participants, but only a block restricts a match, so the member who did not block can infer
-    the direction (D8's gap, carried to SV4 before P11; DM-75)."""
+    own block answers as any first block does. Rewritten by SV4 A1 (its brief's D4; DM-75,
+    DM-96): a block ends an active match as an unmatch does, so both participants read the same
+    ``unmatched`` match, and D8's gap is closed (``sv4.a1.block_and_unmatch_serve_the_same``
+    shows the sameness on every surface)."""
     from glow_persistence.models import Match
 
     one, two = ctx.visible(), ctx.visible()
@@ -1078,17 +1085,17 @@ def block_after_unmatch_and_paused(ctx: DiscoveryContext) -> str:
         "idempotency_conflict",
         "the same key, the other action",
     )
-    restricted = Match.objects.get(pk=paired.id)
-    expect(restricted.state == "restricted", "the block restricts the match")
+    ended = Match.objects.get(pk=paired.id)
+    expect(ended.state == "unmatched", "the block ends the match as an unmatch does (D4)")
     expect(_send(four, paired.id).outcome == "refused", "a send after the block is refused")
     reads = [
         ctx.profiles.data(_read_match(ctx, member, paired.id), "match", "the read")
         for member in (three, four)
     ]
     expect(
-        {r["state"] for r in reads} == {"restricted"}
+        {r["state"] for r in reads} == {"unmatched"}
         and {tuple(sorted(r)) for r in reads} == {tuple(sorted(reads[0]))},
-        "both participants read the same restricted match (D8's gap; DM-75)",
+        "both participants read the same unmatched match (D4; DM-75, DM-96)",
     )
     own = ctx.profiles.data(_block(ctx, four, three, "block")[1], "block", "the blocked's block")
     expect(own["state"] == "active" and own["version"] == 1, "the blocked member's own block")
@@ -1096,7 +1103,7 @@ def block_after_unmatch_and_paused(ctx: DiscoveryContext) -> str:
     ctx.profiles.data(_block(ctx, four, three, "unblock")[1], "block", "its unblock")
     ctx.profiles.data(_block(ctx, three, four, "unblock")[1], "block", "the unblock")
     _visibility(ctx, three, "resume")
-    expect(Match.objects.get(pk=paired.id).state == "restricted", "no match restored")
+    expect(Match.objects.get(pk=paired.id).state == "unmatched", "no match restored")
     expect(_send(four, paired.id).outcome == "refused", "no send restored")
     ctx.profiles.refused(_block(ctx, one, two, "block", expected=7)[1], 409, "stale_version", "v")
     five, six = ctx.visible(), ctx.visible()
@@ -1105,7 +1112,7 @@ def block_after_unmatch_and_paused(ctx: DiscoveryContext) -> str:
     expect(target_paused["state"] == "active", "a block of a paused member")
     return (
         "block after unmatch and while paused; send refused; unblock restores nothing;"
-        " both read the same restricted match (D8's gap)"
+        " both read the same unmatched match (D4)"
     )
 
 
@@ -1974,6 +1981,262 @@ def own_versions_recovery_block_after_unblock(ctx: DiscoveryContext) -> str:
     out = ctx.profiles.data(reply, "block", "the block again")
     expect((out["state"], out["version"]) == ("active", 3), "the block after the unblock applies")
     return "a second device blocks after an unblock with the read's version; 0 is stale"
+
+
+# -- SV4 A1: the rules (its brief's D3, D4 and D6; DM-96), after B-C1's cases ------------------
+
+
+def _alike(data: dict[str, Any]) -> dict[str, Any]:
+    """An answer without the identifiers that name its own pair, so two pairs' answers compare."""
+    return {
+        key: value
+        for key, value in data.items()
+        if key not in ("match_id", "other_profile_id", "target_profile_id")
+    }
+
+
+def _like_alone(ctx: DiscoveryContext, out: dict[str, Any], target: Member) -> bool:
+    """A like recorded and answered as any like that finds no like in return."""
+    return out == {
+        "kind": "interaction",
+        "target_profile_id": _pid(ctx, target),
+        "version": 1,
+        "state": "liked",
+        "match_id": None,
+    }
+
+
+def _a1_retired_like(ctx: DiscoveryContext, *, by_liker: bool) -> str:
+    """D3's case: a like, then a block and unblock by either member, then a like from the other
+    member, which is recorded and answered as a like that finds no like in return, with no match
+    made; the first like reads the same state and version in its actor's own-versions read before
+    and after the block; and ``activate_reciprocal`` itself refuses the pair."""
+    from glow_chat import events
+    from glow_discovery.interactions import chat
+    from glow_persistence.models import OutboxEvent
+
+    liker, other = ctx.visible(), ctx.visible()
+    first = _act(ctx, liker, other, "like")
+    expect(_like_alone(ctx, first, other), "the first like finds no like in return")
+    before = _state(_own(ctx, liker, _pid(ctx, other)))
+    blocker, blocked = (liker, other) if by_liker else (other, liker)
+    ctx.profiles.data(_block(ctx, blocker, blocked, "block")[1], "block", "the block")
+    during = _state(_own(ctx, liker, _pid(ctx, other)))
+    expect(
+        during[:2] == before[:2], "the first like reads the same state and version during the block"
+    )
+    if not by_liker:
+        expect(
+            during == before, "the liker's whole read is unchanged while the other's block stands"
+        )
+    ctx.profiles.data(_block(ctx, blocker, blocked, "unblock")[1], "block", "the unblock")
+    after = _state(_own(ctx, liker, _pid(ctx, other)))
+    expect(
+        after[:2] == before[:2] == ("liked", first["version"]),
+        "the first like reads the same state and version before and after the block",
+    )
+    if not by_liker:
+        expect(after == before, "the liker's whole read is unchanged by the other's block")
+    activated = OutboxEvent.objects.filter(event_type=events.MATCH_ACTIVATED).count()
+    later = _act(ctx, other, liker, "like")
+    expect(_like_alone(ctx, later, liker), "the later like is recorded as a like found alone")
+    expect(_match_of(liker, other) is None, "no match is made on the like a block retired")
+    expect(
+        OutboxEvent.objects.filter(event_type=events.MATCH_ACTIVATED).count() == activated,
+        "no match_activated event",
+    )
+    direct = chat().activate_reciprocal(liker.account_id, other.account_id)
+    expect(
+        (direct.outcome, direct.reason) == ("refused", "not_reciprocal"),
+        f"activate_reciprocal refuses the retired like itself ({direct.outcome}:{direct.reason})",
+    )
+    expect(_match_of(liker, other) is None, "still no match")
+    expect(
+        _state(_own(ctx, liker, _pid(ctx, other)))[:2] == before[:2],
+        "the first like still reads as it did",
+    )
+    who = "the liker" if by_liker else "the other member"
+    return (
+        f"a like, a block and unblock by {who}, then the other's like: recorded alone, no match;"
+        " the first like reads the same before and after"
+    )
+
+
+@case("sv4.a1.block_by_the_liker_retires_the_like", "SV4-A1", "D3")
+def a1_block_by_the_liker(ctx: DiscoveryContext) -> str:
+    return _a1_retired_like(ctx, by_liker=True)
+
+
+@case("sv4.a1.block_by_the_other_retires_the_like", "SV4-A1", "D3")
+def a1_block_by_the_other(ctx: DiscoveryContext) -> str:
+    return _a1_retired_like(ctx, by_liker=False)
+
+
+def _served(ctx: DiscoveryContext, member: Member, other: Member, match: Any) -> dict[str, Any]:
+    """What ``member``, who did not end contact, is served about the pair: the match read, the
+    own-versions read toward ``other``, whether ``other`` is in any of the member's pages, the
+    send's answer, the history read's, the list's and the read cursor's (D4's surfaces)."""
+    from uuid import uuid4 as fresh
+
+    from glow_chat.reads import OrmConversationReads
+    from glow_domain.chat_provider_fixtures import FixtureChatProvider
+    from glow_domain.chat_reads import HistoryRequest, ReadCursorCommand
+
+    read = ctx.profiles.data(_read_match(ctx, member, match.id), "match", "the match read")
+    own = _own(ctx, member, _pid(ctx, other))
+    shown = any(
+        _pid(ctx, other) in _shown(ctx, member, collection)
+        for collection in ("recommendations", "discovery")
+    )
+    sent = _send(member, match.id)
+    reads = OrmConversationReads(FixtureChatProvider(environment="test"))
+    session = _session(member)
+    history = reads.read_history(HistoryRequest(session, match.id, None, 50))
+    listed = reads.list_conversations(session)
+    cursor = reads.move_read_cursor(ReadCursorCommand(session, match.id, fresh()))
+    return {
+        "match": (sorted(read), _alike(read)),
+        "own": (sorted(own), _state(own)),
+        "shown": shown,
+        "send": (sent.outcome, sent.reason),
+        "history": (history.outcome, history.reason),
+        "listed": (listed.outcome, match.id in {e.match_id for e in listed.conversations}),
+        "cursor": (cursor.outcome, cursor.reason),
+    }
+
+
+def _same(
+    ctx: DiscoveryContext, blocked: dict[str, Any], unmatched: dict[str, Any], when: str
+) -> None:
+    for surface in ("match", "own", "shown", "send", "history", "listed", "cursor"):
+        expect(
+            blocked[surface] == unmatched[surface],
+            f"{when}: the {surface} surface is the same after a block as after an unmatch"
+            f" ({blocked[surface]} and {unmatched[surface]})",
+        )
+
+
+@case("sv4.a1.block_and_unmatch_serve_the_same", "SV4-A1", "D4")
+def a1_block_and_unmatch_serve_the_same(ctx: DiscoveryContext) -> str:
+    """D4 (DM-75; DM-96): what a participant who did not end contact is served (the match read,
+    the own-versions read, discovery's exclusion, the send, the history read, the list and the
+    read cursor, and the answers to their own commands) is the same whether the other member
+    blocked or unmatched them, and stays so after the blocker's later unblock and unmatch; a
+    block by the member who was blocked answers as any first block does."""
+    blocker, blocked = ctx.visible(), ctx.visible()
+    unmatcher, unmatched = ctx.visible(), ctx.visible()
+    ended_by_block = _matched(ctx, blocker, blocked)
+    ended_by_unmatch = _matched(ctx, unmatcher, unmatched)
+    ctx.profiles.data(_block(ctx, blocker, blocked, "block")[1], "block", "the block")
+    ctx.profiles.data(_unmatch(ctx, unmatcher, ended_by_unmatch)[1], "match", "the unmatch")
+    by_block = _served(ctx, blocked, blocker, ended_by_block)
+    expect(
+        by_block["match"][1] == {"kind": "match", "version": 2, "state": "unmatched"},
+        f"the match the block ended reads unmatched at version 2 ({by_block['match'][1]})",
+    )
+    # What the sameness is: ended contact, refused alike (not only equal, both failing alike).
+    expect(
+        by_block["send"]
+        == by_block["history"]
+        == by_block["cursor"]
+        == ("refused", "match_not_active")
+        and by_block["listed"] == ("listed", False)
+        and by_block["shown"] is False
+        and by_block["own"][1] == ("liked", 1, "none", 0),
+        f"after the end: the send, the reads and the list as ended contact ({by_block})",
+    )
+    _same(ctx, by_block, _served(ctx, unmatched, unmatcher, ended_by_unmatch), "after the end")
+    # Discovery's exclusion by the match row alone (D7's consumption), as SV3's unmatch case shows
+    # it: with both pairs' directional rows taken out (test data; no writer removes a like), the
+    # member who did not end contact is still not shown the other, alike, while the block stands.
+    from glow_persistence.models import DirectionalInteraction
+
+    members = [m.account_id for m in (blocker, blocked, unmatcher, unmatched)]
+    DirectionalInteraction.objects.filter(actor_id__in=members, target_id__in=members).delete()
+    _same(
+        ctx,
+        _served(ctx, blocked, blocker, ended_by_block),
+        _served(ctx, unmatched, unmatcher, ended_by_unmatch),
+        "by the match row alone",
+    )
+    ctx.profiles.data(_block(ctx, blocker, blocked, "unblock")[1], "block", "the unblock")
+    _same(
+        ctx,
+        _served(ctx, blocked, blocker, ended_by_block),
+        _served(ctx, unmatched, unmatcher, ended_by_unmatch),
+        "after the blocker's unblock",
+    )
+    late = ctx.profiles.data(_unmatch(ctx, blocker, ended_by_block)[1], "match", "its unmatch")
+    again = ctx.profiles.data(_unmatch(ctx, unmatcher, ended_by_unmatch)[1], "match", "again")
+    expect(_alike(late) == _alike(again), "the ender's later unmatch answers the same")
+    _same(
+        ctx,
+        _served(ctx, blocked, blocker, ended_by_block),
+        _served(ctx, unmatched, unmatcher, ended_by_unmatch),
+        "after the ender's later unmatch",
+    )
+    own_unmatch = ctx.profiles.data(_unmatch(ctx, blocked, ended_by_block)[1], "match", "mine")
+    theirs = ctx.profiles.data(_unmatch(ctx, unmatched, ended_by_unmatch)[1], "match", "theirs")
+    expect(_alike(own_unmatch) == _alike(theirs), "the other member's own unmatch answers alike")
+    own_block = ctx.profiles.data(_block(ctx, blocked, blocker, "block")[1], "block", "theirs")
+    first_block = ctx.profiles.data(_block(ctx, unmatched, unmatcher, "block")[1], "block", "a")
+    expect(
+        _alike(own_block)
+        == _alike(first_block)
+        == {"kind": "block", "version": 1, "state": "active"},
+        "a block by the member who was blocked answers as any first block does",
+    )
+    return (
+        "seven surfaces the same after a block as after an unmatch, after the blocker's unblock"
+        " and after its unmatch; the answers to the other member's own unmatch and block too"
+    )
+
+
+@case("sv4.a1.match_version_is_the_sends_contact_version", "SV4-A1", "D6")
+def a1_match_version_is_the_sends_contact_version(ctx: DiscoveryContext) -> str:
+    """D6 (the P11 plan's C2-X2): ``MatchProjection.version`` is the contact version a send
+    carries, for every writer of either: the activation (both 1), the unmatch and the block (both
+    2), and the later commands that change neither (an unblock, an unmatch of an ended match). While
+    contact continues a send with the read's version is authorized, never stale; once contact has
+    ended it is refused ``match_not_active``."""
+    from glow_discovery.interactions import chat
+    from glow_domain.chat import SendCommand
+    from glow_persistence.models import Match
+
+    def pinned(member: Member, match: Any, what: str) -> int:
+        version = _match_version(ctx, member, match.id)
+        stored = int(Match.objects.get(pk=match.id).contact_version)
+        expect(version == stored, f"{what}: the match read's version is the contact version")
+        return version
+
+    def send(member: Member, match: Any, version: int, key: str | None = None) -> tuple[str, str]:
+        command = SendCommand(_session(member), match.id, version, key or ctx.profiles.key(), TEXT)
+        sent = chat().send(command)
+        return sent.outcome, sent.reason
+
+    one, two, three, four = (ctx.visible() for _ in range(4))
+    by_unmatch, by_block = _matched(ctx, one, two), _matched(ctx, three, four)
+    for member, match in ((two, by_unmatch), (four, by_block)):
+        version = pinned(member, match, "after the activation")
+        expect(version == 1, "the activation's version is 1")
+        key = ctx.profiles.key()
+        expect(send(member, match, version, key) == ("authorized", ""), "a send with it applies")
+        expect(send(member, match, version, key) == ("replayed", ""), "its retry, never stale")
+    ctx.profiles.data(_unmatch(ctx, one, by_unmatch)[1], "match", "the unmatch")
+    ctx.profiles.data(_block(ctx, three, four, "block")[1], "block", "the block")
+    for member, match, what in ((two, by_unmatch, "the unmatch"), (four, by_block, "the block")):
+        version = pinned(member, match, f"after {what}")
+        expect(version == 2, f"{what} advances both to 2")
+        expect(
+            send(member, match, version) == ("refused", "match_not_active"),
+            f"after {what}: a send is refused match_not_active, not stale",
+        )
+    ctx.profiles.data(_block(ctx, three, four, "unblock")[1], "block", "the unblock")
+    ctx.profiles.data(_unmatch(ctx, three, by_block)[1], "match", "the blocker's unmatch")
+    ctx.profiles.data(_unmatch(ctx, two, by_unmatch)[1], "match", "the other's unmatch")
+    for member, match in ((two, by_unmatch), (four, by_block)):
+        expect(pinned(member, match, "after the later commands") == 2, "neither changes it")
+    return "the match read's version is the send's contact version after every writer of either"
 
 
 # -- the ledger: every expected version sent comes from an answer or a read (B-C1, item 2) -----

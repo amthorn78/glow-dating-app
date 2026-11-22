@@ -18,22 +18,16 @@ import hashlib
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING, Literal, Protocol
+from typing import Literal, Protocol
 from uuid import UUID
-
-if TYPE_CHECKING:
-    from .chat_tokens import TokenGrant
 
 # D5 (DM-13 4.1): the one consent the production contracts define, F02's
 # ConsentIntent, held as ConsentDecision rows under this purpose. A send needs the
 # latest decision of both accounts to be ``accepted``.
 ONBOARDING_CONSENT_PURPOSE = "onboarding"
 
-Outcome = Literal[
-    "authorized", "replayed", "applied", "no_change", "granted", "refused", "deadlock", "error"
-]
-# Outcomes whose transaction wrote rows. A grant (P06.2 B1) reads under shared locks and
-# writes nothing: it is not a commit the oracle has a row for.
+Outcome = Literal["authorized", "replayed", "applied", "no_change", "refused", "deadlock", "error"]
+# Outcomes whose transaction wrote rows.
 COMMITTED: frozenset[str] = frozenset({"authorized", "applied"})
 
 # Refusal reasons: Glow's own codes, never a provider's or a database's text.
@@ -122,9 +116,6 @@ class ContactResult:
     match_id: UUID | None = None
     # The outbox events the transaction wrote, in order.
     events: tuple[UUID, ...] = ()
-    # P06.2 B1: a token grant's result (outcome ``granted``), with its issue time read
-    # from the database clock under the grant's locks.
-    grant: TokenGrant | None = None
     detail: dict[str, object] = field(default_factory=dict)
 
     @property
@@ -163,17 +154,6 @@ class ContactPersistence(Protocol):
         profiles and both onboarding consents (P06.2 B1). Reciprocal likes and current
         two-person eligibility are checked by the activation P11 wires, under the same
         locks. No runtime path calls this method."""
-
-    def grant_token(
-        self, session_id: UUID, *, probe: TransactionProbe | None = None
-    ) -> ContactResult:
-        """A chat token grant (P06.2 B1; F1, DM-14 item 3): in one transaction, the
-        account row then the session row locked ``FOR SHARE`` in the send's order, the
-        time read from the database clock under those locks, and every check of
-        ``glow_domain.chat_tokens.grant_chat_token`` run on the locked rows with that time
-        as ``now``. Outcome ``granted`` carries the grant with its issue time; a refusal
-        carries the rule's code. Nothing is written and nothing is signed: B2's adapter
-        signs from the issue time, and P11 serves the endpoint."""
 
     def open_session(
         self,

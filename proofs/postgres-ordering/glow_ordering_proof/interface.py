@@ -14,10 +14,11 @@ P06.2 adds a fourth hold point, ``before_commit`` (after every check and write),
 CX2's boundary; the reference design takes it through the proof log instead (its code
 is unchanged), and the app's adapter through its ``TransactionProbe``. It adds
 ``ContactStateSubject``, the D5 writers only the app's adapter carries; Stage B1 adds
-to it the adapter's match activation (CX5) and token grant (F1), whose outcome
-``granted`` commits nothing. Stage C1's read phase judges the adapter's conversation reads
-with the same ``Result``: ``read`` (a page), ``listed`` and ``moved`` (the read cursor);
-none but ``moved`` writes a row, and the oracle reads none of them.
+to it the adapter's match activation (CX5). SV4 A1 removed B1's token grant (F1) and its
+outcome ``granted`` with the app's grant (its brief's D7). Stage C1's read phase judges
+the adapter's conversation reads with the same ``Result``: ``read`` (a page), ``listed``
+and ``moved`` (the read cursor); none but ``moved`` writes a row, and the oracle reads
+none of them.
 """
 
 from __future__ import annotations
@@ -34,7 +35,6 @@ Outcome = Literal[
     "replayed",
     "applied",
     "no_change",
-    "granted",
     "read",
     "listed",
     "moved",
@@ -162,7 +162,3 @@ class ContactStateSubject(OrderingSubject, Protocol):
     def activate_match(self, first: UUID, second: UUID, *, hooks: Hooks | None = None) -> Result:
         """P06.2 B1 (CX5): the adapter's match activation, with its hold points, so the
         suite can force it against the profile and consent writers."""
-
-    def grant_token(self, session_id: UUID, *, hooks: Hooks | None = None) -> Result:
-        """P06.2 B1 (F1): the adapter's token grant. ``granted`` carries ``issued_at`` and
-        ``expires_at`` in ``detail``; it writes no row."""

@@ -1,11 +1,12 @@
 """P06.2 Stage A's pure domain pieces, offline: the contact port's types, the chat
-provider port and its fixture adapter, and the token rules (item 4, D6). Stage B1 adds
-user provisioning to the port and the fixture (CX4; DM-15 3.4) and the whole-second
-cut-off rule (F1; DM-15 5.2)."""
+provider port and its fixture adapter. Stage B1 adds user provisioning to the port and the
+fixture (CX4; DM-15 3.4) and the whole-second cut-off rule (F1; DM-15 5.2). SV4 A1 retired
+the token rules' tests with the token grant (its brief's D7; OD-45: no provider token is
+issued); the cut-off rule stays, with the epoch revocation it serves."""
 
 import inspect
 import unittest
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from uuid import uuid4
 
 from glow_domain import chat, chat_provider, chat_tokens
@@ -60,7 +61,6 @@ class ContactPortTests(unittest.TestCase):
                 "restrict_profile",
                 "withdraw_consent",
                 "accept_consent",
-                "grant_token",
             },
         )
 
@@ -75,8 +75,7 @@ class ContactPortTests(unittest.TestCase):
     def test_committed_outcomes(self) -> None:
         self.assertTrue(chat.ContactResult("authorized").committed)
         self.assertTrue(chat.ContactResult("applied").committed)
-        # A grant (B1) reads under shared locks and writes nothing.
-        for outcome in ("replayed", "no_change", "granted", "refused", "deadlock", "error"):
+        for outcome in ("replayed", "no_change", "refused", "deadlock", "error"):
             self.assertFalse(chat.ContactResult(outcome).committed)  # type: ignore[arg-type]
 
     def test_the_f2_and_f5_codes_are_glow_codes(self) -> None:
@@ -223,70 +222,6 @@ class FixtureProviderTests(unittest.TestCase):
         self.provider.send_message("c1", "u1", "m1", "hi")
         for call in self.provider.calls:
             self.assertLessEqual(call.arguments, chat_provider.OPERATIONS[call.operation])
-
-
-class TokenRuleTests(unittest.TestCase):
-    """Item 4 (D6): a one-hour grant for a valid, current-epoch session of an active
-    account, refused after a suspension or a deletion. No token is signed here."""
-
-    def grant(self, **changes: object) -> chat_tokens.TokenGrant | chat_tokens.TokenRefusal:
-        arguments: dict[str, object] = {
-            "account": chat_tokens.TokenAccount("active", 1),
-            "session": chat_tokens.TokenSession("valid", 1, NOW + timedelta(days=1)),
-            "user_ref": "0" * 32,
-            "identity_active": True,
-            "now": NOW,
-        }
-        arguments.update(changes)
-        return chat_tokens.grant_chat_token(**arguments)  # type: ignore[arg-type]
-
-    def test_a_valid_session_gets_one_hour(self) -> None:
-        grant = self.grant()
-        assert isinstance(grant, chat_tokens.TokenGrant)
-        self.assertEqual(grant.expires_at - grant.issued_at, timedelta(hours=1))
-        self.assertEqual(chat_tokens.TOKEN_LIFETIME, timedelta(hours=1))
-        self.assertEqual(grant.user_ref, "0" * 32)
-
-    def test_refusals(self) -> None:
-        cases = {
-            "suspended": (
-                {"account": chat_tokens.TokenAccount("suspended", 2)},
-                "account_not_active",
-            ),
-            "deletion": (
-                {"account": chat_tokens.TokenAccount("deletion_pending", 2)},
-                "account_not_active",
-            ),
-            "unverified": (
-                {"account": chat_tokens.TokenAccount("unverified", 1)},
-                "account_not_active",
-            ),
-            "signed out": (
-                {"session": chat_tokens.TokenSession("revoked", 1, NOW + timedelta(days=1))},
-                "session_not_valid",
-            ),
-            "expired": ({"session": chat_tokens.TokenSession("valid", 1, NOW)}, "session_expired"),
-            "stale epoch": (
-                {"account": chat_tokens.TokenAccount("active", 2)},
-                "session_epoch_stale",
-            ),
-            "no identity": ({"user_ref": None}, "no_chat_identity"),
-            "deactivated identity": ({"identity_active": False}, "no_chat_identity"),
-        }
-        for label, (changes, code) in cases.items():
-            with self.subTest(label):
-                self.assertEqual(self.grant(**changes), chat_tokens.TokenRefusal(code))
-
-    def test_a_naive_time_is_refused(self) -> None:
-        with self.assertRaises(ValueError):
-            self.grant(now=datetime(2026, 10, 5, 12, 0))
-
-    def test_an_unprovisioned_identity_is_refused(self) -> None:
-        # DM-15 5.1: "active" means provisioned and not deactivated; the adapter passes
-        # identity_active only for an identity in state active.
-        self.assertEqual(
-            self.grant(identity_active=False), chat_tokens.TokenRefusal("no_chat_identity")
-        )
 
 
 class RevocationCutoffTests(unittest.TestCase):
