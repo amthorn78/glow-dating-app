@@ -1184,3 +1184,126 @@ The ordering suite's whole run took 596 s locally (579 s at the prompt's commit,
 | The review's deviation | **Accepted** (above) | |
 
 The manager's verification carried A1's limit on `ReciprocalWriterTests` without checking the history tests' result once A1 is on `main` (AM12-48).
+
+## A1-C1
+
+- **Session:** SV4 A1's correction session A1-C1, started by Nathan in the cloud environment `Glow App - No Stream` (`get_environment`), from [A1-C1's prompt](https://github.com/amthorn78/glow-dating-app/blob/656ce032803b42da7a771185ce0016b5364f433f/docs/ephemeral/2026-11-22-sv4-a1-c1-correction-prompt.md), revision 2, from `656ce032803b42da7a771185ce0016b5364f433f` of the manager branch `claude/magical-wozniak-yfmmx2`. The specification is the [brief](../../planning/sv4-chat-notifications.md), revision 6; the findings are AR-1 to AR-3 of "Exact-head review of A1", above.
+- **Branch:** `claude/beautiful-brahmagupta-13ncpo`, which the push filter's `claude/**` covers. It starts at the prompt's commit.
+- **Code head:** `f69529c0594889d26caa19eccfe6b7eda73bee56`. **Records head:** the commit that adds this section, pushed after the code head's run had finished.
+- **What C1 changes:** tests and docstrings only, in three files: `services/api/tests/test_interactions_offline.py`, `services/api/tests/test_match_versions_offline.py` and `services/api/glow_domain/chat_reads.py`. No application behaviour, workflow, setting, contract, README or proof changes.
+
+### The start gate and the environment check
+
+- **The environment** (section 1 of the prompt, names only):
+  - none of `DATABASE_URL`, `HD_API_KEY` or `GEO_API_KEY`;
+  - no `STREAM_*`, `PG*`, `R2_*`, `CLOUDFLARE_*`, `CF_*` or `RAILWAY_*` name;
+  - the AWS names present: `AWS_ACCESS_KEY_ID`, `AWS_CA_BUNDLE` and `AWS_SECRET_ACCESS_KEY` (OD-76). None was read, printed or passed to a command;
+  - the GitHub token names present: `GH_TOKEN` and `GITHUB_TOKEN`. Neither was read;
+  - the toolchain: `Python 3.12.14` (`python3.12`);
+  - every repository command ran under `env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8`, plus `GLOW_ENV=test` for the API's Django commands.
+- **The start gate** (section 2), at about 08:05 UTC on 22 November 2026, with `<START_SHA>` read as `656ce03…` (below, "Limits and deviations"):
+  - `git rev-parse HEAD` printed `656ce032803b42da7a771185ce0016b5364f433f`;
+  - "this prompt's commit is on the live branch", "A1's code head", "no code on the live branch after bc0675d" and "A1's base is in this checkout" printed;
+  - `grep -c` printed `1` for "Exact-head review of A1" and `0` for "A1-C1".
+- **Read before any change:** root `AGENTS.md` and `CLAUDE.md`; `services/api/README.md`'s setup and checks; this record's "A1", "Manager verification of A1" and "Exact-head review of A1"; the brief's D5, D6, D11, "Owned paths" and "Acceptance checks"; `test_interactions_offline.py` from `git()` to the end of `ReciprocalWriterTests`, with its constants; `test_match_versions_offline.py` whole; `chat_reads.py`'s module docstring; `reads.py`'s module docstring, `readable`, `_history`, `_causes` and `_authorize`.
+- **`main_base()`'s users,** searched at the prompt's commit (`grep -rn main_base --include=*.py`): only the two history tests.
+
+### What was changed, by item
+
+**AR-1: the history tests read A1's base** (`services/api/tests/test_interactions_offline.py`).
+- `main_base()` is removed: nothing else used it.
+- A new constant, `A1_BASE = "499ccbbec758ed4ef34a93ad19fa8df454fb095c"`, sits where `main_base()` was, with a comment naming it (PR57's merge, SV4 A0, the commit A1 starts from) and saying that the history tests read `contact.py` there, never at `main` or `origin/main`.
+- Each history test checks for the commit (`git cat-file -e 499ccbb…^{commit}`, with `git` missing or timing out read as absent), skips with the reason "A1's base 499ccbbec758ed4ef34a93ad19fa8df454fb095c is not in this checkout (CI's shallow clone); the comparison runs wherever that commit is present", and otherwise reads the file with `git show 499ccbb…:services/api/glow_chat/contact.py`. `fetch-depth` does not change.
+- The tests, renamed to name A1's base:
+
+  | Old name | New name |
+  |---|---|
+  | `test_every_writer_at_mains_base_is_unchanged_but_a1s` | `test_every_writer_at_a1s_base_is_unchanged_but_a1s` |
+  | `test_block_differs_from_mains_by_d3s_statement_and_d4s_value` | `test_block_differs_from_a1s_base_by_d3s_statement_and_d4s_value` |
+
+- **Every assertion stays**, against the base. A script compared the class at the prompt's commit with the class at the code head, by AST: the first test makes 12 assertions before and after, the second 7, each identical (the first test's local tree renamed from `main` to `base`); every statement after each test's `git show` is the same; the class's four other tests are unchanged. The first test's two comments say "the base's" where they said "main's".
+- `ReciprocalWriterTests`' docstring says what the class compares with: the digest test needs no history, so CI runs it (SV3's digests from `947576d` and A1's at its head, so any later change fails); the two history tests read `A1_BASE`, never `main`, so they pass before and after A1's merge, and run wherever that commit is present (CI's shallow clone skips them).
+- The comment above `MAIN_DEFINITION_DIGESTS`: "so the comparison runs without main's history (CI's shallow clone)" became "so the digest test needs no history and runs in CI's shallow clone; the history tests read A1's base (`A1_BASE`) wherever that commit is in the checkout". The rest of the comment and the digests are unchanged.
+- Codex's P1 thread on PR58 ("Pin the history comparisons to the pre-A1 revision", line 1389 at `4618859`) names the same defect; this fix answers it. The thread was not replied to or resolved.
+
+**AR-2: the detector's claim** (`services/api/tests/test_match_versions_offline.py`, the module docstring's passage from "Read from the source" to "Each must be one of the pinned writers," and `WriterDetectorTests`' docstring).
+- The module docstring keeps the list of the forms the detector finds, and that `WriterDetectorTests` shows each is found.
+- A new paragraph names the forms that escape it: a related manager's `update`, or an `aupdate`; a `Match(..., version=...)`, or a `bulk_create` of such objects; SQL text whose table name is built at runtime or held in a constant; a match obtained through a helper such as `glow_discovery.interactions._pair_match`; a `save()` override or a signal; and `Match` imported under another name. It says the pinned set is today's every writer by the A1 review's and the manager's searches of the code, not by the detector alone, and that the detector's reach is carried (the carried-items file, "Carried to SV4"; AR-4).
+- "cannot miss one" is gone, with every other sentence that claimed the detector is complete. `WriterDetectorTests`' docstring now reads: "each form the module's docstring lists as found is found. It shows nothing of the forms that escape (AR-4)."
+- **The named forms checked:** a scratch script outside the checkout ran the unchanged detector (`writes`) on one example of each of the ten forms named; it found none of them (`missed []` for each).
+- No assertion, detector or test changed: `ast.dump` of the module with every docstring removed is the same at the prompt's commit and at the code head. The module still has 5 tests, all passing.
+
+**AR-3: the read port's rule** (`services/api/glow_domain/chat_reads.py`, the module docstring's paragraph "Whatever refuses a send refuses a read", only).
+- The paragraph now states the rule `glow_chat.reads` applies (its module docstring, `_authorize`, `_causes` and `readable`; the brief's D5). The history read, the list and the read-cursor command check rows read under the send's shared locks, in the send's order:
+  - the reader's valid, current session of an `active` account;
+  - the match `active`, with no block either way;
+  - the other account `active` or `suspended` (`READABLE_OTHER_STATES`); a deletion works as an unmatch, and a `removed` profile is hidden;
+  - then each cause reads its value in `chat.history`: either member's pause, with SV2's `incomplete` read as one; a restriction of either profile; the other's suspension; either member's withdrawn consent. At launch each cause reads `read_only` (the launch default in `profile_settings.py`), which serves the conversation read-only; `hidden`, as the setting says, refuses it; the consent limit fails closed;
+  - every hidden cause refuses with one reason, which names no cause.
+- It points to `glow_chat.reads`' module docstring for the rule and its causes in full, and names `glow_domain.chat_projections.error_for` as the mapping to the served code, with no other claim about the codes. It names no grant and no open history question. Its heading keeps "point c", which the module's first line cites, "as the SV4 brief's D5 revises it".
+- Nothing else in the module changed: `ast.dump` with every docstring removed is the same at the prompt's commit and at the code head, and `git diff` touches only that paragraph.
+
+### Proofs and reversals
+
+Each ran in a scratch clone outside the checkout, under `env -i` with `GLOW_ENV=test`, with the session's virtual environment (installed from `requirements-dev.lock` with `--require-hashes`), as `manage.py test tests.test_interactions_offline.ReciprocalWriterTests -v 2`.
+
+| Proof | Set-up | Result |
+|---|---|---|
+| (a) A1 on `main` | `git clone --no-local`, remote removed, `HEAD` at `f69529c`, local `main` at `bc0675d` | `Ran 6 tests … OK`; both history tests `... ok` |
+| (a), at A1's head | the same, `HEAD` at `bc0675d` | `Ran 6 tests … FAILED (failures=2)`: `test_block_differs_from_mains_by_d3s_statement_and_d4s_value` and `test_every_writer_at_mains_base_is_unchanged_but_a1s` (AR-1, as the manager reproduced it) |
+| (b) Before the merge | the same, `HEAD` at `f69529c`, local `main` at `499ccbb` | `Ran 6 tests … OK`; both history tests `... ok` |
+| (c) CI's clone | `git clone --depth 1` of `f69529c` (shallow: `true`; `499ccbb` absent) | `Ran 6 tests … OK (skipped=2)`: both history tests `skipped "A1's base 499ccbbec758ed4ef34a93ad19fa8df454fb095c is not in this checkout (CI's shallow clone); the comparison runs wherever that commit is present"`; the other four `... ok` |
+
+**Reversals,** in clone (b), with `499ccbb` present. Each edited a copy of `contact.py`, ran the class and restored the file from a saved copy; its SHA-256 (`06e36c67…`) was checked equal after each, and the clone's `git status` was clean.
+
+| Reversal | The history test that failed | Also failed (expected) |
+|---|---|---|
+| (r1) A1's `retired_at` statement removed from `block` | `test_block_differs_from_a1s_base_by_d3s_statement_and_d4s_value`, line 1514: "Lists differ: [('replace', 1, 1)] != [('insert', 0, 1), ('replace', 1, 1)]" | `test_block_is_mains_with_one_statement_inserted_and_one_value_changed` (line 1458, "0 != 1"); `test_every_writer_is_pinned_by_its_digest` (`OrmContactPersistence.block`, line 1439, and the module, line 1452). `FAILED (failures=4)` |
+| (r2) one statement (`self._signal(tx.probe, "before_unblock")`) added to `unblock` | `test_every_writer_at_a1s_base_is_unchanged_but_a1s`, subtest `OrmContactPersistence.unblock`, line 1389 (the `ast.dump` comparison) | `test_every_writer_is_pinned_by_its_digest` (`OrmContactPersistence.unblock`, line 1441, and the module, line 1452). `FAILED (failures=3)` |
+
+### Commands and results
+
+At the code head, in the checkout, under `env -i` (with `GLOW_ENV=test` for Django), after `pip install --require-hashes -r requirements-dev.lock` in `services/api` (`pip check`: "No broken requirements found."):
+- `manage.py check`: "System check identified no issues (0 silenced)."
+- `manage.py test tests`: `Ran 654 tests … OK`, no skips. At the prompt's commit, in the same checkout: `Ran 654 tests … OK`, no skips. In both the history tests ran: before, because the checkout held a local `main` at `499ccbb`; after, because it holds `499ccbb`. In CI's shallow clone both skip, before and after.
+- `ruff check .`: "All checks passed!"; `ruff format --check .`: "169 files already formatted"; `mypy`: "Success: no issues found in 95 source files".
+- **The trusted classifier,** `main`'s `scripts/change_scope.py` (`499ccbb`; SHA-256 `b564c62f4a076f51…`), extracted to a scratch directory outside the checkout and run from it as `python3 -I <copy>/change_scope.py --base 499ccbbec758ed4ef34a93ad19fa8df454fb095c --head f69529c0594889d26caa19eccfe6b7eda73bee56 --merge-base`: `"full": true`, reason `behavior-or-empty`. `git merge-base --all` gives one base, `499ccbb`.
+- **The diff:** `git diff --name-only 656ce03 f69529c` lists the three files; this section is the records commit's only change. `ast.dump` with docstrings removed is unchanged for `chat_reads.py` and `test_match_versions_offline.py`.
+- **GitHub** was read only with `gh api` REST `GET` calls (the session has no GitHub MCP tools): the run's status and jobs, and job logs.
+
+### The run of record
+
+**Foundation run [45001765683](https://github.com/amthorn78/glow-dating-app/actions/runs/45001765683)** on `f69529c0594889d26caa19eccfe6b7eda73bee56` (a push run, attempt 1) concluded **success**. It was created at 08:13:09 UTC on 22 November 2026 and its gate finished at 08:20:25, 7 minutes 16 seconds in all. Nothing was pushed to the branch until it had finished. Read with `gh api` REST `GET` (the run, its jobs, and the gate's and the API checks job's logs, by `grep` for the lines below only).
+
+| Job | Conclusion | Duration |
+|---|---|---|
+| Change scope | success | 4 s |
+| API checks | success | 68 s |
+| Mobile checks | success | 418 s |
+| API mobile smoke | success | 68 s |
+| API artifact checks | success | 22 s |
+| Stream proof checks | success | 73 s |
+| Database proof checks (ordering) | success | 420 s |
+| Database proof checks (identity) | success | 98 s |
+| Database proof checks (profile) | success | 145 s |
+| Database proof checks (discovery) | success | 197 s |
+| Foundation gate | success: "Application checks passed" | 5 s |
+
+- **The API checks job** checked out the session branch (`git checkout --progress --force -B claude/beautiful-brahmagupta-13ncpo …`, log line 114), at the default depth. `manage.py test` gave `Ran 654 tests … OK (skipped=2)`: the two skips are the history tests, each `skipped "A1's base 499ccbbec758ed4ef34a93ad19fa8df454fb095c is not in this checkout (CI's shallow clone); …"` (log lines 1800 and 1802), and `test_every_writer_is_pinned_by_its_digest ... ok` (line 1803). The contract tests gave `Ran 53 tests … OK`.
+- **Not read:** the other jobs' logs and the artifacts. The durations are from the jobs' timestamps, in whole seconds.
+
+### What C1 changes in section "A1"
+
+- **A1's limit on `ReciprocalWriterTests`** (line 1093: "A later change to `contact.py` fails `ReciprocalWriterTests` by design") now holds. The history tests compare with A1's base, so a later change to `contact.py` fails them (reversal r2), and A1's merge does not (proof (a)). The digest test held it already.
+- **The detector's forms in line 917** stand. The forms it misses are now in the module's docstring, and the pinned set rests on the searches (AR-4, carried).
+
+### Limits and deviations
+
+- **The prompt as given:** Nathan's message to this session was "resume", with no prompt text. The session read A1-C1's prompt, revision 2, from the live manager branch, and took `<START_SHA>` to be `656ce03…`: the commit that holds revision 2, its last change on the branch (the branch's head, `52b0d13`, holds the same file). The start gate passed against it.
+- **The environment's network is unrestricted** (`get_environment`), not limited to PyPI. The session used PyPI for the API's lock only, GitHub for its push and its reads, and no other host.
+- **Wording outside the owned passages, left unchanged.** The work needs neither line, and neither is a claim the tests fail:
+  - `test_interactions_offline.py`'s module docstring (line 21) still says "``block`` differs from main's by D3's one statement and D4's one value"; `main` there was A1's base, which the history test now names;
+  - the digest test's comment (line 1426) says "The same comparison without main's history".
+  - `test_block_is_mains_with_one_statement_inserted_and_one_value_changed` keeps its name (AR-7, carried).
+- **The history tests skip outside a Git checkout too** (no `git`, or not a repository), as `main_base()` did; only where `499ccbb` is present do they run.
+- **The named escaping forms were checked on examples,** one each, against the unchanged detector; the list is not complete ("among them").
