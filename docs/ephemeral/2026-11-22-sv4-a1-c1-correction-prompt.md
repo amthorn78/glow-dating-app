@@ -1,7 +1,7 @@
 # SV4 A1-C1 prompt — the correction: the history tests on `main`, the version detector's claim, the read port's rule
 
 - **Owner:** App Manager 12. Nathan starts this session manually, in the `Glow App - No Stream` environment (OD-36), and relays its report.
-- **Revision 1, 22 November 2026.**
+- **Revision 1, 22 November 2026. Withdrawn before it ran (OD-83): do not run it.** App Manager 13 regenerates it as revision 2.
 - **Durable brief:** [SV4 — the chat and notifications slice](../planning/sv4-chat-notifications.md), revision 6. **The findings:** the SV4 record's section "Exact-head review of A1" (`docs/testing/evidence/2026-11-19-sv4-chat-notifications.md`), with its disposition table.
 - **Where the result goes:**
   - the session's changes to the three files below, and its section "A1-C1" in the same record, on its own branch;
