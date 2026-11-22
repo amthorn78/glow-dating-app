@@ -18,15 +18,15 @@ This file only routes: the current item, what happens next and who waits on whom
 - **Done:** P00 to P05 (fixture scope), M01 to M09, A01-R, P06.1, P06.DB, P06.2, P09.3a, P06.2-F, P06.3, SV1 to SV3 and SV2-R.
 - **Owner directions:** OD-01 to OD-84. **Review log:** DM-01 to DM-97. **Linear (OD-29).** Every prompt names its environment (OD-36) and glow-docs as attached (OD-74).
 
-## Waiting checkpoint (22 November 2026, 08:00 UTC, App Manager 13)
+## Waiting checkpoint (22 November 2026, 08:30 UTC, App Manager 13)
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 13 | Nathan | A1-C1's report, from [its prompt, revision 2](../ephemeral/2026-11-22-sv4-a1-c1-correction-prompt.md) (revision 1 withdrawn, OD-83) | Nothing merges |
+| App Manager 13 | GitHub, then Nathan | PR58's run and Codex's review of the head that holds [C1's delta review prompt](../ephemeral/2026-11-22-sv4-a1-c1-delta-review-prompt.md); then the prompt to Nathan, and its report | Nothing merges |
 
 ## Next actions (App Manager 13)
 
-1. **SV4 A1** (the rules; `bc0675d`; PR58): its exact-head review asked for changes (AR-1 blocking, AR-2, AR-3; the SV4 record). A1-C1's prompt, revision 2, is with Nathan (the session reads GitHub with the GitHub tools where it has them, otherwise `gh api` REST `GET`, read only). Codex's review of `4618859` left one P1 thread, the same defect as AR-1, which C1 answers. Next: C1, its verification, PR58's run and Codex, C1's delta review, the pre-merge read, the merge; then A2.
+1. **SV4 A1** (the rules; `bc0675d`; PR58): its exact-head review asked for changes (AR-1 blocking, AR-2, AR-3; the SV4 record). A1-C1 is done and verified (code head `f69529c`, run 45001765683; merged into the manager branch at `9947844`; the SV4 record's "Manager verification of A1-C1"). It answers Codex's P1 thread on `4618859`, the same defect as AR-1. Next: PR58's run and Codex on the head that holds C1's delta review prompt, C1's delta review, the pre-merge read, the merge; then A2.
 2. **Manager records:** the GitHub tools absent from App Manager 13's, A1's review's and Dev Managers 6's and 7's sessions too (Dev Manager 7's system notice says "for this organization"), so a prompt names both routes (AM12-49's proposed rule); PF02 1.9 (AM12-31 to AM12-49); the status log's move (M09 (b)); R-07, R-10, R-26, R-28.
 
 **Carried follow-ups** live in their owning homes: [`carried-to-later-items.md`](../planning/carried-to-later-items.md) (with "Routed by M09" and "Routed by A01-R"), the P11 plan, the review log's "Deferred conditions".
@@ -34,4 +34,4 @@ This file only routes: the current item, what happens next and who waits on whom
 ## Branches and PRs (22 November 2026, 07:47 UTC; listed with `git ls-remote` at this time)
 
 - **Open PRs:** PR58, the manager branch into `main` (full scope; SV4 A1). `main` is at `499ccbb` (PR57).
-- **Remote branches, four:** `main`; the manager branch; `claude/dev-manager` (`532e9d0`, merged into the manager branch at App Manager 13's integration); A1's `claude/sleepy-mendel-0kqgw9` (`a1651fb`, fast-forwarded).
+- **Remote branches, five** (22 November 2026, 08:30 UTC): `main`; the manager branch; `claude/dev-manager` (`532e9d0`, merged into the manager branch at `dfdca34`); A1's `claude/sleepy-mendel-0kqgw9` (`a1651fb`, fast-forwarded); A1-C1's `claude/beautiful-brahmagupta-13ncpo` (`7b194aa`, merged at `9947844`). The branch cleanup deletes the two session branches once PR58 merges.
