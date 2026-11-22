@@ -1364,3 +1364,160 @@ At the code head, in the checkout, under `env -i` (with `GLOW_ENV=test` for Djan
 | N5 | **Corrected** in "Manager verification of A1-C1" (AM13-01). C1's prompts, already run, stay as they were; the record carries the correct commit | The manager's citation, from Codex's summary comment rather than the thread's own commit |
 
 The carried AR-4 item now names `async def` functions and methods, and methods of nested classes, among the forms the detector misses.
+
+## A1-C2
+
+- **Session:** SV4 A1's correction session A1-C2, started by Nathan from A1-C2's prompt (`docs/ephemeral/2026-11-22-sv4-a1-c2-correction-prompt.md`), revision 1, from `63aebb6f21dd9a19d8b9fc8f376e6673f8780c0d` of the manager branch `claude/magical-wozniak-yfmmx2`. The findings are D1-1, N1 and N2 of "Delta review of A1-C1", above, as the manager disposed them.
+- **Branch:** `claude/affectionate-pasteur-ge2jra`, which the push filter's `claude/**` covers. It starts at the prompt's commit.
+- **Code head:** `934da48e74150934b364421a3570f61b6f568f72`. **Records head:** the commit that adds this section, pushed after the code head's run had finished.
+- **What C2 changes:** two docstrings in `services/api/tests/test_match_versions_offline.py` (the module docstring's passage from "Read from the source" to "Each function the detector finds must be one of the pinned writers," and `WriterDetectorTests`' docstring), and this section. No code, detector, test, assertion, application behaviour, workflow, setting, contract or proof changes.
+
+### The start gate and the environment check
+
+- **The environment** (section 1, names only):
+  - none of `DATABASE_URL`, `HD_API_KEY` or `GEO_API_KEY`;
+  - no `STREAM_*`, `PG*`, `R2_*`, `CLOUDFLARE_*`, `CF_*` or `RAILWAY_*` name;
+  - the AWS names present: `AWS_ACCESS_KEY_ID`, `AWS_CA_BUNDLE` and `AWS_SECRET_ACCESS_KEY` (OD-76). None was read, printed or passed to a command;
+  - the GitHub token names present: `GH_TOKEN` and `GITHUB_TOKEN`. Neither was read;
+  - the toolchain: `Python 3.12.14` (`python3.12`);
+  - every repository command ran under `env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8`, plus `GLOW_ENV=test` for the API's Django commands.
+- **The start gate** (section 2), at about 09:00 UTC on 22 November 2026:
+  - `git rev-parse HEAD` printed `63aebb6f21dd9a19d8b9fc8f376e6673f8780c0d`;
+  - "this prompt's commit is on the live branch", "C1's code head" and "no code on the live branch after f69529c" printed. The live branch's head was `01c7fe9`, after the prompt's commit, with no non-Markdown change after `f69529c`;
+  - `grep -c` printed `1` for "Delta review of A1-C1" and `0` for "A1-C2".
+- **Read before any change:** root `AGENTS.md` and `CLAUDE.md`; this record's "A1-C1", "Manager verification of A1-C1" and "Delta review of A1-C1"; `test_match_versions_offline.py` whole.
+
+### The passage, before and after
+
+**Before** (module docstring, lines 8 to 24 at the prompt's commit):
+
+```text
+Read from the source and never run: a detector scans every function in the API's code (its
+tests, migrations and virtual environment left out) for these forms of a write to either field
+of a match: an assignment to an object's ``contact_version``; an assignment to the ``version`` of
+a name bound to a ``Match`` or a queryset of them (assigned from ``Match.objects...`` or
+``self._lock(Match, ...)``, looped over, or a parameter annotated ``Match``); a ``save`` of such
+an object naming either field; a writing queryset or manager call (``update``, ``create``,
+``bulk_update`` and the rest) on one, naming either; or SQL text that writes
+``glow_persistence_match``. ``WriterDetectorTests`` shows each of these forms is found.
+
+Other forms escape it, among them: a related manager's ``update``, or an ``aupdate``; a
+``Match(..., version=...)``, or a ``bulk_create`` of such objects; SQL text whose table name is
+built at runtime or held in a constant; a match obtained through a helper such as
+``glow_discovery.interactions._pair_match``; a ``save()`` override or a signal; and ``Match``
+imported under another name. So the pinned set below is today's every writer by the A1 review's
+and the manager's searches of the code, not by the detector alone; the detector's reach is
+carried (the carried-items file, "Carried to SV4"; the exact-head review's AR-4). Each function
+the detector finds must be one of the pinned writers,
+```
+
+**After** (lines 8 to 31 at the code head; line 32, "and each advances both by one …", continues it unchanged):
+
+```text
+Read from the source and never run: in each module of the API's code (its tests, migrations and
+virtual environment left out), a detector reads the top-level ``def`` functions and the ``def``
+methods of top-level classes, anything nested in one (an ``async def`` or a class among them)
+being read as part of it. In those it finds these forms of a write to either field of a match:
+an assignment to an object's ``contact_version``; an assignment to the ``version`` of a name
+bound to a ``Match`` or a queryset of them (assigned from ``Match.objects...`` or
+``self._lock(Match, ...)``, looped over, or a parameter annotated ``Match``); a ``save`` of such
+an object naming either field; a writing queryset or manager call (``update``, ``create``,
+``bulk_update`` and the rest) on one, naming either; or SQL text that writes
+``glow_persistence_match``. ``WriterDetectorTests`` shows each of these forms is found but the
+``save``, whose one example also assigns ``version``; the ``save`` is held instead by
+``MatchVersionTests``' check that each pinned writer saves both fields in one ``save``.
+
+Other forms escape it, among them: a function it does not read (a top-level ``async def``
+function, an ``async def`` method of a top-level class, or any method of a class nested in a
+top-level class); a related manager's ``update``, or an ``aupdate``; a
+``Match(..., version=...)``, or a ``bulk_create`` of such objects; SQL text whose table name is
+built at runtime or held in a constant; an assignment to the ``version`` of a match obtained
+through a helper such as ``glow_discovery.interactions._pair_match``, or made in a ``save()``
+override or a signal (an assignment to an object's ``contact_version`` is found however the
+object was obtained); and ``Match`` imported under another name. So the pinned set below is
+today's every writer by the A1 review's and the manager's searches of the code, not by the
+detector alone; the detector's reach is carried (the carried-items file, "Carried to SV4"; the
+exact-head review's AR-4). Each function the detector finds must be one of the pinned writers,
+```
+
+**`WriterDetectorTests`' docstring,** before (lines 240 and 241):
+
+```text
+"""The detector itself (the exact-head review lens of A1's own review): each form the module's
+docstring lists as found is found. It shows nothing of the forms that escape (AR-4)."""
+```
+
+After (lines 247 to 250):
+
+```text
+"""The detector itself (the exact-head review lens of A1's own review): each form the module's
+docstring lists as found is found, but the ``save``, whose one example also assigns
+``version``; ``MatchVersionTests`` holds the ``save``, by its check that each pinned writer
+saves both fields. It shows nothing of the forms that escape (AR-4)."""
+```
+
+### What was changed, by item
+
+- **D1-1, what the detector scans.** "scans every function in the API's code" is gone. The passage says the detector reads, in each module it scans, the top-level `def` functions and the `def` methods of top-level classes, anything nested in one (an `async def` or a class) read as part of it, as `functions()` and `writes()` do. The escape list now opens with the functions it does not read: a top-level `async def` function, an `async def` method of a top-level class, and any method of a class nested in a top-level class. No sentence says every function is scanned.
+- **N1, what `WriterDetectorTests` shows.** The module's sentence and the class's docstring now say its cases show every listed form but the `save`, whose one example also assigns `version`, and that the `save` is held by `MatchVersionTests`' check that each pinned writer saves both fields (`test_each_writer_advances_both_by_one_and_saves_both`). The two docstrings agree.
+- **N2, the escape list's precision.** A match obtained through a helper, a `save()` override and a signal now escape for an assignment to `version`, with the note that an assignment to an object's `contact_version` is found however the object was obtained. The passage is rewrapped to the module's width (96 characters at most); its one short line, "top-level class); a related manager's ``update``, or an ``aupdate``; a", is there because the literal ``` ``Match(..., version=...)`` ``` that follows is kept whole.
+- **Kept:** the list of the forms the detector finds, word for word but its opening clause; the other escaping forms; that the pinned set rests on the A1 review's and the manager's searches, not the detector alone; that the detector's reach is carried (the carried-items file; AR-4); the closing "Each function the detector finds must be one of the pinned writers,", which line 32 continues.
+
+### Probes and the reversal
+
+Each ran the unchanged detector (`functions()` then `writes()`, loaded from the checkout's module at the prompt's commit) on source in a scratch file outside the checkout, with the session's hash-locked virtual environment, under `env -i`. The listed form in p1 is `match = self._lock(Match, pk)` then `match.version += 1`.
+
+| Probe | Source | Output | Expected |
+|---|---|---|---|
+| p1a | the form in a top-level `async def f(self, pk)` | `scanned=[] found={}` | found nothing: yes |
+| p1b | the form in an `async def` method of a top-level class `C` | `scanned=[] found={}` | found nothing: yes |
+| p1c | the form in a `def` method of class `D` nested in top-level class `C` | `scanned=[] found={}` | found nothing: yes |
+| p1d | the form in an `async def f` nested in a top-level `def g()` | `scanned=['g'] found={'g': ['match.version += 1']}` | found: yes |
+| p2a | `obj = _pair_match(a, b)` then `obj.contact_version = 2` | `found={'f': ['obj.contact_version = 2']}` | found: yes |
+| p2b | `self.contact_version = 2` in `Match.save()` (an override) | `found={'Match.save': ['self.contact_version = 2']}` | found: yes |
+| control | the same two, assigning `version` | `{'f': []}` and `{'Match.save': []}` | escape: yes |
+| signal | a `@receiver(post_save, ...)` function assigning `instance.match.version += 1`, then `instance.match.contact_version += 1` | `{'h': []}`, then `{'h': ['instance.match.contact_version += 1']}` | escape for `version`, found for `contact_version` (the basis for "or a signal" in N2's clause) |
+
+**The reversal (p3).** The module was copied to a scratch directory outside the checkout; on the copy, the save branch of `writes` (the three lines from `if node.func.attr == "save" ...`, line 160) was deleted, and `API_ROOT` was pointed at the checkout's `services/api` so the copy reads the same sources (`diff` showed only those two changes). `python -m unittest -v` on the copy: `Ran 5 tests … FAILED (failures=2)`. Both `WriterDetectorTests` tests `... ok`; `test_both_fields_start_at_one` and `test_the_writers_of_either_field_are_the_pinned_ones` `... ok`; `test_each_writer_advances_both_by_one_and_saves_both` failed for both subtests, `OrmContactPersistence.block` and `OrmContactPersistence.unmatch`, at its last assertion (the found lines lack the `match.save(update_fields=[...])` line). The copy was deleted afterwards; the checkout's `git status` showed no change.
+
+### Commands and results
+
+At the code head, in the checkout, under `env -i` (with `GLOW_ENV=test` for Django), after `pip install --require-hashes -r requirements-dev.lock` in `services/api` (`pip check`: "No broken requirements found."):
+- `manage.py check`: "System check identified no issues (0 silenced)."
+- `manage.py test tests`: `Ran 654 tests … OK`, no skips (this checkout holds `499ccbb`, so the history tests ran).
+- `manage.py test tests.test_match_versions_offline -v 2`: the module's 5 tests, each `... ok`.
+- `ruff check .`: "All checks passed!"; `ruff format --check .`: "169 files already formatted"; `mypy`: "Success: no issues found in 95 source files".
+- **The trusted classifier,** `main`'s `scripts/change_scope.py` (`499ccbb`; SHA-256 begins `b564c62f4a076f51`), extracted to a scratch directory outside the checkout and run from it as `python3 -I <copy>/change_scope.py --base 499ccbbec758ed4ef34a93ad19fa8df454fb095c --head 934da48e74150934b364421a3570f61b6f568f72 --merge-base`: `"full": true`, reason `behavior-or-empty`. `git merge-base --all` gives one base, `499ccbb`.
+- **The diff:** `git diff --name-only 63aebb6 934da48` lists only `services/api/tests/test_match_versions_offline.py`; `git diff` touches only the two docstrings; this section is the records commit's only change. `ast.dump` of the module with every docstring removed is equal at `63aebb6` and at `934da48` (`True`); with docstrings it differs, as it must.
+- **GitHub** was read only with `gh api` REST `GET` calls (no GitHub MCP tool was used): the run, its jobs, and the gate's and the API checks job's logs.
+
+### The run of record
+
+**Foundation run [45006396587](https://github.com/amthorn78/glow-dating-app/actions/runs/45006396587)** on `934da48e74150934b364421a3570f61b6f568f72` (a push run on `claude/affectionate-pasteur-ge2jra`, attempt 1) concluded **success**. It was created at 09:12:24 UTC on 22 November 2026 and finished at 09:21:31. Nothing was pushed to the branch until it had finished.
+
+| Job | Conclusion | Duration |
+|---|---|---|
+| Change scope | success | 5 s |
+| API checks | success | 85 s |
+| Mobile checks | success | 422 s |
+| API mobile smoke | success | 65 s |
+| API artifact checks | success | 25 s |
+| Stream proof checks | success | 67 s |
+| Database proof checks (ordering) | success | 532 s |
+| Database proof checks (identity) | success | 96 s |
+| Database proof checks (profile) | success | 158 s |
+| Database proof checks (discovery) | success | 227 s |
+| Foundation gate | success: "Application checks passed" (log line 94) | 3 s |
+
+- **The API checks job:** `Ran 654 tests … OK (skipped=2)` (log lines 2175 and 2177; the two skips are the history tests in CI's shallow clone, as C1 recorded), and the contract tests `Ran 53 tests`.
+- **Not read:** the other jobs' logs and the artifacts. The durations are from the jobs' timestamps, in whole seconds.
+
+### Limits and deviations
+
+- **"or a signal" in N2's clause.** The prompt names the helper and the `save()` override as escaping only for `version`. The old list also named a signal; a probe showed a signal receiver is the same case (its `contact_version` assignment is found, its `version` assignment escapes), so the clause covers it too, rather than leave a signal listed as escaping for both.
+- **One short line** in the rewrapped passage (above, N2), forced by keeping the literal ``` ``Match(..., version=...)`` ``` unbroken.
+- **The reversal's copy** points `API_ROOT` at the checkout, a second edit beside the deleted branch, so that the copy outside the checkout reads the same sources.
+- **The probes** load the module from the checkout to call its functions; they read code, they do not decide review scope (the classifier did, from `main`'s copy).
+- **The escaping forms are checked on examples,** one each; the list stays "among them".
+- **The network was not restricted by the environment;** the session used PyPI for the API's lock and GitHub for its push and reads only.
+- **Nothing in the records commit was needed** to pass a check; no stop condition held.
