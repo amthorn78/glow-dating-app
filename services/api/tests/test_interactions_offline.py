@@ -1179,31 +1179,16 @@ def git(*args: str) -> subprocess.CompletedProcess[str]:
     )
 
 
-def main_base() -> str | None:
-    """Main as this branch's base: the newest merge base of ``HEAD`` with ``main`` or
-    ``origin/main`` (a local ``main`` can be stale), or ``None`` where the checkout holds neither
-    (CI's shallow clone)."""
-    try:
-        if git("rev-parse", "--is-inside-work-tree").returncode != 0:
-            return None
-    except (FileNotFoundError, subprocess.TimeoutExpired):
-        return None
-    bases = []
-    for ref in ("main", "origin/main"):
-        if git("rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}").returncode != 0:
-            continue
-        found = git("merge-base", "HEAD", ref)
-        if found.returncode == 0 and found.stdout.strip():
-            bases.append(found.stdout.strip())
-    for base in bases:
-        if all(git("merge-base", "--is-ancestor", other, base).returncode == 0 for other in bases):
-            return base
-    return None
+# SV4 A1's base: PR57's merge (SV4 A0), the commit A1 starts from. The history tests read
+# ``contact.py`` there, never at ``main`` or ``origin/main``, so their result does not depend on
+# whether A1 is on main (SV4 A1-C1; the exact-head review's AR-1).
+A1_BASE = "499ccbbec758ed4ef34a93ad19fa8df454fb095c"
 
 
 # D10 (a): the sha256 of ``ast.dump`` (Python 3.12, the pinned toolchain) of every function and
 # method in ``glow_chat/contact.py`` at main's 947576d (PR46's merge, Stage B's base), so the
-# comparison runs without main's history (CI's shallow clone). SV4 A1 changes the module (its
+# digest test needs no history and runs in CI's shallow clone; the history tests read A1's base
+# (``A1_BASE``) wherever that commit is in the checkout. SV4 A1 changes the module (its
 # docstring and one import), so its whole-module pin is A1's (``A1_MODULE_DIGEST``, below).
 MAIN_DEFINITION_DIGESTS = {
     "OrmContactPersistence.__init__": (
@@ -1361,11 +1346,16 @@ class UndoSelectionTests(unittest.TestCase):
 class ReciprocalWriterTests(unittest.TestCase):
     """D10 (a), as the review plan reads it, rewritten by SV4 A1 (its brief's D3, D4 and D7):
     D3, D4 and D7 each change ``glow_chat/contact.py``, so the class no longer pins the whole
-    module as SV3 left it. Every function and method A1 does not change is as SV3 left it (by AST,
-    and by the digests pinned from main's 947576d); A1's three changes and the module are pinned
-    by digest at A1's head, so any later change fails here; ``grant_token`` is gone; ``block``
-    differs from main's by D3's one statement and D4's one value; and ``activate_reciprocal`` is
-    still ``activate_match``'s body with its one check inserted, now with D3's ``retired_at``."""
+    module as SV3 left it. It compares the file at ``HEAD`` with two references. The digest test
+    needs no history, so CI runs it: every function and method A1 does not change is as SV3 left
+    it (the digests pinned from main's 947576d), and A1's three changes and the module are pinned
+    by digest at A1's head, so any later change fails here. The two history tests read the file
+    at A1's base, ``A1_BASE`` (PR57's merge), never at ``main``, so they pass before and after
+    A1's merge, and run wherever that commit is in the checkout (CI's shallow clone skips them):
+    every definition A1 does not change is the base's, by AST; ``grant_token`` is gone; and
+    ``block`` differs from the base's by D3's one statement and D4's one value. And
+    ``activate_reciprocal`` is still ``activate_match``'s body with its one check inserted, now
+    with D3's ``retired_at``."""
 
     def setUp(self) -> None:
         self.head = parsed(CONTACT)
@@ -1374,17 +1364,20 @@ class ReciprocalWriterTests(unittest.TestCase):
         self.reciprocal = methods["OrmContactPersistence.activate_reciprocal"]
         self.block = methods["OrmContactPersistence.block"]
 
-    def test_every_writer_at_mains_base_is_unchanged_but_a1s(self) -> None:
-        base = main_base()
-        if base is None:
+    def test_every_writer_at_a1s_base_is_unchanged_but_a1s(self) -> None:
+        try:
+            present = git("cat-file", "-e", f"{A1_BASE}^{{commit}}").returncode == 0
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            present = False
+        if not present:
             self.skipTest(
-                "neither main nor origin/main is in this checkout (CI's shallow clone); the "
-                "comparison runs wherever main's history is present"
+                f"A1's base {A1_BASE} is not in this checkout (CI's shallow clone); the "
+                "comparison runs wherever that commit is present"
             )
-        shown = git("show", f"{base}:{CONTACT_IN_REPO}")
+        shown = git("show", f"{A1_BASE}:{CONTACT_IN_REPO}")
         self.assertEqual(shown.returncode, 0, shown.stderr)
-        main = ast.parse(shown.stdout)
-        before, after = definitions(main), definitions(self.head)
+        base = ast.parse(shown.stdout)
+        before, after = definitions(base), definitions(self.head)
         self.assertGreater(len(before), 20)
         self.assertLessEqual(A1_CHANGED | A1_REMOVED, set(before))
         for name, node in before.items():
@@ -1397,12 +1390,12 @@ class ReciprocalWriterTests(unittest.TestCase):
         self.assertEqual(set(after), set(before) - A1_REMOVED)
         self.assertEqual(
             every_definition(self.head),
-            every_definition(main) - {f"{n}.body" for n in A1_REMOVED} - A1_REMOVED,
+            every_definition(base) - {f"{n}.body" for n in A1_REMOVED} - A1_REMOVED,
         )
-        # The module's other statements are main's, but its docstring and one import, from which
-        # D7 drops ``chat_tokens``.
+        # The module's other statements are the base's, but its docstring and one import, from
+        # which D7 drops ``chat_tokens``.
         mine = [ast.unparse(n) for n in self.head.body[1:] if not isinstance(n, ast.ClassDef)]
-        theirs = [ast.unparse(n) for n in main.body[1:] if not isinstance(n, ast.ClassDef)]
+        theirs = [ast.unparse(n) for n in base.body[1:] if not isinstance(n, ast.ClassDef)]
         self.assertEqual(
             [line for line in mine if line != "from glow_domain import chat"],
             [line for line in theirs if line != "from glow_domain import chat, chat_tokens"],
@@ -1411,7 +1404,7 @@ class ReciprocalWriterTests(unittest.TestCase):
         self.assertIn("from glow_domain import chat, chat_tokens", theirs)
 
         # Each class's own statements (its bases, decorators, docstring and attributes; its
-        # methods are compared above) are main's.
+        # methods are compared above) are the base's.
         def classes(tree: ast.Module) -> dict[str, list[str]]:
             found: dict[str, list[str]] = {}
             for node in tree.body:
@@ -1427,7 +1420,7 @@ class ReciprocalWriterTests(unittest.TestCase):
                     )
             return found
 
-        self.assertEqual(classes(self.head), classes(main))
+        self.assertEqual(classes(self.head), classes(base))
 
     def test_every_writer_is_pinned_by_its_digest(self) -> None:
         # The same comparison without main's history, so it runs in CI too: SV3's digests for
@@ -1495,11 +1488,17 @@ class ReciprocalWriterTests(unittest.TestCase):
         ]
         self.assertEqual(imports, ["from glow_persistence.models import DirectionalInteraction"])
 
-    def test_block_differs_from_mains_by_d3s_statement_and_d4s_value(self) -> None:
-        base = main_base()
-        if base is None:
-            self.skipTest("main's history is not in this checkout (CI's shallow clone)")
-        shown = git("show", f"{base}:{CONTACT_IN_REPO}")
+    def test_block_differs_from_a1s_base_by_d3s_statement_and_d4s_value(self) -> None:
+        try:
+            present = git("cat-file", "-e", f"{A1_BASE}^{{commit}}").returncode == 0
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            present = False
+        if not present:
+            self.skipTest(
+                f"A1's base {A1_BASE} is not in this checkout (CI's shallow clone); the "
+                "comparison runs wherever that commit is present"
+            )
+        shown = git("show", f"{A1_BASE}:{CONTACT_IN_REPO}")
         self.assertEqual(shown.returncode, 0, shown.stderr)
         theirs = inner_body(definitions(ast.parse(shown.stdout))["OrmContactPersistence.block"])
         mine = inner_body(self.block)

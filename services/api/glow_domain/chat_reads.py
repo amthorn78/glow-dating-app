@@ -7,13 +7,19 @@ conversation; the provider supplies only the texts. ``glow_chat.reads`` implemen
 ``ConversationReads`` over the models; it runs only under the disposable-database
 proof's settings until P11 wires it and serves the reads. No HTTP route is attached.
 
-**Whatever refuses a send refuses a read** (point c). The history read, the conversation
-list and the read-cursor command make the send's checks, in the send's order, on rows
-read under the send's shared locks (``FOR SHARE``, as B1's grant): a valid, current
-session of an ``active`` account; the match ``active`` with no block either way; neither
-member suspended or deleted; neither profile paused or restricted; both onboarding
-consents accepted. The rule is the interim default under F06 (DM-22 3.1); the history
-question goes to Nathan before P11 serves the reads.
+**The read rule** (point c, as the SV4 brief's D5 revises it; OD-60, H). The history
+read, the conversation list and the read-cursor command check rows read under the send's
+shared locks (``FOR SHARE``, in the send's order): the reader's valid, current session of
+an ``active`` account; the match ``active``, with no block either way; the other account
+``active`` or ``suspended`` (a deletion works as an unmatch, and a ``removed`` profile is
+hidden). Then each cause that stops messaging (either member's pause, SV2's
+``incomplete`` read as one; a restriction of either profile; the other's suspension;
+either member's withdrawn consent) reads its value in ``chat.history``: at launch each
+reads ``read_only``, which serves the conversation read-only; ``hidden``, as the setting
+says, refuses it; and the consent limit fails closed. Every hidden cause refuses with one
+reason, which names no cause. ``glow_chat.reads``' module docstring states the rule and
+its causes in full, and ``glow_domain.chat_projections.error_for`` maps each refusal to
+the served code.
 
 **Two checks around the provider call** (DM-22 3.2). The history read checks before the
 provider call, so a refused member causes no provider read, and its transaction ends
