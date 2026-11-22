@@ -15,11 +15,11 @@ This file only routes: the current item, what happens next and who waits on whom
 - **Done:** P00 to P05 (fixture scope), M01 to M09, A01-R, P06.1, P06.DB, P06.2, P09.3a, P06.2-F, P06.3, SV1 to SV3, SV2-R.
 - **Owner directions:** OD-01 to OD-84. **Review log:** DM-01 to DM-98. **Linear (OD-29).** Every prompt names its environment (OD-36) and glow-docs as attached (OD-74).
 
-## Waiting checkpoint (22 November 2026, 13:03 UTC, App Manager 13)
+## Waiting checkpoint (22 November 2026, 13:13 UTC, App Manager 13)
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 13 | GitHub | PR59's run and Codex's review of the head that holds A2's exact-head review prompt, revision 2 (with Codex's P2 on `81d390c`), then the prompt to Nathan | Nothing merges |
+| App Manager 13 | Nathan | A2's exact-head review report (prompt revision 2, from `7e8811e`, with Codex's P2 as item 3) | Nothing merges |
 
 ## Next actions (App Manager 13)
 
