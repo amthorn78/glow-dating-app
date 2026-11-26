@@ -19,16 +19,16 @@ This file only routes: the current item, what happens next and who waits on whom
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 13 | B1's pull request run and Codex | The PR run and Codex's pass on its head, before B1's exact-head review prompt | Nothing merges |
+| App Manager 13 | PR60's run and Codex on the review prompt's commit | Codex's pass on that head (R39), then the prompt to Nathan | Nothing merges |
 
 ## Next actions (App Manager 13)
 
-1. **SV4 Stage A merged:** A0 with PR57 (`499ccbb`), A1 with PR58 (`43e794a`), A2 with A2-C1 and DM-100 with PR59 (`988a36a`; the SV4 record, "Merge (26 November 2026)"). `main`'s push run 45866641384 passed all twelve jobs. **Now: SV4 Stage B** (the server side of notifications; the M09 record, section 4.3, item 2), designed in the brief's revision 11 (D16 to D31: two sessions, B1 F12's surface and B2 the triggers and sweeps), approved by Dev Manager 7 in DM-101 with AM1 to AM16, applied as revision 12. B1 (code head `e7e7e84`, run of record 45900925199, the chat suite 30/30) is verified and merged into the manager branch at `4fe1a7f`. Next: its pull request, run and Codex, its exact-head review, Dev Manager 7's pre-merge read, the merge; then B2's prompt. The carried items: "Carried to SV4" (A2's and A2-C1's reviews, DM-98's AJ2 rule), "Carried to the next change to the Foundation workflow (DM-97)".
+1. **SV4 Stage A merged:** A0 with PR57 (`499ccbb`), A1 with PR58 (`43e794a`), A2 with A2-C1 and DM-100 with PR59 (`988a36a`; the SV4 record, "Merge (26 November 2026)"). `main`'s push run 45866641384 passed all twelve jobs. **Now: SV4 Stage B** (the server side of notifications; the M09 record, section 4.3, item 2), designed in the brief's revision 11 (D16 to D31: two sessions, B1 F12's surface and B2 the triggers and sweeps), approved by Dev Manager 7 in DM-101 with AM1 to AM16, applied as revision 12. B1 (code head `e7e7e84`, run of record 45900925199, the chat suite 30/30) is verified and merged into the manager branch at `4fe1a7f`. PR60 carries it; Codex's P2 on `cd920fd` (`_park`) joins the exact-head review, whose prompt (`docs/ephemeral/2026-11-26-sv4-b1-review-prompt.md`) waits on Codex's pass on its commit. Then Dev Manager 7's pre-merge read, the merge, and B2's prompt. The carried items: "Carried to SV4" (A2's and A2-C1's reviews, DM-98's AJ2 rule), "Carried to the next change to the Foundation workflow (DM-97)".
 2. **Manager records:** PF02 1.9 (AM12-31 to AM12-49, AM13-01 to AM13-15; AM12-49's proposed rule: a prompt names both GitHub routes; DM-98's wording of the false-claim class); the manager workflow's next revision: DM-100's AL9 (the delta review's line count), for the Dev Manager's read; the status log's move (M09 (b)); R-07, R-10, R-26, R-28.
 
 **Carried follow-ups** live in their owning homes: [`carried-to-later-items.md`](../planning/carried-to-later-items.md), the P11 plan, the review log's "Deferred conditions".
 
 ## Branches and PRs (26 November 2026)
 
-- **Open PRs:** B1's, from the manager branch into `main` (below).
+- **Open PRs:** PR60 (SV4 B1), from the manager branch into `main`.
 - **Remote branches, four** (26 November): `main` (`988a36a`); the manager branch; `claude/dev-manager` (`60325b1`, merged); B1's `claude/lucid-fermi-droq7u` (`f106105`, merged at `4fe1a7f`), which the branch cleanup deletes once B1's pull request merges.
