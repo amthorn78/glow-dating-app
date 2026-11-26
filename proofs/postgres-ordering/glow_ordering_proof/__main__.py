@@ -5,6 +5,7 @@
     python -m glow_ordering_proof identity --results identity.json   # SV1, identity settings
     python -m glow_ordering_proof profile --results profile.json     # SV2, profile settings
     python -m glow_ordering_proof discovery --results discovery.json # SV3, discovery settings
+    python -m glow_ordering_proof chat --results chat.json           # SV4 A2, chat settings
 
 ``run`` executes the suite on two subjects (P06.2, D3): the reference design, then the
 app's adapter (``services/api``'s ``glow_chat``), each with the forced and named cases,
@@ -17,17 +18,25 @@ carried item 1). It exits
 separately (``python -m django ...``); Django's ``dbshell`` is refused under these
 settings (the proof's own command, P06.DB's carried item 6).
 
-``identity`` (SV1) runs the identity suite on the second disposable database, under
+Since SV4 A0 each suite runs in its own job, on its own disposable database in that job's own
+PostgreSQL (its brief's D2); the suites' databases were the second, third and fourth of one
+shared PostgreSQL until then.
+
+``identity`` (SV1) runs the identity suite on its own disposable database, under
 ``glow_ordering_proof.identity_settings`` only (``identity_suite``); the ordering commands refuse
 those settings.
 
-``profile`` (SV2 Stage A) runs the profile suite on the third disposable database, under
+``profile`` (SV2 Stage A) runs the profile suite on its own disposable database, under
 ``glow_ordering_proof.profile_settings`` only (``profile_suite``); every other command refuses
 those settings, and ``profile`` refuses every other settings module.
 
-``discovery`` (SV3 Stage A) runs the discovery suite on the fourth disposable database, under
+``discovery`` (SV3 Stage A) runs the discovery suite on its own disposable database, under
 ``glow_ordering_proof.discovery_settings`` only (``discovery_suite``); every other command refuses
 those settings, and ``discovery`` refuses every other settings module.
+
+``chat`` (SV4 A2) runs the chat suite on its own disposable database, under
+``glow_ordering_proof.chat_settings`` only (``chat_suite``); every other command refuses those
+settings, and ``chat`` refuses every other settings module.
 """
 
 from __future__ import annotations
@@ -285,8 +294,22 @@ def main(argv: list[str] | None = None) -> int:
     # SV3 Stage A: the discovery suite, under glow_ordering_proof.discovery_settings only.
     discovery_parser = commands.add_parser("discovery")
     discovery_parser.add_argument("--results", type=Path, default=None)
+    # SV4 A2: the chat suite, under glow_ordering_proof.chat_settings only.
+    chat_parser = commands.add_parser("chat")
+    chat_parser.add_argument("--results", type=Path, default=None)
     args = parser.parse_args(argv)
     settings_module = os.environ.get("DJANGO_SETTINGS_MODULE")
+    if args.command == "chat":
+        if settings_module != "glow_ordering_proof.chat_settings":
+            print("refusing: set DJANGO_SETTINGS_MODULE=glow_ordering_proof.chat_settings")
+            return 1
+        _setup()
+        from glow_ordering_proof import chat_suite
+
+        return chat_suite.run(args.results)
+    if settings_module == "glow_ordering_proof.chat_settings":
+        print("refusing: only the chat suite runs under the chat settings")
+        return 1
     if args.command == "discovery":
         if settings_module != "glow_ordering_proof.discovery_settings":
             print("refusing: set DJANGO_SETTINGS_MODULE=glow_ordering_proof.discovery_settings")

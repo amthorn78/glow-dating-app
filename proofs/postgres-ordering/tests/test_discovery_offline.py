@@ -554,6 +554,8 @@ class DiscoveryWorkflowTests(unittest.TestCase):
             ("database-identity", "SV1", "identity"),
             ("database-profile", "SV2", "profile"),
             ("database-discovery", "SV3", "discovery"),
+            # SV4 A2 (its brief's D2 and D10): the chat suite's job, in the same form.
+            ("database-chat", "SV4", "chat"),
         ):
             with self.subTest(job=job):
                 lines = workflow_job(job)
@@ -605,7 +607,14 @@ class DiscoveryWorkflowTests(unittest.TestCase):
     def test_the_gate_requires_each_suites_job(self) -> None:
         # SV4 A0 (D2): the gate needs every suite's job and requires each one's result, success
         # on a full-scope change and skipped on ordinary documentation, as for every other job.
-        jobs = ("database-ordering", "database-identity", "database-profile", "database-discovery")
+        jobs = (
+            "database-ordering",
+            "database-identity",
+            "database-profile",
+            "database-discovery",
+            # SV4 A2 (its brief's D2): the chat suite's job.
+            "database-chat",
+        )
         gate = "\n".join(workflow_job("gate"))
         needs = re.search(r"^    needs: \[(.*)\]$", gate, flags=re.MULTILINE)
         assert needs is not None
@@ -762,6 +771,8 @@ class DiscoveryPlanTests(unittest.TestCase):
                     "api/v1/blocks",
                     # Rewritten by Stage B's correction B-C1 (DM-74): the own-versions read.
                     "api/v1/interactions/<uuid:profile_id>",
+                    # SV4 A2 (its brief's D9): the member's match list.
+                    "api/v1/matches",
                 },
             },
         )
@@ -1022,7 +1033,8 @@ class DiscoveryCommandTests(unittest.TestCase):
                 self.assertIn("refusing: set DJANGO_SETTINGS_MODULE=" + DISCOVERY_SETTINGS, printed)
 
     def test_no_other_command_runs_under_the_discovery_settings(self) -> None:
-        for argv in (["facts"], ["run", "--seed", "1"], ["identity"], ["profile"]):
+        # SV4 A2: and the chat command.
+        for argv in (["facts"], ["run", "--seed", "1"], ["identity"], ["profile"], ["chat"]):
             with self.subTest(command=argv[0]):
                 status, printed = self.call(argv, DISCOVERY_SETTINGS)
                 self.assertEqual(status, 1)

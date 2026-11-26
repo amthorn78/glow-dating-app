@@ -58,6 +58,12 @@ profile's account ID and nothing else of the profile, never answers ``not_found`
 (missing, not visible, paused, restricted, removed, excluded or blocking the actor alike), and
 never reads a row whose actor is the other member, so their like, pass or block is never shown.
 
+**The match list** (SV4 A2, its brief's D9): ``read_matches`` answers ``MatchList``, the member's
+matches the member may still see, served ``active``, newest first, at most 200, in one transaction
+holding the actor's account row ``FOR SHARE`` first, as the match read does. An ended match (an
+unmatch, or a block, which ends it as an unmatch does) is not listed, nor one whose other member's
+account is being or has been deleted (a deletion works as an unmatch; OD-60, H).
+
 Nothing here logs or returns another member's private value, a count or a reason (D8, D17); a
 refusal names a code and an internal reason, never a value. No answer names a block's direction,
 and D8's gap is closed (SV4 A1, D4; DM-75, DM-96): no command makes a match ``restricted``, and a
@@ -73,7 +79,7 @@ from typing import Any
 from uuid import UUID
 
 from django.conf import settings as django_settings
-from django.db.models import F
+from django.db.models import F, Q
 from django.db.models.functions import Now
 
 from glow_chat.contact import OrmContactPersistence
@@ -590,6 +596,55 @@ def read_match(account_id: UUID, match_id: UUID) -> Result:
         if projection is None:
             raise Refused(NOT_FOUND, "match_not_found")
         return Result("read", data=projection)
+
+    return run(body)
+
+
+# -- the match list (SV4 A2, its brief's D9; MatchList) --------------------------------------
+
+# A deletion works as an unmatch (OD-60, H): a match whose other member's account is being, or has
+# been, deleted is not listed.
+DELETED_STATES = ("deletion_pending", "deleted")
+
+
+def read_matches(account_id: UUID) -> Result:
+    """D9's ``MatchList``: the member's matches the member may still see, served ``active``, newest
+    first (by the match's creation, then its ID), at most 200. One transaction, the actor's account
+    row ``FOR SHARE`` first, as the match read takes it, so it waits for a command of the actor's
+    in flight; then one statement selects the matches, with the other member's account state, and
+    one reads the other members' profile IDs. A match whose other member's profile is missing is
+    left out, as the match read leaves it out; another member's match is never listed."""
+
+    def body(tx: Tx) -> Result:
+        read_account_shared(tx, account_id)
+        mine = (Q(account_low_id=account_id) & ~Q(account_high__state__in=DELETED_STATES)) | (
+            Q(account_high_id=account_id) & ~Q(account_low__state__in=DELETED_STATES)
+        )
+        rows = list(
+            Match.objects.filter(mine, state="active")
+            .order_by("-created_at", "-id")
+            .values_list("id", "version", "account_low_id", "account_high_id")[
+                : contract.MATCH_LIST_LIMIT
+            ]
+        )
+        others = {
+            match_id: UUID(str(high if UUID(str(low)) == account_id else low))
+            for match_id, _, low, high in rows
+        }
+        profiles = {
+            UUID(str(owner)): str(profile)
+            for owner, profile in Profile.objects.filter(
+                account_id__in=set(others.values())
+            ).values_list("account_id", "id")
+        }
+        entries = [
+            contract.match_projection(
+                str(match_id), int(version), profiles[others[match_id]], "active"
+            )
+            for match_id, version, _, _ in rows
+            if others[match_id] in profiles
+        ]
+        return Result("read", data=contract.match_list(entries))
 
     return run(body)
 

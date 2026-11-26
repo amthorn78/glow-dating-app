@@ -126,7 +126,7 @@ export type PolicyVersion = string;
  */
 export type Version = number;
 /**
- * One conversation of the member's list: Glow's state, the count of the other member's accepted messages after the member's own read cursor, and the latest-message marker. No provider field; no reason why a conversation ended (P06.2 C1, OD-45).
+ * One conversation of the member's list: Glow's state (open; or read_only, the one state for every cause the read rule serves read-only, with its count and marker kept, SV4 D9), the count of the other member's accepted messages after the member's own read cursor, and the latest-message marker. No provider field; no reason why a conversation ended or is read-only (P06.2 C1, OD-45; SV4 D5).
  *
  * This interface was referenced by `AppResponse`'s JSON-Schema
  * via the `definition` "ConversationSummary".
@@ -134,7 +134,7 @@ export type Version = number;
 export type ConversationSummary = {
   kind: 'conversation';
   match_id: string;
-  state: 'open' | 'closed';
+  state: 'open' | 'closed' | 'read_only';
   unread_count: number;
   latest: LatestMessageMarker | null;
 };
@@ -360,7 +360,8 @@ export interface AppResponse {
     | OwnAgeState
     | CandidateCardPage
     | InteractionUndoOutcome
-    | OwnInteractionVersions;
+    | OwnInteractionVersions
+    | MatchList;
 }
 /**
  * This interface was referenced by `AppResponse`'s JSON-Schema
@@ -822,6 +823,19 @@ export interface InteractionUndoOutcome {
   state: 'withdrawn';
 }
 /**
+ * A member's matches the member may still see, newest first, at most 200: each a MatchProjection served active (SV4 D9). An ended match is not listed (an unmatch, or a block, which ends it as an unmatch does), nor one whose other member's account is being or has been deleted (a deletion works as an unmatch; OD-60, H).
+ *
+ * This interface was referenced by `AppResponse`'s JSON-Schema
+ * via the `definition` "MatchList".
+ */
+export interface MatchList {
+  kind: 'match_list';
+  /**
+   * @maxItems 200
+   */
+  matches: MatchProjection[];
+}
+/**
  * This interface was referenced by `AppResponse`'s JSON-Schema
  * via the `definition` "CommandMeta".
  */
@@ -1177,7 +1191,8 @@ export interface AppResponse1 {
     | OwnAgeState
     | CandidateCardPage
     | InteractionUndoOutcome
-    | OwnInteractionVersions;
+    | OwnInteractionVersions
+    | MatchList;
 }
 /**
  * Immutable minimal interaction-family receipt. This is the original logical outcome, not a current projection or permission. No actor, profile data, private response or contact capability is retained.

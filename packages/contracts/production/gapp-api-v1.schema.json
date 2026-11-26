@@ -1214,7 +1214,8 @@
           "type": "string",
           "enum": [
             "open",
-            "closed"
+            "closed",
+            "read_only"
           ],
           "not": {
             "pattern": "[\\ud800-\\udfff]"
@@ -1236,7 +1237,7 @@
           ]
         }
       },
-      "description": "One conversation of the member's list: Glow's state, the count of the other member's accepted messages after the member's own read cursor, and the latest-message marker. No provider field; no reason why a conversation ended (P06.2 C1, OD-45).",
+      "description": "One conversation of the member's list: Glow's state (open; or read_only, the one state for every cause the read rule serves read-only, with its count and marker kept, SV4 D9), the count of the other member's accepted messages after the member's own read cursor, and the latest-message marker. No provider field; no reason why a conversation ended or is read-only (P06.2 C1, OD-45; SV4 D5).",
       "allOf": [
         {
           "if": {
@@ -3262,6 +3263,9 @@
             },
             {
               "$ref": "#/$defs/OwnInteractionVersions"
+            },
+            {
+              "$ref": "#/$defs/MatchList"
             }
           ]
         }
@@ -5015,6 +5019,27 @@
         }
       ],
       "description": "The actor's own versions toward a profile (SV3 Stage B, correction B-C1, D13; DM-74): the profile ID as asked, the actor's own directional row's state and version (F08) and the actor's own block's state and version (F13), each none and 0 where the actor has no row, so a client that has lost its own command answers, or a second device, can learn the version CommandMeta's expected_version addresses. Built from the actor's own rows only: the same answer whatever the profile's state, or whether it exists, and never the other member's like, pass or block, a count or a reason. Additive: every existing DTO is unchanged, and this discriminator joins AppResponse as earlier additions did."
+    },
+    "MatchList": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "matches"
+      ],
+      "properties": {
+        "kind": {
+          "const": "match_list"
+        },
+        "matches": {
+          "type": "array",
+          "maxItems": 200,
+          "items": {
+            "$ref": "#/$defs/MatchProjection"
+          }
+        }
+      },
+      "description": "A member's matches the member may still see, newest first, at most 200: each a MatchProjection served active (SV4 D9). An ended match is not listed (an unmatch, or a block, which ends it as an unmatch does), nor one whose other member's account is being or has been deleted (a deletion works as an unmatch; OD-60, H)."
     }
   }
 }

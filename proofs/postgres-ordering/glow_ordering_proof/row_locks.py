@@ -1,10 +1,11 @@
 """D14's record of the row locks the suites send (the SV3 brief's D14 and acceptance check 15;
 DM-68, DM-70, DM-71, DM-73; SV3 Stage B).
 
-The lock scan (``account_lock_scan``) reads the source and cannot be complete, so each of the four
-suites (the ordering suite's ``run``, ``identity``, ``profile`` and ``discovery``) also checks what
-it sends. Before its first statement it installs one ``RowLockRecord``, which records the text of
-every statement the process sends while the suite runs:
+The lock scan (``account_lock_scan``) reads the source and cannot be complete, so each of the five
+suites (the ordering suite's ``run``, ``identity``, ``profile``, ``discovery`` and, since SV4 A2,
+``chat``) also checks what it sends. Before its first statement it installs one
+``RowLockRecord``, which records the text of every statement the process sends while the suite
+runs:
 
 - **through Django** (``DJANGO``): an execute wrapper on every connection the process opens, the
   ones its concurrency cases open in other threads included (each new connection is given the
@@ -122,9 +123,11 @@ placeholder, which a value holding a backslash can change (S4; the proof README'
 lock through a model table's name that refers to another relation when the lock runs (a view of
 that name a path the record does not see created, the account table renamed to that name, or a
 table of that name of which the account table was made a child), since it judges each statement
-on its own text and follows no change to the schema; a statement sent before Django's registry
-is ready, judged without the models' tables; the name ``excluded`` as a binding; and a statement
-a case never runs.
+on its own text and follows no change to the schema; a relation named after a word that ends a
+``FROM`` list, which the relations check does not read (F1; the proof README's "Limits", "The
+row-lock record's limits under the freeze"); a statement sent before Django's registry is ready,
+judged without the models' tables; the name ``excluded`` as a binding; and a statement a case
+never runs.
 
 **Its counts** of connections and threads are of distinct identities, which a closed connection's
 or an ended thread's successor may reuse, and it counts a connection's Django wrapper and its
@@ -701,7 +704,8 @@ def judge(sql: str, tables: frozenset[str] = frozenset()) -> Verdict:
         return Verdict(U_AND_NAME, writer, account, for_update)
     if not account:
         # Correction B-C4's item 3 (Codex on 4c2f918; DM-78): with the models' tables given, a
-        # FOR UPDATE that names no account table reads only those tables.
+        # FOR UPDATE that names no account table reads only those tables, in the positions its
+        # reading binds.
         if not tables:
             return Verdict(None, writer, account, for_update)
         return Verdict(_relations(tokens, tables), writer, account, for_update)
