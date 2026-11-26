@@ -1925,3 +1925,16 @@ The workflow tests read the chat job's steps as text, as A0's corrections read t
 | A2R-9 | **Recorded here** | The record's wording; the findings table gives the right lines |
 | The timing, the bound's consequence and the seal test's reach | **Recorded here** as limits | The review's, none in a class |
 | Codex's P2 thread (comment 4658183908) | Resolved once A2-C1's fix and Codex's review of its head confirm it | It names A2R-1 |
+
+### Dev Manager 7's DM-99 (26 November 2026)
+
+[DM-99](../../continuity/dev-manager/reviews/2026-11-26-dm-99-sv4-a2-c1-design.md) (`c2ae138`, a read of `e28a5e2`; merged at `15a5646`) decided where A2-C1 fixes the send's one code: **(a), both A2R-1 and A2R-2 in A2's route layer,** with AK1 to AK8. Codex's second P2 thread (comment 4703261810, on `e28a5e2`, `contract.py` line 175) is A2R-2, found independently.
+- **AK1:** the history read and the read cursor have the same split for a session ended mid-request (`reads.py`'s `_authorize` checks the session after the accounts and before the block and the causes), harmless at launch and open once the console publishes a cause `hidden`; A2-C1 maps those session reasons to the one code there too. The list, `session_missing`, `accountsession_missing` and SV1's door keep `unauthenticated`.
+- **AK2:** an offline test lists, from the source, every reason `send` and `_authorize` can raise after their locks and pins each one's served code; database cases run the review's probe table with a wrong version and with a session ended once the send holds its locks, and the two reads under a cause published `hidden` and under an unmatch.
+- **AK3 to AK7:** the contract's and the route contract's words, which A2-C1 applies with its code; **AK8:** D8's send bullet, applied in the brief's revision 10.
+- **A2R-4:** a negotiation that ignores `Accept` and `format` on A2's five views; SV2's and SV3's routes carried to P10.
+- **A2R-12:** carried to P08.2 by name (AK9), with the P11 plan's match-state gate rewritten (AK10): a block's direction met by A1's D4, a deletion open.
+- **AK11:** A2R-8's case-3 part (the cursor for both members) goes into A2-C1, since D10's list is A2's acceptance check; the challenge-header part rides along (the manager's choice).
+- **A delta review is confirmed,** with DM-99's five-point focus (its section 6).
+- **The dispositions above therefore stand as:** A2R-1, A2R-2 (with AK1), A2R-3, A2R-4, A2R-5 and A2R-8 (both parts) fixed by A2-C1; A2R-11 carried for the list only; A2R-12 carried to P08.2; the rest as the table says. Added to "Carried to AC3": the mobile fixture adapter's `stale_version` for a send's wrong version (`fixture-adapter.ts`, line 276).
+- **Nathan's relay** carried DM-98's message of 22 November, not DM-99's; the manager took the report from `claude/dev-manager` under the charter's fallback.
