@@ -94,6 +94,8 @@ class ChatSettingsModuleTests(unittest.TestCase):
             "glow_persistence.apps.PersistenceDesignConfig",
             "glow_profiles.apps.ProfilesConfig",
             "glow_discovery.apps.DiscoveryConfig",
+            # SV4 B1: F12's app.
+            "glow_notifications.apps.NotificationsConfig",
         ):
             self.assertIn(app, settings.INSTALLED_APPS)
         self.assertEqual(settings.ROOT_URLCONF, "glow_ordering_proof.chat_urls")
@@ -112,7 +114,30 @@ class ChatSettingsModuleTests(unittest.TestCase):
         self.assertEqual(
             settings.GLOW_CHAT_TEXT_READER, "glow_ordering_proof.chat_support.text_reader"
         )
+        # SV4 B1 (D16; DM-101's AM1): these settings alone name the token store and the push
+        # transport, the suite's fixtures.
+        self.assertEqual(
+            settings.GLOW_NOTIFICATIONS_TOKEN_STORE, "glow_ordering_proof.chat_support.token_store"
+        )
+        self.assertEqual(
+            settings.GLOW_NOTIFICATIONS_PUSH_TRANSPORT,
+            "glow_ordering_proof.chat_support.push_transport",
+        )
         self.assertEqual(settings.LOGGING["root"], {"level": "DEBUG", "handlers": []})
+
+    def test_the_suites_push_tokens_derive_from_the_settings_key_as_the_job_check_does(
+        self,
+    ) -> None:
+        # SV4 B1 (DM-101, section 11): the suite's pool and the job's check's pool are the same
+        # tokens, one from the settings' SECRET_KEY, the other from the key file the job wrote.
+        settings = self.import_settings({**GOOD, **self.files.environ()})
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / chat_scan.SECRET_KEY_FILE
+            path.write_text(self.files.secret_key + "\n", encoding="ascii")
+            from_file = path.read_text(encoding="ascii").strip()
+        self.assertEqual(
+            chat_scan.push_tokens(str(settings.SECRET_KEY)), chat_scan.push_tokens(from_file)
+        )
 
     def test_the_settings_refuse_what_the_proofs_settings_refuse(self) -> None:
         files = self.files.environ()
@@ -151,6 +176,8 @@ class ChatSettingsModuleTests(unittest.TestCase):
                 "glow_discovery.interaction_urls",
                 "glow_discovery.urls",
                 "glow_identity.urls",
+                # SV4 B1: F12's routes.
+                "glow_notifications.urls",
                 "glow_profiles.urls",
             ],
         )
@@ -245,6 +272,42 @@ class ChatScanTests(unittest.TestCase):
         found = chat_scan.job_values(self.job.root)
         for value in self.job.every_value():
             self.assertIn(value, found)
+
+    def test_the_push_tokens_are_held_with_no_file_of_their_own(self) -> None:
+        # SV4 B1 (D29; DM-101, section 11): the job's check holds every synthetic push token of the
+        # suite's pool, derived from the job's chat-secret-key, and the job writes no file for it.
+        key = self.job.values[chat_scan.SECRET_KEY_FILE]
+        pool = chat_scan.push_tokens(key)
+        self.assertEqual(len(pool), chat_scan.PUSH_TOKEN_POOL)
+        self.assertEqual(len(set(pool)), len(pool))
+        self.assertEqual(pool, chat_scan.push_tokens(key))
+        self.assertTrue(set(pool).isdisjoint(chat_scan.push_tokens(key + "x")))
+        found = chat_scan.job_values(self.job.root)
+        self.assertLessEqual(set(pool), set(found))
+        self.assertNotIn("push", " ".join(chat_scan.VALUE_FILES + chat_scan.KEY_FILES))
+        for index in (0, chat_scan.PUSH_TOKEN_POOL - 1):
+            for where in ("log", "json"):
+                with self.subTest(where=where, index=index):
+                    job = ChatJobDirectory()
+                    try:
+                        token = chat_scan.push_tokens(job.values[chat_scan.SECRET_KEY_FILE])[index]
+                        job.clean_log(extra=f"{token}\n" if where == "log" else "")
+                        if where == "json":
+                            job.results.write_text(json.dumps({"x": token}), encoding="utf-8")
+                        status, printed = job.run()
+                        self.assertEqual(status, chat_scan.REFUSED)
+                        self.assertFalse(job.results.exists())
+                        self.assertNotIn(token, printed)
+                    finally:
+                        job.close()
+
+    def test_the_suite_holds_the_whole_pool_before_its_first_case(self) -> None:
+        source = (PROOF / "chat_suite.py").read_text(encoding="utf-8")
+        files = source.index("def _file_secrets()")
+        self.assertIn("*push_tokens(str(settings.SECRET_KEY)),", source[files:])
+        run = source.index("def run(")
+        held = source.index("for value in _file_secrets():", run)
+        self.assertLess(held, source.index("for entry in chat_cases.CASES:", run))
 
     def test_the_docstring_names_the_chat_job(self) -> None:
         # D12, "Due at A2": the scan's docstring names its own job, not the shared one.
@@ -598,6 +661,19 @@ PLAN = (
     "list.bounded_locks",
     "send.one_answer_for_every_version_and_session",
     "list.block_session_and_own_account_checks",
+    # SV4 B1 (D29): F12's cases, before the three that read or publish a cause hidden.
+    "notifications.routes_refuse_what_is_not_their_dto",
+    "notifications.register_rotate_revoke_and_register_again",
+    "notifications.transfer_between_accounts",
+    "notifications.each_refusal_its_code",
+    "notifications.replay_and_conflict",
+    "notifications.settings_advance_every_registration",
+    "notifications.bound_of_active_registrations",
+    "notifications.register_refused_once_its_sessions_sign_out_commits",
+    "notifications.two_accounts_one_new_installation",
+    "notifications.transfer_changed_under_the_locks",
+    "notifications.custody_rules_are_constraints",
+    "notifications.no_token_in_any_row_or_answer",
     "ar13.history_publication_during_a_read",
     "d5.each_cause_hidden",
     "reads.session_ended_in_locks_answers_as_hidden",
@@ -606,7 +682,7 @@ PLAN = (
 
 class ChatPlanTests(unittest.TestCase):
     def test_the_case_count_is_pinned(self) -> None:
-        self.assertEqual(chat_cases.CASE_COUNT, 18)
+        self.assertEqual(chat_cases.CASE_COUNT, 30)
         self.assertEqual(len(chat_cases.CASES), chat_cases.CASE_COUNT)
         self.assertEqual(chat_cases.plan(), PLAN)
 
@@ -625,9 +701,30 @@ class ChatPlanTests(unittest.TestCase):
         for entry in chat_cases.CASES[:-3]:
             source = ast.unparse(_function(entry.run.__name__))
             with self.subTest(case=entry.case_id):
-                self.assertNotIn("hidden", re.findall(r'(\w+)="hidden"', source))
+                # A2's review, A2R-7 (taken by SV4 B1): any keyword set to hidden, in either
+                # quote, as ast.unparse writes it, fails; before, the check could not.
+                self.assertEqual(re.findall(r"""(\w+)=['"]hidden['"]""", source), [])
                 self.assertNotIn("_publish_history", source)
                 self.assertNotIn("publish_setting", source)
+
+    def test_each_b1_item_has_its_case_before_the_hidden_ones(self) -> None:
+        # SV4 B1 (D29, with DM-101's AM13): F12's cases, contiguous, just before the three cases
+        # that read or publish a cause hidden.
+        ids = chat_cases.plan()
+        b1 = [index for index, case_id in enumerate(ids) if case_id.startswith("notifications.")]
+        self.assertEqual(len(b1), 12)
+        self.assertEqual(b1, list(range(b1[0], b1[0] + 12)))
+        self.assertEqual(b1[-1], len(ids) - 4)
+        self.assertEqual(ids[b1[-1]], "notifications.no_token_in_any_row_or_answer")
+        labels = {
+            check
+            for entry in chat_cases.CASES
+            if entry.case_id.startswith("notifications.")
+            for check in entry.checks
+        }
+        for label in ("D17", "D18", "D19", "D25", "D29", "AM2", "AM3", "AM4", "AM5", "AM6", "AM13"):
+            with self.subTest(label=label):
+                self.assertIn(label, labels)
 
     def test_each_d10_item_has_its_case(self) -> None:
         # D10's list, A1's review's AR-12 and AR-13 (D12, "Due at A2"), each by a case's checks.
@@ -770,6 +867,60 @@ class ChatSupportTests(unittest.TestCase):
             self.assertIs(chat_support.text_reader(), first)
             self.assertIs(chat_support.provider(), first)
             self.assertEqual(type(first).__name__, "FixtureChatProvider")
+
+    def test_the_notification_routes_are_the_apis(self) -> None:
+        tree = ast.parse((API_ROOT / "glow_notifications" / "urls.py").read_text(encoding="utf-8"))
+        declared = {
+            "/" + str(node.args[0].value)
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "path"
+            and isinstance(node.args[0], ast.Constant)
+        }
+        self.assertEqual(declared, set(chat_support.NOTIFICATION_ROUTES))
+        self.assertEqual(chat_support.INSTALLATION_HEADER, "Glow-Installation-Id")
+
+    def test_the_token_store_and_the_transport_are_the_suites_fixtures(self) -> None:
+        # D16 (DM-101's AM1): the factories the chat settings name, one fixture each for the run.
+        # The API on the path for this test only: run alone, no settings import has added it.
+        with (
+            mock.patch.object(sys, "path", [str(API_ROOT), *sys.path]),
+            mock.patch.object(chat_support, "_TOKENS", None),
+            mock.patch.object(chat_support, "_TRANSPORT", None),
+        ):
+            store = chat_support.token_store()
+            self.assertIs(chat_support.token_store(), store)
+            self.assertEqual(type(store.fixture).__name__, "FixtureTokenStore")
+            transport = chat_support.push_transport()
+            self.assertIs(chat_support.push_transport(), transport)
+            self.assertEqual(type(transport).__name__, "FixturePushTransport")
+
+    def test_the_observed_store_passes_each_call_and_records_the_transaction(self) -> None:
+        # AM4's check: whether a transaction was open on the calling connection at each put. The
+        # API on the path for this test only: run alone, no settings import has added it.
+        with mock.patch.object(sys, "path", [str(API_ROOT), *sys.path]):
+            from glow_domain.notifications import ProviderToken
+
+            store = chat_support.ObservedTokenStore()
+
+        class Connection:
+            in_atomic_block = False
+
+            @staticmethod
+            def get_autocommit() -> bool:
+                return True
+
+        with mock.patch("django.db.connection", Connection):
+            first = store.put(ProviderToken("synthetic-push-token-offline-1"))
+            Connection.in_atomic_block = True
+            store.put(ProviderToken("synthetic-push-token-offline-2"))
+        self.assertEqual(store.inside_a_transaction, [False, True])
+        self.assertEqual(store.issued, [first.value, store.issued[1]])
+        self.assertEqual(store.fixture.resolve(first), "synthetic-push-token-offline-1")
+        store.discard(first)
+        self.assertIsNone(store.fixture.resolve(first))
+        self.assertNotIn("synthetic", repr(store))
 
     def test_a_hold_holds_only_its_points(self) -> None:
         hold = chat_support.Hold("after_locks")
