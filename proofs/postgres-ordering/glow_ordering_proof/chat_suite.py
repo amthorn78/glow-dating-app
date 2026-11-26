@@ -4,9 +4,11 @@ On the chat suite's own disposable database (``glow_chat_proof``, in its own job
 ``migrate`` and ``makemigrations --check --dry-run``: it refuses a database an earlier run used,
 records the server and the migration ledger, runs every case in ``chat_cases`` in order, then
 checks that no secret the run handled (the identity suite's ``SecretLedger``: passwords, codes,
-tokens, session keys, the run's keys and the values derived from its ``SECRET_KEY``) and no member
-value it sent (``ValueLedger``: SV2's member values, every message's text, and the provider's own
-identifiers of channels, users and messages) appears in any log record (captured at DEBUG), in
+tokens, session keys, the run's keys and the values derived from its ``SECRET_KEY``, the synthetic
+push tokens of SV4 B1's pool among them) and no member value it sent (``ValueLedger``: SV2's member
+values, every message's text, the provider's own identifiers of channels, users and messages, and,
+since SV4 B1, every installation identifier and every reference the token store issued) appears in
+any log record (captured at DEBUG), in
 anything the process wrote, in a response header, or in the results JSON it would write. A
 results JSON that holds one is not written. It prints one line per case and ``CHAT VERDICT: PASS``
 or ``FAIL``, and exits 0 only on a pass. The job's own check (``chat_scan``) then scans the log and
@@ -67,16 +69,20 @@ class ChatReport:
 
 def _file_secrets() -> list[str]:
     """The run's keys, and every value derived from ``SECRET_KEY`` the discovery suite looks for
-    (its pages' cursors are keyed by it, and the cases page through them)."""
+    (its pages' cursors are keyed by it, and the cases page through them), and, since SV4 B1, the
+    whole pool of synthetic push tokens the cases draw from (``chat_scan.push_tokens``; DM-101,
+    section 11), held before the first case."""
     from django.conf import settings
 
     from glow_ordering_proof import identity_environment
+    from glow_ordering_proof.chat_scan import push_tokens
     from glow_ordering_proof.discovery_support import derived_from_secret_key
 
     values = [
         settings.SECRET_KEY,
         *identity_environment.pem_body_lines(settings.HEADLESS_JWT_PRIVATE_KEY),
         *derived_from_secret_key(),
+        *push_tokens(str(settings.SECRET_KEY)),
     ]
     return [value for value in values if isinstance(value, str)]
 

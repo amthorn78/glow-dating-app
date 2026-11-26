@@ -313,7 +313,8 @@ class ComposerContentTests(unittest.TestCase):
 
 
 class ComposerRefusalTests(unittest.TestCase):
-    """DM-44 2.2's "Tried" cases, and the read rule's other checks, for either member."""
+    """DM-44 2.2's "Tried" cases, and the send's other checks (``glow_chat``'s send's, which the
+    conversation reads no longer share since SV4 A1), for either member."""
 
     def refused(self, change: str, member: str, expected: str) -> None:
         w = World()
@@ -1169,7 +1170,8 @@ class FixtureScopeTests(unittest.TestCase):
             "django.setup()\n"
             "import glow_api.settings, glow_api.urls, glow_api.wsgi\n"
             "print(json.dumps(sorted(m for m in sys.modules if m.startswith("
-            "('glow_domain.notification', 'glow_domain.notifications')))))\n"
+            "('glow_domain.notification', 'glow_domain.notifications',"
+            " 'glow_notifications')))))\n"
         )
         result = subprocess.run(
             [sys.executable, "-c", probe],

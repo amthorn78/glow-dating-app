@@ -20,7 +20,15 @@ way there is, reciprocal likes through SV3's like (``interaction_cases._matched`
   the case releases it, recording its backend; it only signals and waits (DM-13 2.1);
 - **The list's statements** (``lock_statements``): every statement this thread's connection runs
   inside a block that takes a row lock, with its parameters, kept in memory for the bounded-lock
-  case's check and never logged.
+  case's check and never logged;
+- **F12** (SV4 B1; its brief's D16, D19 and D29): the token store and the push transport the chat
+  settings name (``token_store``, ``push_transport``), the in-memory fixtures of the test
+  environment, the token store observed as the suite calls it (each reference it issues, and
+  whether each ``put`` ran inside a transaction, AM4); the synthetic push tokens, a pool derived
+  from the run's ``SECRET_KEY`` (``chat_scan.push_tokens``), every one held among the run's
+  secrets from the start; and each installation identifier, made at random and held among the
+  member values, so neither a token nor an installation is logged, written or served. F12's routes
+  are called with the member's own access token and the ``Glow-Installation-Id`` header.
 
 Rows written only in setup (a seeded population and its matches, a state no writer leaves) are test
 data, never an application writer, and each is named where a case writes it.
@@ -31,6 +39,7 @@ from __future__ import annotations
 import re
 import secrets
 import threading
+import uuid
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
@@ -47,12 +56,19 @@ HISTORY = "/api/v1/chat/history"
 READ_CURSOR = "/api/v1/chat/read-cursor"
 MATCHES = "/api/v1/matches"
 CHAT_ROUTES = (MESSAGES, CONVERSATIONS, HISTORY, READ_CURSOR)
+# SV4 B1 (D19): F12's three routes, and the header naming the requesting installation.
+NOTIFICATIONS = "/api/v1/notifications"
+DEVICE = "/api/v1/notifications/device"
+NOTIFICATION_SETTINGS = "/api/v1/notifications/settings"
+NOTIFICATION_ROUTES = (NOTIFICATIONS, DEVICE, NOTIFICATION_SETTINGS)
+INSTALLATION_HEADER = "Glow-Installation-Id"
 
 REACH_SECONDS = 10.0
 HOLD_SECONDS = 60.0
 
 _PROVIDER: Any = None
 _PROVIDER_LOCK = threading.Lock()
+_TRANSPORT: Any = None
 
 
 def provider() -> Any:
@@ -69,6 +85,62 @@ def provider() -> Any:
 def text_reader() -> Any:
     """D8: the factory ``chat_settings`` names (``GLOW_CHAT_TEXT_READER``)."""
     return provider()
+
+
+class ObservedTokenStore:
+    """The suite's token store: the in-memory fixture (``FixtureTokenStore``, the test
+    environment's), each call passed to it unchanged and observed: the reference each ``put``
+    issued, and whether a transaction was open on the calling connection when it ran (AM4: the
+    ``put`` runs before the command's transaction, never inside it). Nothing observed is logged."""
+
+    def __init__(self) -> None:
+        from glow_domain.notification_fixtures import FixtureTokenStore
+
+        self.fixture = FixtureTokenStore(environment="test")
+        self.issued: list[str] = []
+        self.inside_a_transaction: list[bool] = []
+
+    def __repr__(self) -> str:
+        return "ObservedTokenStore(<fixture>)"
+
+    def put(self, token: Any) -> Any:
+        from django.db import connection
+
+        self.inside_a_transaction.append(
+            bool(connection.in_atomic_block or not connection.get_autocommit())
+        )
+        reference = self.fixture.put(token)
+        self.issued.append(str(reference.value))
+        return reference
+
+    def discard(self, reference: Any) -> None:
+        self.fixture.discard(reference)
+
+
+_TOKENS: ObservedTokenStore | None = None
+
+
+def token_store() -> ObservedTokenStore:
+    """D16 (DM-101's AM1): the factory ``chat_settings`` names (``GLOW_NOTIFICATIONS_TOKEN_STORE``),
+    the suite's one token store."""
+    global _TOKENS
+    with _PROVIDER_LOCK:
+        if _TOKENS is None:
+            _TOKENS = ObservedTokenStore()
+        return _TOKENS
+
+
+def push_transport() -> Any:
+    """D16 (DM-101's AM1): the factory ``chat_settings`` names
+    (``GLOW_NOTIFICATIONS_PUSH_TRANSPORT``), the suite's one push transport, the in-memory fixture
+    (``FixturePushTransport``). SV4 B1 calls no transport; SV4 B2's deliverer takes this one."""
+    global _TRANSPORT
+    from glow_domain.notification_fixtures import FixturePushTransport
+
+    with _PROVIDER_LOCK:
+        if _TRANSPORT is None:
+            _TRANSPORT = FixturePushTransport(environment="test")
+        return _TRANSPORT
 
 
 class Hold:
@@ -151,6 +223,10 @@ class ChatContext:
     delivery: Any = None
     # The texts the cases sent, by submission ID, for the history checks; each is in the ledger.
     texts: dict[str, str] = field(default_factory=dict)
+    # SV4 B1 (D29): the push tokens the cases drew from the pool, in order, and the installations
+    # they made; each token is among the run's secrets, each installation among its member values.
+    drawn_tokens: list[str] = field(default_factory=list)
+    installations: list[str] = field(default_factory=list)
 
     @property
     def profiles(self) -> ProfileContext:
@@ -199,8 +275,120 @@ class ChatContext:
             *MessageSubmission.objects.exclude(provider_message_ref=None).values_list(
                 "provider_message_ref", flat=True
             ),
+            # SV4 B1: the token store's references, none of which is served or logged either.
+            *token_store().issued,
         ):
             self.profiles.values.add(str(value))
+
+    # -- F12's routes (SV4 B1; D19) -------------------------------------------------------------
+
+    def push_token(self) -> str:
+        """The next synthetic push token of the run's pool (``chat_scan.push_tokens``), held among
+        the run's secrets from the start; a case that would draw past the pool fails."""
+        from django.conf import settings
+
+        from glow_ordering_proof.chat_scan import PUSH_TOKEN_POOL, push_tokens
+
+        index = len(self.drawn_tokens)
+        expect(index < PUSH_TOKEN_POOL, "the run's pool holds another push token")
+        token = push_tokens(str(settings.SECRET_KEY), index + 1)[index]
+        self.drawn_tokens.append(token)
+        return token
+
+    def installation(self) -> str:
+        """A new installation identifier, made at random, as the app makes one for each installation
+        (P09.2; AM7), held among the member values: never logged, printed or served."""
+        value = str(uuid.uuid4())
+        self.profiles.values.add(value)
+        self.installations.append(value)
+        return value
+
+    def notification_call(
+        self,
+        member: Member,
+        method: str,
+        path: str,
+        body: dict[str, Any] | None = None,
+        *,
+        installation: str | None,
+        **kwargs: Any,
+    ) -> Reply:
+        """F12's routes, with the member's own access token and, unless ``None``, the
+        ``Glow-Installation-Id`` header."""
+        headers = dict(kwargs.pop("headers", None) or {})
+        if installation is not None:
+            headers[INSTALLATION_HEADER] = installation
+        return self.profiles.call(member, method, path, body, headers=headers, **kwargs)
+
+    def device_body(
+        self,
+        installation: str,
+        action: str,
+        version: int,
+        *,
+        token: str | None = None,
+        key: str | None = None,
+    ) -> dict[str, Any]:
+        return {
+            "operation": "device",
+            "meta": {"idempotency_key": key or self.profiles.key(), "expected_version": version},
+            "device_id": installation,
+            "action": action,
+            "provider_token": token,
+        }
+
+    def register(
+        self,
+        member: Member,
+        installation: str,
+        version: int = 0,
+        *,
+        token: str | None = None,
+        key: str | None = None,
+    ) -> Reply:
+        """A ``DeviceIntent`` ``register`` from the installation, with a new token of the pool."""
+        body = self.device_body(
+            installation, "register", version, token=token or self.push_token(), key=key
+        )
+        return self.notification_call(member, "POST", DEVICE, body, installation=installation)
+
+    def revoke(
+        self, member: Member, installation: str, version: int, *, key: str | None = None
+    ) -> Reply:
+        body = self.device_body(installation, "revoke", version, key=key)
+        return self.notification_call(member, "POST", DEVICE, body, installation=installation)
+
+    def settings_body(
+        self, match: bool, message: bool, version: int, *, key: str | None = None
+    ) -> dict[str, Any]:
+        return {
+            "operation": "notifications",
+            "meta": {"idempotency_key": key or self.profiles.key(), "expected_version": version},
+            "match_notifications": match,
+            "message_notifications": message,
+        }
+
+    def save_settings(
+        self,
+        member: Member,
+        installation: str,
+        match: bool,
+        message: bool,
+        version: int,
+        *,
+        key: str | None = None,
+    ) -> Reply:
+        body = self.settings_body(match, message, version, key=key)
+        return self.notification_call(
+            member, "POST", NOTIFICATION_SETTINGS, body, installation=installation
+        )
+
+    def read_settings(self, member: Member, installation: str) -> Reply:
+        return self.notification_call(member, "GET", NOTIFICATIONS, installation=installation)
+
+    def notifications(self, reply: Reply, what: str) -> dict[str, Any]:
+        """A served ``NotificationSettings``, checked against the contract's schema."""
+        return self.profiles.data(reply, "notifications", what)
 
     # -- the reads a client has ----------------------------------------------------------------
 

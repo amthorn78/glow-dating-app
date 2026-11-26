@@ -12,8 +12,10 @@ or raises ``CaseFailed``; neither ever holds a member's value or a message's tex
 
 **The order.** ``chat.history`` cannot be made more readable under the launch consent version (SV2's
 D2): a cause published ``hidden`` stays hidden for the rest of the run. So every case that needs a
-cause read-only runs first, and the two cases that publish a cause ``hidden`` (``ar13.*`` and
-``d5.each_cause_hidden``) run last, in that order.
+cause read-only runs first, and the three cases that read or publish a cause ``hidden``
+(``ar13.*``, ``d5.each_cause_hidden`` and ``reads.session_ended_in_locks_answers_as_hidden``) run
+last, in that order. SV4 B1's cases (``notifications.*``: F12's devices and settings through F12's
+routes; its brief's D16 to D20 and D29) run just before them, and read no conversation.
 
 Rows written only in setup (a seeded population and its matches, an active block beside an active
 match, a withdrawn consent with a visible profile, an ``incomplete`` profile) are test data, named
@@ -31,10 +33,13 @@ from uuid import UUID, uuid4
 
 from glow_ordering_proof.chat_support import (
     CONVERSATIONS,
+    DEVICE,
     HISTORY,
     HOLD_SECONDS,
     MATCHES,
     MESSAGES,
+    NOTIFICATION_SETTINGS,
+    NOTIFICATIONS,
     REACH_SECONDS,
     READ_CURSOR,
     ChatContext,
@@ -43,6 +48,7 @@ from glow_ordering_proof.chat_support import (
     provider,
     route_reads,
     session_of,
+    token_store,
 )
 from glow_ordering_proof.identity_support import CaseFailed, Member, Reply, expect
 
@@ -57,7 +63,7 @@ class Case:
 CASES: list[Case] = []
 # The suite's case count, pinned: a case lost or added without this changing fails the run before
 # any case runs, and the offline tests.
-CASE_COUNT = 18
+CASE_COUNT = 30
 
 
 def case(
@@ -228,8 +234,11 @@ def _ended_in_locks(
 
 def _account_suspended_as_test_data(account_id: Any, held: Hold) -> int:
     """Test data inside a held transaction: the account ``suspended`` with its session left
-    ``valid`` at its epoch, a state no writer leaves (a suspension also moves the epoch, so the
-    session's check refuses first), so the list's own-account check is the one reached."""
+    ``valid`` at its epoch, a state no writer leaves (a suspension also moves the epoch). The list's
+    own-account check is the one it reaches, as a real writer's would be: the list checks its own
+    account before the session's state, expiry and epoch, so a suspension or a deletion that
+    commits after the request has passed SV1's door, and before the list's account lock is
+    granted, reaches the check too (A2-C1's delta review, F1; DM-100)."""
     from django.db import connection, transaction
     from glow_persistence.models import AppAccount
 
@@ -563,6 +572,15 @@ def _cause_writers(ctx: ChatContext) -> list[tuple[str, Callable[[Member, Member
     def withdraw(member: Member) -> None:
         ctx.profiles.data(ctx.profiles.withdraw_onboarding(member), "onboarding", "withdrawal")
 
+    def withdrawn_alone(member: Member) -> None:
+        # A2's review, A2R-6 (taken by SV4 B1): SV2's withdrawal also makes the profile
+        # ``incomplete``, so the two causes above are a pause too. Test data: a withdrawal with the
+        # profile left visible (``interaction_cases._seed_withdrawn_consent``), so the withdrawn
+        # consent is the conversation's one cause, and a read rule that ignored it would fail.
+        from glow_ordering_proof.interaction_cases import _seed_withdrawn_consent
+
+        _seed_withdrawn_consent(member)
+
     return [
         ("own_pause", lambda reader, other: _visibility(ctx, reader, "pause")),
         ("other_pause", lambda reader, other: _visibility(ctx, other, "pause")),
@@ -576,6 +594,8 @@ def _cause_writers(ctx: ChatContext) -> list[tuple[str, Callable[[Member, Member
         ("other_suspension", lambda reader, other: _ok(_chat().suspend(other.account_id))),
         ("own_withdrawal", lambda reader, other: withdraw(reader)),
         ("other_withdrawal", lambda reader, other: withdraw(other)),
+        ("own_withdrawal_alone", lambda reader, other: withdrawn_alone(reader)),
+        ("other_withdrawal_alone", lambda reader, other: withdrawn_alone(other)),
     ]
 
 
@@ -1176,9 +1196,11 @@ def list_checks(ctx: ChatContext) -> str:
     member; a list whose session ends once the request has passed SV1's door is refused
     ``unauthenticated``; and a list whose account is no longer ``active`` once it holds its locks
     is refused ``not_found`` (``account_not_active``, through ``error_for``, as A1's reads refuse
-    it). The last is reached only by test data inside a race with SV1's door: every writer that
-    takes an account out of ``active`` also moves its epoch, so the session's check refuses
-    first."""
+    it). The last is reached inside a race with SV1's door, here by test data: the list checks its
+    own account before the session's state, expiry and epoch (``route_reads.py``), so a real
+    suspension or deletion that commits after the request has passed SV1's door, and before the
+    list's account lock is granted, reaches it too, and the list answers ``not_found`` (404)
+    (A2-C1's delta review, F1; DM-100)."""
     from glow_persistence.models import Block
 
     one, two, match = _pair(ctx)
@@ -1203,6 +1225,878 @@ def list_checks(ctx: ChatContext) -> str:
     expect(changed == 1, "the account row changed (test data)")
     _refused(ctx, reply, 404, "not_found", "a list whose account is not active in its locks")
     return "a block not listed; an ended session and an inactive own account refused, each waited"
+
+
+# =============================================================================================
+# SV4 B1 (its brief's D16 to D20 and D29's B1 cases; DM-101's AM1 to AM7 and AM13): F12's devices
+# and notification settings, through F12's three routes, on the chat suite's own database. Each
+# case makes its own members (signed in through SV1's routes; F12 needs no profile) and its own
+# installations, made at random; every push token comes from the run's pool (``push_token``). They
+# run before the cases that read or publish a cause ``hidden``, and read no conversation.
+# =============================================================================================
+
+
+def _f12_member(ctx: ChatContext) -> Member:
+    """A verified, signed-in member with an ``active`` account (SV1's routes)."""
+    return ctx.profiles.member()
+
+
+def _registration(account_id: Any, installation: str) -> Any:
+    from glow_persistence.models import DeviceRegistration
+
+    return DeviceRegistration.objects.filter(
+        account_id=account_id, installation_id=installation
+    ).first()
+
+
+def _pending() -> set[str]:
+    from glow_persistence.models import PendingTokenDiscard
+
+    return {
+        str(ref) for ref in PendingTokenDiscard.objects.values_list("token_secret_ref", flat=True)
+    }
+
+
+def _token_of(reference: str) -> str | None:
+    """The token a reference holds in the suite's store (the fixture's test-only ``resolve``, a
+    transport adapter's job, P11B), or ``None`` once discarded. Never logged."""
+    from glow_domain.notifications import TokenReference
+
+    found = token_store().fixture.resolve(TokenReference(reference))
+    return None if found is None else str(found)
+
+
+def _references_of(token: str) -> list[str]:
+    """Every reference the store issued for ``token`` (a replay's ``put`` issues another)."""
+    return [ref for ref in token_store().issued if _token_of(ref) == token]
+
+
+def _f12_settings(
+    version: int, state: str = "active", match: bool = False, message: bool = False
+) -> dict[str, Any]:
+    return {
+        "kind": "notifications",
+        "version": version,
+        "match_notifications": match,
+        "message_notifications": message,
+        "device_state": state,
+    }
+
+
+def _adapter() -> Any:
+    """F12's ORM adapter with the suite's token store, for the cases that hold a command at a hold
+    point (the routes call it the same way, through the factory hook)."""
+    from glow_notifications.persistence import (  # type: ignore[import-not-found]
+        OrmNotificationPersistence,
+    )
+
+    return OrmNotificationPersistence(tokens=token_store())
+
+
+def _f12_caller(member: Member, installation: str) -> Any:
+    from glow_domain.notifications import Caller
+
+    return Caller(UUID(str(member.account_id)), session_of(member), UUID(installation))
+
+
+def _held_against(
+    writer: Callable[[Hold], Any], call: Callable[[], Any], what: str
+) -> tuple[Any, Any]:
+    """As ``_while_held``, for a call that is the adapter's own, not a route's: ``writer`` holds
+    its transaction at its commit; ``call``, made then, waits on it (observed in
+    ``pg_stat_activity``); the writer then commits. Returns the call's result and the writer's."""
+    from glow_ordering_proof.discovery_cases import _Worker
+    from glow_ordering_proof.observe import observe_lock_wait
+
+    held = Hold("before_commit")
+    holder = _Worker(partial(writer, held))
+    request = _Worker(call)
+    waited = None
+    try:
+        holder.start()
+        expect(held.reached["before_commit"].wait(REACH_SECONDS), f"{what}: the writer holds it")
+        request.start()
+        assert held.pid is not None
+        pid = _waiting_on(held.pid, request.ended)
+        if pid is not None:
+            waited = observe_lock_wait(
+                pid, holder_pid=held.pid, finished=request.ended, timeout=REACH_SECONDS
+            )
+    finally:
+        held.free()
+        expect(holder.done(HOLD_SECONDS + 30) and request.done(HOLD_SECONDS + 30), "both ended")
+    expect(waited is not None and waited.observed, f"{what}: it waited on the writer")
+    expect(holder.error is None and request.error is None, f"{what}: neither raised")
+    return request.result, holder.result
+
+
+# -- B1-1. F12's routes refuse what is not their DTO (D19; AM6) -----------------------------------
+
+
+@case("notifications.routes_refuse_what_is_not_their_dto", "D19", "AM6", "SV1 actor", "R4")
+def notification_routes_refuse(ctx: ChatContext) -> str:
+    """Each F12 route answers its DTO to a signed-in member and refuses, as the contract's
+    ``Error`` naming a code and never a value, with nothing cached: no token or a refused token
+    (401, with the challenge); no ``Glow-Installation-Id`` header, a malformed one, or one that is
+    not lower case (400); a body that is not the intent, a field naming an actor, an account, a
+    session or (for the settings) an installation, a query string or another content type (400);
+    another method (405). The read refuses a body and a query string. No refusal changes the
+    registration. On A2's pattern (``transactions.non_atomic_requests``), the views are
+    ``non_atomic_requests``: with ``ATOMIC_REQUESTS`` on, each route still answers, since no
+    request transaction wraps it; inside a caller's transaction (an atomic block, or a Django test
+    case's), each command and the read refuse (``transaction_open``: ``state_conflict``) before
+    any statement, and the store takes no token."""
+    from django.db import connection, transaction
+
+    member = _f12_member(ctx)
+    installation = ctx.installation()
+    first = ctx.notifications(ctx.register(member, installation), "the register")
+    expect(first == _f12_settings(1), "a first register: version 1, active, both kinds off")
+    expect("Cache-Control: no-store" in _last_headers(ctx), "a served answer is not cached")
+    bodies = {
+        DEVICE: ctx.device_body(installation, "revoke", 1),
+        NOTIFICATION_SETTINGS: ctx.settings_body(True, False, 1),
+    }
+    count = 0
+    for path, body in bodies.items():
+        what = path.rsplit("/", 1)[1]
+
+        def call(
+            sent: Any, header: str | None = installation, path: str = path, **kwargs: Any
+        ) -> Reply:
+            return ctx.notification_call(member, "POST", path, sent, installation=header, **kwargs)
+
+        for name, bearer in (("no token", False), ("a refused token", "not-a-token")):
+            _refused(ctx, call(body, bearer=bearer), 401, "unauthenticated", f"{what}: {name}")
+            expect(
+                "WWW-Authenticate: Bearer" in _last_headers(ctx), f"{what}: {name}: the challenge"
+            )
+        for name, header in (
+            ("no installation header", None),
+            ("an upper-case installation", installation.upper()),
+            ("an installation that is not a UUID", "not-an-installation"),
+            ("two installations", f"{installation}, {installation}"),
+        ):
+            _refused(ctx, call(body, header), 400, "invalid_request", f"{what}: {name}")
+        extras = [("an extra field", {"extra": "x"}), ("a session field", {"session_id": "s"})]
+        extras += [("an actor field", {"actor_id": str(uuid4())})]
+        extras += [("an account field", {"account_id": str(member.account_id)})]
+        if path == NOTIFICATION_SETTINGS:
+            extras += [("an installation field", {"device_id": installation})]
+        for name, extra in extras:
+            _refused(ctx, call({**body, **extra}), 400, "invalid_request", f"{what}: {name}")
+        _refused(
+            ctx,
+            ctx.notification_call(member, "POST", path + "?x=1", body, installation=installation),
+            400,
+            "invalid_request",
+            f"{what}: a query string",
+        )
+        _refused(
+            ctx,
+            call(body, content_type="text/plain"),
+            400,
+            "invalid_request",
+            f"{what}: another content type",
+        )
+        for method in ("GET", "PUT", "PATCH", "DELETE"):
+            reply = ctx.notification_call(member, method, path, body, installation=installation)
+            _refused(ctx, reply, 405, "invalid_request", f"{what}: {method}")
+            expect("Cache-Control: no-store" in _last_headers(ctx), f"{what}: {method}: no-store")
+        count += 1
+    read = partial(ctx.notification_call, member)
+    _refused(
+        ctx,
+        read("GET", NOTIFICATIONS, {"x": 1}, installation=installation),
+        400,
+        "invalid_request",
+        "the read: a body",
+    )
+    _refused(
+        ctx,
+        read("GET", NOTIFICATIONS + "?state=active", installation=installation),
+        400,
+        "invalid_request",
+        "the read: a query string",
+    )
+    _refused(
+        ctx,
+        read("GET", NOTIFICATIONS, installation=None),
+        400,
+        "invalid_request",
+        "the read: no installation header",
+    )
+    _refused(
+        ctx,
+        read("POST", NOTIFICATIONS, {}, installation=installation),
+        405,
+        "invalid_request",
+        "the read: POST",
+    )
+    _refused(
+        ctx,
+        read("GET", NOTIFICATIONS, installation=installation, bearer=False),
+        401,
+        "unauthenticated",
+        "the read: no token",
+    )
+    expect("WWW-Authenticate: Bearer" in _last_headers(ctx), "the read: the challenge")
+    served = ctx.notifications(ctx.read_settings(member, installation), "the read")
+    expect(served == first, "the read serves the registration as it stands")
+    expect("Cache-Control: no-store" in _last_headers(ctx), "a served read is not cached")
+    row = _registration(member.account_id, installation)
+    expect(row is not None and (row.state, row.version) == ("active", 1), "nothing changed it")
+    # The views are non_atomic_requests (A2's pattern): with ATOMIC_REQUESTS on, each answers.
+    second = ctx.installation()
+    settings = connection.settings_dict
+    before = settings.get("ATOMIC_REQUESTS")
+    settings["ATOMIC_REQUESTS"] = True
+    try:
+        registered = ctx.notifications(ctx.register(member, second), "ATOMIC_REQUESTS on: register")
+        changed = ctx.notifications(
+            ctx.save_settings(member, second, True, False, 1), "ATOMIC_REQUESTS on: settings"
+        )
+        read_on = ctx.notifications(ctx.read_settings(member, second), "ATOMIC_REQUESTS on: read")
+    finally:
+        settings["ATOMIC_REQUESTS"] = before
+    expect(registered == _f12_settings(1), "with ATOMIC_REQUESTS on, the device route answers")
+    expect(
+        changed == read_on == _f12_settings(2, match=True),
+        "with ATOMIC_REQUESTS on, the settings route and the read answer",
+    )
+    # Inside a caller's transaction, each refuses before any statement, with no put (AM4).
+    store = token_store()
+    issued = len(store.issued)
+    inside = 0
+    blocks: list[tuple[str, Callable[[], Any]]] = [
+        ("an atomic block", transaction.atomic),
+        ("a test case's block", _test_case_atomic),
+    ]
+    for name, block in blocks:
+        with block():
+            replies = [
+                ctx.register(member, second, 2),
+                ctx.save_settings(member, second, False, False, 2),
+                ctx.read_settings(member, second),
+            ]
+        for reply in replies:
+            _refused(ctx, reply, 409, "state_conflict", f"inside {name}")
+            inside += 1
+    expect(len(store.issued) == issued, "the store took no token inside a caller's transaction")
+    row = _registration(member.account_id, second)
+    expect((row.state, row.version) == ("active", 2), "no refusal inside a block changed it")
+    return (
+        f"{count + 1} routes refuse what is not their DTO, each as the contract's Error; each"
+        f" answers with ATOMIC_REQUESTS on; {inside} refused inside a caller's block"
+    )
+
+
+# -- B1-2. register, rotate, revoke and register again (F12; D17, D18) ----------------------------
+
+
+@case("notifications.register_rotate_revoke_and_register_again", "D17", "D18", "D19", "F12")
+def register_rotate_revoke(ctx: ChatContext) -> str:
+    """F12's transitions for one installation of one account, through the device route: a
+    register (version 1, the session recorded), a rotation from another session of the account
+    (the new session recorded, the old token discarded after the commit), a revoke (the reference
+    cleared, ``ended_by`` ``revoke``, the token discarded) and a register again (version 4); each
+    answer is the requesting installation's ``NotificationSettings``, the read serves the same, and
+    each receipt carries its transition's code."""
+    from glow_persistence.models import IdempotencyRecord
+
+    member = _f12_member(ctx)
+    installation = ctx.installation()
+    tokens = [ctx.push_token() for _ in range(3)]
+    first = ctx.notifications(
+        ctx.register(member, installation, 0, token=tokens[0]), "the register"
+    )
+    expect(first == _f12_settings(1), "registered: version 1, active")
+    row = _registration(member.account_id, installation)
+    expect(
+        (row.state, row.ended_by, str(row.session_id)) == ("active", None, str(session_of(member))),
+        "the row: active, its session recorded",
+    )
+    old = str(row.token_secret_ref)
+    expect(_token_of(old) == tokens[0], "the row holds the store's reference, never the token")
+    # A rotation from a second session of the account: F12's rotate (a register on active).
+    phone = Member(
+        member.email,
+        member.password,
+        member.user_id,
+        member.account_id,
+        ctx.profiles.identity.sign_in(member),
+    )
+    rotated = ctx.notifications(ctx.register(phone, installation, 1, token=tokens[1]), "rotation")
+    expect(rotated == _f12_settings(2), "rotated: version 2, active")
+    row = _registration(member.account_id, installation)
+    expect(str(row.session_id) == str(session_of(phone)), "the rotating session is recorded")
+    expect(_token_of(str(row.token_secret_ref)) == tokens[1], "the new token's reference is held")
+    expect(_token_of(old) is None and old not in _pending(), "the old token is discarded")
+    expect(
+        ctx.notifications(ctx.read_settings(member, installation), "the read") == rotated,
+        "the read serves the same",
+    )
+    second = str(row.token_secret_ref)
+    revoked = ctx.notifications(ctx.revoke(member, installation, 2), "the revoke")
+    expect(revoked == _f12_settings(3, "revoked"), "revoked: version 3")
+    row = _registration(member.account_id, installation)
+    expect(
+        (row.state, row.ended_by, row.token_secret_ref) == ("revoked", "revoke", None),
+        "the row: revoked by the owner, no reference",
+    )
+    expect(_token_of(second) is None and second not in _pending(), "its token is discarded")
+    expect(
+        ctx.notifications(ctx.read_settings(member, installation), "the read") == revoked,
+        "the read serves the revoked registration",
+    )
+    again = ctx.notifications(ctx.register(member, installation, 3, token=tokens[2]), "again")
+    expect(again == _f12_settings(4), "registered again: version 4, active")
+    row = _registration(member.account_id, installation)
+    expect((row.state, row.ended_by) == ("active", None), "active again, with no ending")
+    codes = list(
+        IdempotencyRecord.objects.filter(
+            actor_id=member.account_id, operation="notifications.device"
+        )
+        .order_by("created_at")
+        .values_list("outcome_code", flat=True)
+    )
+    expect(codes == ["register", "rotate", "revoke", "register"], f"the receipts' codes {codes}")
+    return "register 1, rotate 2 (from another session), revoke 3, register 4; old tokens discarded"
+
+
+# -- B1-3. a transfer between accounts (F12; D17's one active row per installation) -------------
+
+
+@case("notifications.transfer_between_accounts", "D17", "D18", "F12")
+def transfer_between_accounts(ctx: ChatContext) -> str:
+    """Registering an installation active for another account revokes that account's registration
+    of it first, in the same transaction (``ended_by`` ``transfer``, its reference cleared and its
+    token discarded), and the earlier account reads its registration ``revoked``; the transfer back
+    does the same the other way. One row per account and installation, one ``active``."""
+    from glow_persistence.models import DeviceRegistration
+
+    first, second = _f12_member(ctx), _f12_member(ctx)
+    installation = ctx.installation()
+    ctx.notifications(ctx.register(first, installation), "the first account's register")
+    held = str(_registration(first.account_id, installation).token_secret_ref)
+    took = ctx.notifications(ctx.register(second, installation, 0), "the transfer")
+    expect(took == _f12_settings(1), "the second account registers it: version 1, active")
+    row = _registration(first.account_id, installation)
+    expect(
+        (row.state, row.ended_by, row.token_secret_ref, row.version)
+        == ("revoked", "transfer", None, 2),
+        "the first account's row: revoked by the transfer, version 2",
+    )
+    expect(_token_of(held) is None and held not in _pending(), "its token is discarded")
+    expect(
+        ctx.notifications(ctx.read_settings(first, installation), "the earlier account's read")
+        == _f12_settings(2, "revoked"),
+        "the earlier account reads its registration revoked",
+    )
+    back = ctx.notifications(ctx.register(first, installation, 2), "the transfer back")
+    expect(back == _f12_settings(3), "the transfer back: the first account's row, version 3")
+    row = _registration(second.account_id, installation)
+    expect(
+        (row.state, row.ended_by, row.version) == ("revoked", "transfer", 2),
+        "the second account's row: revoked by the transfer back",
+    )
+    rows = DeviceRegistration.objects.filter(installation_id=installation)
+    expect(rows.count() == 2 and rows.filter(state="active").count() == 1, "two rows, one active")
+    return "transferred and back: the earlier account's row revoked each time, one active row"
+
+
+# -- B1-4. each refusal D19 lists, by its code (D19; AM6) ----------------------------------------
+
+
+@case("notifications.each_refusal_its_code", "D19", "AM6", "F12")
+def each_refusal_its_code(ctx: ChatContext) -> str:
+    """D19's codes: another installation's ``device_id`` is ``forbidden``; a stale version
+    ``stale_version``; a revoke of no active registration, and a settings change without one,
+    ``state_conflict``; the token store's refusal ``provider_unavailable``, retryable, with nothing
+    saved; the read of an installation with no registration for the account ``not_found``, another
+    account's included. None changes a registration."""
+    member = _f12_member(ctx)
+    mine, other, fresh = ctx.installation(), ctx.installation(), ctx.installation()
+    ctx.notifications(ctx.register(member, mine), "the register")
+    elsewhere = ctx.device_body(other, "register", 0, token=ctx.push_token())
+    _refused(
+        ctx,
+        ctx.notification_call(member, "POST", DEVICE, elsewhere, installation=mine),
+        403,
+        "forbidden",
+        "another installation's device_id",
+    )
+    expect(_registration(member.account_id, other) is None, "the other installation untouched")
+    _refused(ctx, ctx.register(member, mine, 5), 409, "stale_version", "a stale version")
+    _refused(ctx, ctx.revoke(member, fresh, 0), 409, "state_conflict", "a revoke of none")
+    _refused(
+        ctx,
+        ctx.save_settings(member, fresh, True, True, 0),
+        409,
+        "state_conflict",
+        "settings with no registration",
+    )
+    _refused(ctx, ctx.read_settings(member, fresh), 404, "not_found", "a read of none")
+    ctx.notifications(ctx.revoke(member, mine, 1), "the revoke")
+    _refused(ctx, ctx.revoke(member, mine, 2), 409, "state_conflict", "a revoke of a revoked one")
+    _refused(
+        ctx,
+        ctx.save_settings(member, mine, True, False, 2),
+        409,
+        "state_conflict",
+        "settings on a revoked registration",
+    )
+    store = token_store()
+    issued = len(store.issued)
+    store.fixture.refuse_next_put()
+    refused = ctx.register(member, fresh, 0)
+    _refused(ctx, refused, 503, "provider_unavailable", "the token store's refusal")
+    expect((refused.body or {}).get("retryable") is True, "the store's refusal is retryable")
+    expect(
+        _registration(member.account_id, fresh) is None and len(store.issued) == issued,
+        "the store's refusal saves nothing and issues no reference",
+    )
+    stranger = _f12_member(ctx)
+    _refused(
+        ctx, ctx.read_settings(stranger, mine), 404, "not_found", "another account's installation"
+    )
+    row = _registration(member.account_id, mine)
+    expect((row.state, row.version) == ("revoked", 2), "no refusal changed the registration")
+    return "forbidden, stale_version, state_conflict (4), provider_unavailable, not_found (2)"
+
+
+# -- B1-5. a replay and a conflict (CommandMeta; D18; AM4, AM5) ------------------------------------
+
+
+@case("notifications.replay_and_conflict", "D18", "AM4", "AM5", "CommandMeta")
+def replay_and_conflict(ctx: ChatContext) -> str:
+    """The same device intent replays (the current projection, nothing changed); another token
+    under the key is ``idempotency_conflict``; each leaves the reference the store took for it in
+    the pending discards and in no registration (AM4). The same settings intent under the same key
+    replays from its installation and is ``idempotency_conflict`` from another installation of the
+    account (AM5: the digest binds the requesting installation)."""
+    from glow_persistence.models import DeviceRegistration
+
+    member = _f12_member(ctx)
+    installation, phone = ctx.installation(), ctx.installation()
+    token = ctx.push_token()
+    body = ctx.device_body(installation, "register", 0, token=token, key="f12-replayed")
+    device = partial(ctx.notification_call, member, "POST", DEVICE, installation=installation)
+    first = ctx.notifications(device(body), "the register")
+    row = _registration(member.account_id, installation)
+    replay = ctx.notifications(device(body), "the replay")
+    expect(replay == first, "the replay serves the current projection")
+    after = _registration(member.account_id, installation)
+    expect(
+        (after.version, after.token_secret_ref) == (row.version, row.token_secret_ref),
+        "a replay changes nothing",
+    )
+    replayed = [ref for ref in _references_of(token) if ref != row.token_secret_ref]
+    expect(len(replayed) == 1, "the replay's put issued one more reference")
+    other = ctx.device_body(installation, "register", 0, token=ctx.push_token(), key="f12-replayed")
+    _refused(ctx, device(other), 409, "idempotency_conflict", "the same key with another token")
+    conflicted = _references_of(str(other["provider_token"]))
+    pending = _pending()
+    held = set(DeviceRegistration.objects.values_list("token_secret_ref", flat=True))
+    for name, refs in (("the replay's", replayed), ("the conflict's", conflicted)):
+        expect(
+            len(refs) == 1 and refs[0] in pending and refs[0] not in held,
+            f"{name} reference waits in the pending discards, in no registration",
+        )
+    ctx.notifications(ctx.register(member, phone), "the second installation's register")
+    version = int(first["version"])
+    settings = ctx.settings_body(True, False, version, key="f12-settings-replayed")
+    changed = ctx.notifications(
+        ctx.notification_call(
+            member, "POST", NOTIFICATION_SETTINGS, settings, installation=installation
+        ),
+        "the settings change",
+    )
+    again = ctx.notifications(
+        ctx.notification_call(
+            member, "POST", NOTIFICATION_SETTINGS, settings, installation=installation
+        ),
+        "the settings replay",
+    )
+    expect(again == changed, "the settings intent replays from its installation")
+    # The other installation's registration advanced with the account's settings, so the intent's
+    # version is stale there too: a refusal other than idempotency_conflict would tell which
+    # check came first, and the digest's binding is what answers.
+    expect(_registration(member.account_id, phone).version == version + 1, "the phone advanced")
+    _refused(
+        ctx,
+        ctx.notification_call(member, "POST", NOTIFICATION_SETTINGS, settings, installation=phone),
+        409,
+        "idempotency_conflict",
+        "the same key and body from another installation",
+    )
+    return "replayed and conflicted, each new reference pending; another installation conflicts"
+
+
+# -- B1-6. a settings change advances every registration of the account (P06.3's versions) ------
+
+
+@case("notifications.settings_advance_every_registration", "D18", "F12")
+def settings_advance_every_registration(ctx: ChatContext) -> str:
+    """The settings are the account's: a change from one installation advances every registration
+    of the account (a revoked one included), the other installation reads the new settings at its
+    new version, and its earlier version is ``stale_version``."""
+    from glow_persistence.models import NotificationSettings
+
+    member = _f12_member(ctx)
+    tablet, phone, old = ctx.installation(), ctx.installation(), ctx.installation()
+    for installation in (tablet, phone, old):
+        ctx.notifications(ctx.register(member, installation), "a register")
+    ctx.notifications(ctx.revoke(member, old, 1), "the third's revoke")
+    changed = ctx.notifications(ctx.save_settings(member, tablet, True, False, 1), "the change")
+    expect(changed == _f12_settings(2, match=True), "the change: version 2, match on")
+    expect(
+        ctx.notifications(ctx.read_settings(member, phone), "the phone's read")
+        == _f12_settings(2, match=True),
+        "the other installation reads the account's settings, advanced",
+    )
+    expect(_registration(member.account_id, old).version == 3, "the revoked one advanced too")
+    _refused(
+        ctx,
+        ctx.save_settings(member, phone, False, False, 1),
+        409,
+        "stale_version",
+        "the other installation's earlier version",
+    )
+    from_phone = ctx.notifications(
+        ctx.save_settings(member, phone, False, True, 2), "the phone's change"
+    )
+    expect(from_phone == _f12_settings(3, message=True), "the phone's change: version 3")
+    expect(
+        ctx.notifications(ctx.read_settings(member, tablet), "the tablet's read")
+        == _f12_settings(3, message=True),
+        "the tablet reads it at version 3",
+    )
+    chosen = NotificationSettings.objects.get(account_id=member.account_id)
+    expect(
+        (chosen.version, chosen.match_notifications, chosen.message_notifications)
+        == (2, False, True),
+        "the account's settings row: its second revision",
+    )
+    return "each change advanced all three registrations; the earlier version was stale"
+
+
+# -- B1-7. the bound of active registrations (D25) --------------------------------------------
+
+
+@case("notifications.bound_of_active_registrations", "D25", "AM12", "F12")
+def bound_of_active_registrations(ctx: ChatContext) -> str:
+    """An account holds at most 10 active registrations (provisional, D25): an eleventh is
+    ``state_conflict``, with nothing saved and its reference in the pending discards; a rotation
+    at the bound adds none and is served; once one is revoked, the eleventh registers."""
+    from glow_persistence.models import DeviceRegistration
+
+    member = _f12_member(ctx)
+    installations = [ctx.installation() for _ in range(10)]
+    for installation in installations:
+        ctx.notifications(ctx.register(member, installation), "a register below the bound")
+    eleventh = ctx.installation()
+    token = ctx.push_token()
+    _refused(
+        ctx,
+        ctx.register(member, eleventh, 0, token=token),
+        409,
+        "state_conflict",
+        "an eleventh active registration",
+    )
+    expect(_registration(member.account_id, eleventh) is None, "the eleventh saved nothing")
+    expect(
+        [ref in _pending() for ref in _references_of(token)] == [True],
+        "its reference waits in the pending discards",
+    )
+    rotated = ctx.notifications(ctx.register(member, installations[0], 1), "a rotation")
+    expect(rotated == _f12_settings(2), "a rotation at the bound is served")
+    ctx.notifications(ctx.revoke(member, installations[1], 1), "a revoke")
+    ctx.notifications(ctx.register(member, eleventh), "the eleventh, after a revoke")
+    active = DeviceRegistration.objects.filter(account_id=member.account_id, state="active")
+    expect(active.count() == 10, "ten active registrations, the bound")
+    return (
+        "ten active; the eleventh refused, pending; a rotation served; after a revoke, it registers"
+    )
+
+
+# -- B1-8. a register refused once its session's sign-out commits (AM3, AM4, AM13) ----------------
+
+
+@case("notifications.register_refused_once_its_sessions_sign_out_commits", "D18", "AM3", "AM4")
+def register_refused_once_signed_out(ctx: ChatContext) -> str:
+    """A register that reaches its session's row while that session's sign-out holds it (held at
+    its commit; the register has passed SV1's door, which reads with no lock, and the store has
+    taken its token) waits on that row at its own ``FOR SHARE`` lock (observed), and once the
+    sign-out commits it finds the session revoked: ``unauthenticated``, with the challenge (AM6).
+    No registration is committed for the ended session, and the token's reference waits in the
+    pending discards, in no registration (AM4)."""
+    from glow_persistence.models import DeviceRegistration
+
+    member = _f12_member(ctx)
+    installation = ctx.installation()
+    token = ctx.push_token()
+    reply = _ended_in_locks(
+        ctx, member, partial(ctx.register, member, installation, 0, token=token), "the register"
+    )
+    _refused(ctx, reply, 401, "unauthenticated", "a register whose session ended in its locks")
+    expect("WWW-Authenticate: Bearer" in _last_headers(ctx), "the 401 carries the challenge")
+    expect(_registration(member.account_id, installation) is None, "no registration committed")
+    references = _references_of(token)
+    held = set(DeviceRegistration.objects.values_list("token_secret_ref", flat=True))
+    expect(
+        len(references) == 1 and references[0] in _pending() and references[0] not in held,
+        "the store took the token; its reference waits in the pending discards",
+    )
+    return "the register waited on the sign-out, then was refused; its reference is pending"
+
+
+# -- B1-9. two accounts register one new installation at once (AM13; D17) -------------------------
+
+
+@case("notifications.two_accounts_one_new_installation", "D17", "D18", "AM13")
+def two_accounts_one_installation(ctx: ChatContext) -> str:
+    """Two accounts register one new installation at once: the first, held at its commit, has
+    written its ``active`` row; the second, through the route, finds no holder and waits at its
+    own row on the one-``active``-row constraint (observed); once the first commits, the second is
+    ``state_conflict``. One ``active`` row, the first's; none for the second, whose reference waits
+    in the pending discards."""
+    from glow_persistence.models import DeviceRegistration
+
+    first, second = _f12_member(ctx), _f12_member(ctx)
+    installation = ctx.installation()
+    body = ctx.device_body(installation, "register", 0, token=ctx.push_token())
+    token = ctx.push_token()
+    caller = _f12_caller(first, installation)
+    reply, held = _while_held(
+        lambda hold: _adapter().device(caller, body, probe=hold),
+        partial(ctx.register, second, installation, 0, token=token),
+        "the second account's register",
+    )
+    expect(held is not None and held.outcome == "applied", "the first account's register")
+    _refused(ctx, reply, 409, "state_conflict", "the second account's register")
+    rows = DeviceRegistration.objects.filter(installation_id=installation)
+    active = [str(row.account_id) for row in rows.filter(state="active")]
+    expect(active == [str(first.account_id)], "one active row, the first account's")
+    expect(not rows.filter(account_id=second.account_id).exists(), "no row for the second")
+    expect(
+        [ref in _pending() for ref in _references_of(token)] == [True],
+        "the second's reference waits in the pending discards",
+    )
+    return "one active row, the first account's; the second waited, then was refused"
+
+
+# -- B1-10. a transfer whose other account changes under the locks (AM13; D18) --------------------
+
+
+@case("notifications.transfer_changed_under_the_locks", "D18", "AM13", "F12")
+def transfer_changed_under_the_locks(ctx: ChatContext) -> str:
+    """A register reads the installation's holder with no lock, then locks both accounts, the lower
+    first. Here a third account's transfer of the installation holds the holder's account row at
+    its commit; the register waits on it (observed), and once the transfer commits it finds the
+    holder changed under its locks: refused, ``transfer_changed`` (``state_conflict``), never a
+    revocation of an account it did not lock. One ``active`` row, the transfer's."""
+    from glow_persistence.models import DeviceRegistration
+
+    holder, taker, latecomer = _f12_member(ctx), _f12_member(ctx), _f12_member(ctx)
+    installation = ctx.installation()
+    ctx.notifications(ctx.register(holder, installation), "the holder's register")
+    taking = ctx.device_body(installation, "register", 0, token=ctx.push_token())
+    late = ctx.device_body(installation, "register", 0, token=ctx.push_token())
+    taker_caller = _f12_caller(taker, installation)
+    late_caller = _f12_caller(latecomer, installation)
+    result, taken = _held_against(
+        lambda hold: _adapter().device(taker_caller, taking, probe=hold),
+        lambda: _adapter().device(late_caller, late),
+        "the latecomer's register",
+    )
+    expect(taken is not None and taken.outcome == "applied", "the third account's transfer")
+    expect(
+        result is not None and (result.outcome, result.reason) == ("refused", "transfer_changed"),
+        f"the latecomer: refused, transfer_changed ({getattr(result, 'reason', None)})",
+    )
+    rows = DeviceRegistration.objects.filter(installation_id=installation)
+    active = [str(row.account_id) for row in rows.filter(state="active")]
+    expect(active == [str(taker.account_id)], "one active row, the transfer's")
+    expect(not rows.filter(account_id=latecomer.account_id).exists(), "no row for the latecomer")
+    expect(
+        _registration(holder.account_id, installation).ended_by == "transfer",
+        "the holder's row ended by the transfer it waited on",
+    )
+    return "the register waited on the transfer, then refused transfer_changed; one active row"
+
+
+# -- B1-11. the custody rules are database constraints (D17; AM2) ---------------------------------
+
+
+@case("notifications.custody_rules_are_constraints", "D17", "AM2", "D25")
+def custody_rules_are_constraints(ctx: ChatContext) -> str:
+    """Test data, each write in its own atomic block: the database refuses an ``active``
+    registration with no reference or an empty one, a ``revoked`` one holding a reference or with
+    no ending, an ``active`` one with an ending, an unknown ending, a second ``active`` row for one
+    installation, a second row for one account and installation, one reference in two
+    registrations, a pending discard twice or empty, a ledger row in another state, and two ledger
+    rows for one event and installation."""
+    from django.db import IntegrityError, transaction
+    from django.utils import timezone
+    from glow_persistence.models import (
+        DeviceRegistration,
+        NotificationLedgerEntry,
+        OutboxEvent,
+        PendingTokenDiscard,
+    )
+
+    member, other = _f12_member(ctx), _f12_member(ctx)
+    session, other_session = session_of(member), session_of(other)
+    installation = uuid4()
+    refused: list[str] = []
+
+    def refuses(what: str, write: Callable[[], Any]) -> None:
+        try:
+            with transaction.atomic():
+                write()
+        except IntegrityError:
+            refused.append(what)
+            return
+        raise CaseFailed(f"the database refuses {what}")
+
+    def row(**fields: Any) -> Any:
+        base = {
+            "account_id": member.account_id,
+            "installation_id": installation,
+            "session_id": session,
+        }
+        return lambda: DeviceRegistration.objects.create(**{**base, **fields})
+
+    ref = f"test-data-reference-{uuid4().hex}"
+    refuses("an active row with no reference", row(state="active", token_secret_ref=None))
+    refuses("an active row with an empty reference", row(state="active", token_secret_ref=""))
+    refuses(
+        "a revoked row holding a reference",
+        row(state="revoked", ended_by="revoke", token_secret_ref=ref),
+    )
+    refuses("a revoked row with no ending", row(state="revoked", token_secret_ref=None))
+    refuses(
+        "an active row with an ending", row(state="active", ended_by="logout", token_secret_ref=ref)
+    )
+    refuses("an unknown ending", row(state="revoked", ended_by="deleted", token_secret_ref=None))
+    # Test data: one active row, kept, so the rules that compare rows have one to compare to.
+    DeviceRegistration.objects.create(
+        account_id=member.account_id,
+        installation_id=installation,
+        session_id=session,
+        state="active",
+        token_secret_ref=ref,
+    )
+    refuses(
+        "a second active row for one installation",
+        lambda: DeviceRegistration.objects.create(
+            account_id=other.account_id,
+            installation_id=installation,
+            session_id=other_session,
+            state="active",
+            token_secret_ref=f"test-data-reference-{uuid4().hex}",
+        ),
+    )
+    refuses(
+        "a second row for one account and installation",
+        row(state="revoked", ended_by="revoke", token_secret_ref=None),
+    )
+    refuses(
+        "one reference in two registrations",
+        row(installation_id=uuid4(), state="active", token_secret_ref=ref),
+    )
+    pending = f"test-data-reference-{uuid4().hex}"
+    PendingTokenDiscard.objects.create(token_secret_ref=pending)
+    refuses(
+        "one reference twice in the pending discards",
+        lambda: PendingTokenDiscard.objects.create(token_secret_ref=pending),
+    )
+    refuses(
+        "an empty pending discard", lambda: PendingTokenDiscard.objects.create(token_secret_ref="")
+    )
+    now = timezone.now()
+    event = OutboxEvent.objects.create(
+        aggregate_id=uuid4(),
+        aggregate_version=1,
+        event_type="test_data",
+        schema_version="test-data",
+        dedup_key=f"test-data:{uuid4().hex}",
+        payload_ref=uuid4(),
+        state="delivered",
+        available_at=now,
+        delivered_at=now,
+    )
+    NotificationLedgerEntry.objects.create(event=event, installation_id=installation)
+    refuses(
+        "a ledger row in another state",
+        lambda: NotificationLedgerEntry.objects.create(
+            event=event, installation_id=uuid4(), state="queued"
+        ),
+    )
+    refuses(
+        "two ledger rows for one event and installation",
+        lambda: NotificationLedgerEntry.objects.create(event=event, installation_id=installation),
+    )
+    return f"{len(refused)} writes refused by the database's constraints (test data)"
+
+
+# -- B1-12. no token in any row, log line or answer; each reference's custody (D29; AM4) ---------
+
+
+@case("notifications.no_token_in_any_row_or_answer", "D29", "AM4", "DM-101 11")
+def no_token_in_any_row_or_answer(ctx: ChatContext) -> str:
+    """After every other F12 case: no push token the cases drew is in any row of any table (the
+    database search names each ``table.column`` it finds one in, never the value), nor in any
+    served answer, nor any reference or installation identifier; every ``put`` ran before its
+    command's transaction (AM4); and every reference the store issued is held by exactly one
+    active registration or pending discard while its token is held, and by no row once it is
+    discarded. The log lines and the results JSON are the suite's scan's, which holds every token
+    of the pool among the run's secrets, and the job's own check's."""
+    from glow_persistence.models import DeviceRegistration
+
+    from glow_ordering_proof.profile_cases import _found_in_database, _named
+
+    tokens = tuple(ctx.drawn_tokens)
+    expect(len(tokens) >= 10, f"the F12 cases drew their push tokens ({len(tokens)})")
+    found = _found_in_database(tokens)
+    expect(not found, f"no push token in any row{_named(found)}")
+    store = token_store()
+    references = tuple(store.issued)
+    served = json.dumps(ctx.profiles.served)
+    for kind, values in (
+        ("a push token", tokens),
+        ("a token reference", references),
+        ("an installation identifier", tuple(ctx.installations)),
+    ):
+        expect(not any(value in served for value in values), f"{kind} in no served answer")
+    expect(
+        bool(store.inside_a_transaction) and not any(store.inside_a_transaction),
+        "every put ran before its command's transaction",
+    )
+    active = set(
+        DeviceRegistration.objects.filter(state="active").values_list("token_secret_ref", flat=True)
+    )
+    pending = _pending()
+    for reference in references:
+        held = (reference in active) + (reference in pending)
+        expect(
+            held == (0 if _token_of(reference) is None else 1),
+            "each reference held exactly once while its token is, by no row once discarded",
+        )
+    where = set(_found_in_database(references))
+    expect(
+        where
+        <= {
+            "glow_persistence_deviceregistration.token_secret_ref",
+            "glow_persistence_pendingtokendiscard.token_secret_ref",
+        },
+        f"a reference only in a registration or a pending discard{_named(sorted(where))}",
+    )
+    return (
+        f"{len(tokens)} tokens in no row and no answer; {len(references)} references, each held"
+        " once or discarded; every put before its transaction"
+    )
 
 
 # -- 16. AR-13: a publication of chat.history during a read (after every read-only case) ----
@@ -1312,6 +2206,8 @@ def each_cause_hidden(ctx: ChatContext) -> str:
         "other_suspension": "suspension",
         "own_withdrawal": "withdrawn_consent",
         "other_withdrawal": "withdrawn_consent",
+        "own_withdrawal_alone": "withdrawn_consent",
+        "other_withdrawal_alone": "withdrawn_consent",
     }
     bodies = set()
     for name, apply in _cause_writers(ctx):
@@ -1344,8 +2240,12 @@ def reads_session_ended(ctx: ChatContext) -> str:
     once they hold their locks, answer the same under a cause published ``hidden`` (the other's
     pause) as under an unmatch: ``not_found``, one body (DM-99's AK1). The read rule checks the
     match before the session and the causes after it, so the session's refusal must not be
-    ``unauthenticated`` there. It runs last: it publishes a cause ``hidden`` if no earlier case
-    has."""
+    ``unauthenticated`` there. It runs last, after ``d5.each_cause_hidden``, which the pinned plan
+    keeps before it and which leaves every cause published ``hidden``, the other member's own pause
+    among them, which its last check reads (the paused member lists the conversation no more). Its
+    own publication below then changes nothing; run without that case before it, the case would
+    fail at that check, since that publication hides the reader's cause only (A2-C1's delta review,
+    F4)."""
     from glow_domain import profile_settings as ps
 
     if ctx.discovery.current(ps.HISTORY)["other_pause"] != "hidden":
