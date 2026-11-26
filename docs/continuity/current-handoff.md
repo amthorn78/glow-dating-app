@@ -1,4 +1,4 @@
-# Current handoff — App Manager 13 (26 November 2026; SV4 Stage B's design, DM-101, with the Dev Manager)
+# Current handoff — App Manager 13 (26 November 2026; SV4 Stage B's design approved, DM-101; B1's prompt next)
 
 This file only routes: the current item, what happens next and who waits on whom. Each fact lives in one home, listed in the [documentation map](../README.md); earlier handoffs are in `docs/continuity/history/`, the last as [P06.2 to its merge](history/p06-2-handoff.md).
 
@@ -7,7 +7,7 @@ This file only routes: the current item, what happens next and who waits on whom
 ## Now
 
 - **Manager: App Manager 13** (OD-83), in `Glow App - No Stream`, on `claude/magical-wozniak-yfmmx2` (on the keep-list).
-- **Dev Manager 7** (`session_01Q789u3mBCcA1Fu21CMJKbS`; OD-84; start note `532e9d0`) holds `claude/dev-manager`; Nathan carries each consultation (OD-25). DM-101 (Stage B's design) is with it; new condition labels start at AM.
+- **Dev Manager 7** (`session_01Q789u3mBCcA1Fu21CMJKbS`; OD-84; start note `532e9d0`) holds `claude/dev-manager`; Nathan carries each consultation (OD-25). DM-101 answered (`60325b1`); new condition labels start at AN.
 - **Never ask Nathan to perform a GitHub operation** (OD-58); a failure that seems to need a re-run goes to the Dev Manager first (OD-32). Sessions read GitHub with the GitHub tools where they have them, otherwise `gh api` REST, read only: most sessions since 22 November have had no GitHub tools (C2's delta review's session had them).
 - **`main`** is at `988a36a` (PR59, SV4 A2); before it `43e794a` (PR58, SV4 A1) and `499ccbb` (PR57, SV4 A0). D-07: the Dev Manager reads a code item at its brief and before its merge; D-06: one Markdown-only item may run beside a code item.
 - **Standing context:** OD-77 (no cost now; legal entity deferred), OD-78 (the whole system working together first), OD-79 (the app's database on HDE's PostgreSQL service; Railway components to analyze and retire), OD-80 (no HDE design decision now), OD-81 (`glow-frontend-v2` deprecated); the repository public for now (OD-51).
@@ -19,16 +19,16 @@ This file only routes: the current item, what happens next and who waits on whom
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 13 | Dev Manager 7, through Nathan | DM-101: D-07's first read of Stage B's design (the brief's revision 11) | No Stage B prompt is written |
+| Nobody | — | App Manager 13 writes B1's prompt from the brief's revision 12 | — |
 
 ## Next actions (App Manager 13)
 
-1. **SV4 Stage A merged:** A0 with PR57 (`499ccbb`), A1 with PR58 (`43e794a`), A2 with A2-C1 and DM-100 with PR59 (`988a36a`; the SV4 record, "Merge (26 November 2026)"). `main`'s push run 45866641384 passed all twelve jobs. **Now: SV4 Stage B** (the server side of notifications; the M09 record, section 4.3, item 2), designed in the brief's revision 11 (D16 to D31: two sessions, B1 F12's surface and B2 the triggers and sweeps), with Dev Manager 7 as DM-101. Next: its disposition, then B1's prompt. The carried items: "Carried to SV4" (A2's and A2-C1's reviews, DM-98's AJ2 rule), "Carried to the next change to the Foundation workflow (DM-97)".
-2. **Manager records:** PF02 1.9 (AM12-31 to AM12-49, AM13-01 to AM13-12; AM12-49's proposed rule: a prompt names both GitHub routes; DM-98's wording of the false-claim class); the manager workflow's next revision: DM-100's AL9 (the delta review's line count), for the Dev Manager's read; the status log's move (M09 (b)); R-07, R-10, R-26, R-28.
+1. **SV4 Stage A merged:** A0 with PR57 (`499ccbb`), A1 with PR58 (`43e794a`), A2 with A2-C1 and DM-100 with PR59 (`988a36a`; the SV4 record, "Merge (26 November 2026)"). `main`'s push run 45866641384 passed all twelve jobs. **Now: SV4 Stage B** (the server side of notifications; the M09 record, section 4.3, item 2), designed in the brief's revision 11 (D16 to D31: two sessions, B1 F12's surface and B2 the triggers and sweeps), approved by Dev Manager 7 in DM-101 with AM1 to AM16, applied as revision 12. Next: B1's prompt (F12's surface: D17 to D20). The carried items: "Carried to SV4" (A2's and A2-C1's reviews, DM-98's AJ2 rule), "Carried to the next change to the Foundation workflow (DM-97)".
+2. **Manager records:** PF02 1.9 (AM12-31 to AM12-49, AM13-01 to AM13-14; AM12-49's proposed rule: a prompt names both GitHub routes; DM-98's wording of the false-claim class); the manager workflow's next revision: DM-100's AL9 (the delta review's line count), for the Dev Manager's read; the status log's move (M09 (b)); R-07, R-10, R-26, R-28.
 
 **Carried follow-ups** live in their owning homes: [`carried-to-later-items.md`](../planning/carried-to-later-items.md), the P11 plan, the review log's "Deferred conditions".
 
 ## Branches and PRs (26 November 2026)
 
 - **Open PRs:** none.
-- **Remote branches, three** (26 November, after PR59's branch cleanup, run 45866641348): `main` (`988a36a`); the manager branch (fast-forwarded to `988a36a`, then this receipt); `claude/dev-manager` (`0256d2c`, merged). The cleanup deleted A2's `claude/dazzling-hamilton-ocxuu3` and A2-C1's `claude/affectionate-sagan-r916ba`, both merged.
+- **Remote branches, three** (26 November, after PR59's branch cleanup, run 45866641348): `main` (`988a36a`); the manager branch (fast-forwarded to `988a36a`, then this receipt); `claude/dev-manager` (`60325b1`, merged). The cleanup deleted A2's `claude/dazzling-hamilton-ocxuu3` and A2-C1's `claude/affectionate-sagan-r916ba`, both merged.
