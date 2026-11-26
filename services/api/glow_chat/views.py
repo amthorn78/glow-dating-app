@@ -33,7 +33,11 @@ read. The send needs none: it calls no provider.
 
 **Transactions** (D8; the P11 plan's R4). The reads refuse any transaction their caller holds, so
 every view here is ``non_atomic_requests``: ``ATOMIC_REQUESTS`` never wraps it, and each read and
-the send is the whole of its own transaction. Its tests are ``TransactionTestCase``s.
+the send is the whole of its own transaction. No Django ``TestCase`` tests them: their database
+tests are the chat suite's cases (``proofs/postgres-ordering``), which call them through Django's
+test client with no enclosing transaction and autocommit on, as a ``TransactionTestCase`` would,
+and its case ``transactions.non_atomic_requests`` shows every read refused inside a caller's
+transaction.
 """
 
 from __future__ import annotations
@@ -49,7 +53,9 @@ from django.db import transaction
 from django.utils.cache import add_never_cache_headers
 from django.utils.module_loading import import_string
 from rest_framework.exceptions import AuthenticationFailed, MethodNotAllowed, NotAuthenticated
+from rest_framework.negotiation import DefaultContentNegotiation
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -105,9 +111,24 @@ def reads() -> RouteConversationReads:
     return RouteConversationReads(text_reader())
 
 
+class JsonOnlyNegotiation(DefaultContentNegotiation):  # type: ignore[misc]
+    """A2R-4 (DM-99 item 2): the JSON renderer, always. Neither ``Accept`` nor the ``format``
+    override is read, so ``?format=xml`` meets the routes' own query-string refusal
+    (``invalid_request``, 400, ``no-store``) and ``Accept: text/html`` is answered as any other
+    request, never by the framework before authentication."""
+
+    def select_renderer(
+        self, request: Any, renderers: list[Any], format_suffix: str | None = None
+    ) -> tuple[Any, str]:
+        renderer = next(r for r in renderers if isinstance(r, JSONRenderer))
+        return renderer, renderer.media_type
+
+
 class _ChatRoute(APIView):  # type: ignore[misc]
     authentication_classes = [GlowActorAuthentication]
     permission_classes = [IsAuthenticated]
+    content_negotiation_class = JsonOnlyNegotiation
+    renderer_classes = [JSONRenderer]
     http_method_names = ["post"]
 
     @classmethod
@@ -232,7 +253,7 @@ class HistoryView(_ChatRoute):
             return self._refused(STALE_VERSION, "cursor_unreadable")
         result = reader.read_history(page_request)
         if result.outcome != "read" or result.page is None:
-            code, retryable = contract.read_error(result.outcome, result.reason)
+            code, retryable = contract.read_error(result.outcome, result.reason, conversation=True)
             return self._refused(code, result.reason, retryable=retryable)
         return self._served(projections.message_page(result.page))
 
@@ -246,7 +267,7 @@ class ReadCursorView(_ChatRoute):
         reader = reads()
         result = reader.move_read_cursor(projections.read_cursor_command(dto, actor.session_id))
         if result.outcome not in ("moved", "no_change") or result.entry is None:
-            code, retryable = contract.read_error(result.outcome, result.reason)
+            code, retryable = contract.read_error(result.outcome, result.reason, conversation=True)
             return self._refused(code, result.reason, retryable=retryable)
         return self._served(
             contract.conversation_summary(result.entry, read_only=is_read_only(result.entry))

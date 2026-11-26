@@ -208,10 +208,9 @@ class ChatContext:
         return self.profiles.call(member, "GET", f"{MATCHES}/{match_id}")
 
     def match_version(self, member: Member, match_id: Any) -> int:
-        """D6: the version a send carries, as a participant learns it, from the match read."""
+        """D6: the version a send carries, as a participant learns it, from the match read; a
+        match read that is refused fails the case (A2R-8), never a version made up for it."""
         reply = self.match_read(member, match_id)
-        if reply.status != 200:
-            return 1
         return int(self.profiles.data(reply, "match", "the match read")["version"])
 
     def match_list(self, member: Member) -> dict[str, Any]:

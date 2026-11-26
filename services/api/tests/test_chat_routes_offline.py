@@ -31,6 +31,7 @@ import sys
 import unittest
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 from uuid import UUID, uuid4
 
 from glow_chat import contract
@@ -235,13 +236,15 @@ class SendRefusalTests(unittest.TestCase):
 
     def test_the_other_refusals_keep_their_codes(self) -> None:
         cases = {
-            chat.STALE_CONTACT_VERSION: ("stale_version", False),
+            # A2-C1 (A2R-1, A2R-2; DM-99): a wrong version and the session's reasons inside the
+            # send answer the one code; the session missing before the locks stays 401.
+            chat.STALE_CONTACT_VERSION: ("not_found", False),
             chat.IDEMPOTENCY_CONFLICT: ("idempotency_conflict", False),
             chat.SESSION_MISSING: ("unauthenticated", False),
-            chat.SESSION_NOT_VALID: ("unauthenticated", False),
-            chat.SESSION_EXPIRED: ("unauthenticated", False),
-            chat.SESSION_EPOCH_STALE: ("unauthenticated", False),
-            chat.SESSION_CHANGED: ("unauthenticated", False),
+            chat.SESSION_NOT_VALID: ("not_found", False),
+            chat.SESSION_EXPIRED: ("not_found", False),
+            chat.SESSION_EPOCH_STALE: ("not_found", False),
+            chat.SESSION_CHANGED: ("not_found", False),
             chat.MATCH_MISSING: ("not_found", False),
             chat.NOT_A_MEMBER: ("not_found", False),
             chat.MATCH_CHANGED: ("not_found", False),
@@ -256,6 +259,269 @@ class SendRefusalTests(unittest.TestCase):
         self.assertEqual(
             contract.send_error("error", "OperationalError"), ("state_conflict", False)
         )
+
+
+# -- the mapping is complete (A2-C1; DM-99's AK2) -------------------------------------------------
+
+CONTACT = CHAT / "contact.py"
+READS = CHAT / "reads.py"
+SETTINGS_STORE = API_ROOT / "glow_profiles" / "settings_store.py"
+
+# Every reason ``OrmContactPersistence.send`` can raise from its first lock on, as the send route
+# serves it (``contract.send_error``): the one code for every stopped cause, a wrong version and a
+# session ended once the send holds its locks; ``unauthenticated`` only for the session's row
+# missing at its lock; ``idempotency_conflict`` for the same key with another intent.
+SEND_SERVED = {
+    "appaccount_missing": ("not_found", False),
+    "match_missing": ("not_found", False),
+    "accountsession_missing": ("unauthenticated", False),
+    chat.MATCH_NOT_ACTIVE: ("not_found", False),
+    chat.MATCH_CHANGED: ("not_found", False),
+    chat.SESSION_CHANGED: ("not_found", False),
+    chat.ACCOUNT_NOT_ACTIVE: ("not_found", False),
+    chat.SESSION_NOT_VALID: ("not_found", False),
+    chat.SESSION_EXPIRED: ("not_found", False),
+    chat.SESSION_EPOCH_STALE: ("not_found", False),
+    chat.BLOCKED: ("not_found", False),
+    chat.STALE_CONTACT_VERSION: ("not_found", False),
+    chat.PROFILE_UNAVAILABLE: ("not_found", False),
+    chat.CONSENT_NOT_CURRENT: ("not_found", False),
+    chat.IDEMPOTENCY_CONFLICT: ("idempotency_conflict", False),
+    chat.BINDING_NOT_ACTIVE: ("not_found", False),
+}
+# Every reason ``reads._authorize`` can raise from its first lock on, as the history read and the
+# read cursor serve it (``contract.read_error(..., conversation=True)``): ``not_found``, the code a
+# hidden conversation answers, but for the session's row missing at its lock.
+CONVERSATION_SERVED = {
+    "appaccount_missing": ("not_found", False),
+    "match_missing": ("not_found", False),
+    "accountsession_missing": ("unauthenticated", False),
+    "setting_unresolved": ("not_found", False),
+    chat.MATCH_NOT_ACTIVE: ("not_found", False),
+    chat.MATCH_CHANGED: ("not_found", False),
+    chat.SESSION_CHANGED: ("not_found", False),
+    chat.ACCOUNT_NOT_ACTIVE: ("not_found", False),
+    chat.SESSION_NOT_VALID: ("not_found", False),
+    chat.SESSION_EXPIRED: ("not_found", False),
+    chat.SESSION_EPOCH_STALE: ("not_found", False),
+    chat.BLOCKED: ("not_found", False),
+    "conversation_hidden": ("not_found", False),
+}
+SESSION_IN_LOCKS = (
+    chat.SESSION_CHANGED,
+    chat.SESSION_NOT_VALID,
+    chat.SESSION_EXPIRED,
+    chat.SESSION_EPOCH_STALE,
+)
+
+
+class _Reasons:
+    """The refusals a function can raise from its first lock on, read from the source.
+
+    From the line of the function's first lock call, it reads every ``raise _Refused(X)``, and
+    each lock call's ``<table>_missing`` form, in the function and in every helper it calls from
+    there, followed into the helpers' own calls: the class's methods called as ``self.<name>`` and
+    the module's functions (an alias ``name = OrmContactPersistence.<name>`` followed to the
+    method). ``X`` must be a ``chat.<NAME>`` constant, a module constant, a name imported from
+    ``glow_domain``, or ``_history``'s pass-through of ``settings_store.read_shared``'s reasons,
+    which are read from that function; any other form fails the test. Not seen: a reason raised
+    by a function of another module (but ``read_shared``), one returned as a result instead of
+    raised, a database error (served ``state_conflict`` as a deadlock or an error, never a reason),
+    and the reasons before the first lock (``session_missing``, ``match_missing``,
+    ``not_a_member``), pinned by the tests above."""
+
+    LOCKS = {"self._lock", "_lock_shared"}
+
+    def __init__(self, path: Path) -> None:
+        self.path = path
+        self.tree = parsed(path)
+        self.functions = {n.name: n for n in self.tree.body if isinstance(n, ast.FunctionDef)}
+        self.constants = {
+            t.id: n.value.value
+            for n in self.tree.body
+            if isinstance(n, ast.Assign) and isinstance(n.value, ast.Constant)
+            for t in n.targets
+            if isinstance(t, ast.Name) and isinstance(n.value.value, str)
+        }
+        self.imported = {
+            alias.asname or alias.name: node.module
+            for node in self.tree.body
+            if isinstance(node, ast.ImportFrom) and (node.module or "").startswith("glow_domain")
+            for alias in node.names
+        }
+        self.aliases = {
+            t.id: n.value.attr
+            for n in self.tree.body
+            if isinstance(n, ast.Assign)
+            and isinstance(n.value, ast.Attribute)
+            and ast.unparse(n.value.value) == "OrmContactPersistence"
+            for t in n.targets
+            if isinstance(t, ast.Name)
+        }
+        self.unresolved: list[str] = []
+
+    def method(self, klass: str, name: str) -> ast.FunctionDef:
+        found = next(n for n in self.tree.body if isinstance(n, ast.ClassDef) and n.name == klass)
+        return next(n for n in found.body if isinstance(n, ast.FunctionDef) and n.name == name)
+
+    def _value(self, node: ast.expr, helper: str) -> set[str]:
+        import importlib
+
+        text = ast.unparse(node)
+        if text.startswith("chat."):
+            return {getattr(chat, text.removeprefix("chat."))}
+        if isinstance(node, ast.Name) and node.id in self.constants:
+            return {self.constants[node.id]}
+        if isinstance(node, ast.Name) and node.id in self.imported:
+            return {getattr(importlib.import_module(self.imported[node.id]), node.id)}
+        if helper == "_history" and text == "refused.reason":
+            store = parsed(SETTINGS_STORE)
+            read_shared = next(
+                n for n in store.body if isinstance(n, ast.FunctionDef) and n.name == "read_shared"
+            )
+            return {
+                raised.exc.args[1].value
+                for raised in ast.walk(read_shared)
+                if isinstance(raised, ast.Raise)
+                and isinstance(raised.exc, ast.Call)
+                and isinstance(raised.exc.args[1], ast.Constant)
+            }
+        self.unresolved.append(f"{helper}: {text}")
+        return set()
+
+    def collect(self, function: ast.FunctionDef, klass: ast.ClassDef | None) -> set[str]:
+        calls = [n for n in ast.walk(function) if isinstance(n, ast.Call)]
+        first = min(n.lineno for n in calls if ast.unparse(n.func) in self.LOCKS)
+        return self._from(function, klass, first, set())
+
+    def _from(
+        self, function: ast.FunctionDef, klass: ast.ClassDef | None, first: int, seen: set[str]
+    ) -> set[str]:
+        found: set[str] = set()
+        for node in ast.walk(function):
+            if getattr(node, "lineno", first) < first:
+                continue
+            if isinstance(node, ast.Raise) and isinstance(node.exc, ast.Call):
+                if ast.unparse(node.exc.func) == "_Refused":
+                    found |= self._value(node.exc.args[0], function.name)
+            if not isinstance(node, ast.Call):
+                continue
+            called = ast.unparse(node.func)
+            if called == "self._lock":
+                found.add(f"{ast.unparse(node.args[0]).lower()}_missing")
+            elif called == "_lock_shared":
+                table = node.args[0]
+                assert isinstance(table, ast.Constant), ast.unparse(table)
+                found.add(f"{str(table.value).removeprefix('glow_persistence_')}_missing")
+            else:
+                helper = self._helper(called, klass)
+                if helper is not None and helper[0].name not in seen:
+                    seen.add(helper[0].name)
+                    inner = klass if helper[1] is self else None
+                    found |= helper[1]._from(helper[0], inner, 0, seen)
+        return found
+
+    def _helper(
+        self, called: str, klass: ast.ClassDef | None
+    ) -> tuple[ast.FunctionDef, Any] | None:
+        if called.startswith("self.") and klass is not None:
+            name = called.removeprefix("self.")
+            for node in klass.body:
+                if isinstance(node, ast.FunctionDef) and node.name == name:
+                    return node, self
+        if called in self.functions:
+            return self.functions[called], self
+        if called in self.aliases:
+            contact = _Reasons(CONTACT)
+            return contact.method("OrmContactPersistence", self.aliases[called]), contact
+        return None
+
+
+def _send_reasons() -> tuple[set[str], list[str]]:
+    reading = _Reasons(CONTACT)
+    klass = next(
+        n
+        for n in reading.tree.body
+        if isinstance(n, ast.ClassDef) and n.name == "OrmContactPersistence"
+    )
+    send = reading.method("OrmContactPersistence", "send")
+    body = next(n for n in send.body if isinstance(n, ast.FunctionDef) and n.name == "body")
+    return reading.collect(body, klass), reading.unresolved
+
+
+def _authorize_reasons() -> tuple[set[str], list[str]]:
+    reading = _Reasons(READS)
+    authorize = reading.method("OrmConversationReads", "_authorize")
+    return reading.collect(authorize, None), reading.unresolved
+
+
+class MappingCompletenessTests(unittest.TestCase):
+    """DM-99's AK2: every reason the send and a conversation's read can raise once they hold
+    their first lock is pinned to the code and status its route serves; a reason added later
+    fails here until it is pinned."""
+
+    def test_every_reason_the_send_raises_after_its_first_lock_is_pinned(self) -> None:
+        found, unresolved = _send_reasons()
+        self.assertEqual(unresolved, [])
+        self.assertEqual(found, set(SEND_SERVED))
+        for reason, expected in SEND_SERVED.items():
+            with self.subTest(reason=reason):
+                self.assertEqual(contract.send_error("refused", reason), expected)
+        # Each one's status, through the route itself: RouteTests.test_every_pinned_reason_...
+
+    def test_every_reason_a_conversations_read_raises_after_its_first_lock_is_pinned(self) -> None:
+        found, unresolved = _authorize_reasons()
+        self.assertEqual(unresolved, [])
+        self.assertEqual(found, set(CONVERSATION_SERVED))
+        for reason, expected in CONVERSATION_SERVED.items():
+            with self.subTest(reason=reason):
+                self.assertEqual(
+                    contract.read_error("refused", reason, conversation=True), expected
+                )
+
+    def test_the_session_found_ended_in_the_locks_answers_one_code_but_on_the_list(self) -> None:
+        for reason in SESSION_IN_LOCKS:
+            with self.subTest(reason=reason):
+                self.assertEqual(contract.send_error("refused", reason), ("not_found", False))
+                self.assertEqual(
+                    contract.read_error("refused", reason, conversation=True),
+                    ("not_found", False),
+                )
+                # The list refuses as a whole and names no conversation (DM-99's AK1).
+                self.assertEqual(contract.read_error("refused", reason), ("unauthenticated", False))
+        for reason in (chat.SESSION_MISSING, "accountsession_missing"):
+            with self.subTest(reason=reason):
+                self.assertEqual(contract.send_error("refused", reason), ("unauthenticated", False))
+                for conversation in (True, False):
+                    self.assertEqual(
+                        contract.read_error("refused", reason, conversation=conversation),
+                        ("unauthenticated", False),
+                    )
+        # A deadlock and a database error are no reason: state_conflict, as before.
+        self.assertEqual(
+            contract.read_error("deadlock", "DeadlockDetected", conversation=True),
+            ("state_conflict", True),
+        )
+
+    def test_a_reason_added_after_the_locks_is_found(self) -> None:
+        # The reading itself: a raise added after the first lock, in a copy of the send's source,
+        # is found, and is no pinned reason.
+        source = CONTACT.read_text(encoding="utf-8")
+        marker = '            if match.state != "active":\n'
+        self.assertEqual(source.count(marker), 1)
+        tree = ast.parse(
+            source.replace(marker, "            raise _Refused(chat.NO_CONSENT)\n" + marker)
+        )
+        reading = _Reasons(CONTACT)
+        reading.tree = tree
+        klass = next(
+            n
+            for n in tree.body
+            if isinstance(n, ast.ClassDef) and n.name == "OrmContactPersistence"
+        )
+        send = reading.method("OrmContactPersistence", "send")
+        body = next(n for n in send.body if isinstance(n, ast.FunctionDef) and n.name == "body")
+        self.assertEqual(reading.collect(body, klass) - set(SEND_SERVED), {chat.NO_CONSENT})
 
 
 # -- the routes, in a fresh process (D8) ----------------------------------------------------------
@@ -331,7 +597,7 @@ def answer(response, kind=None):
     served = (body.get("data") or {}) if isinstance(body, dict) else {}
     return {
         "status": response.status_code,
-        "cache": response["Cache-Control"],
+        "cache": response.get("Cache-Control"),
         "body": body,
         "code": body.get("code"),
         "retryable": body.get("retryable"),
@@ -471,9 +737,37 @@ with (
         sent.result = ContactResult("deadlock", "DeadlockDetected")
         cases["send:deadlock"] = answer(send(views.MessageView, message))
         cases["all_commands"] = [str(c.session_id) for c in sent.commands]
-        # The reads' refusals, each as error_for maps it.
+        # A2-C1 (A2R-4; DM-99 item 2): neither the format override nor Accept is read.
+        sent.result = ContactResult("authorized", receipt=receipt)
+        Reads.answers = {"list": listed, "history": history, "cursor": moved}
+        for view, body, method in (*((v, b, "post") for v, b in POSTS),
+                                   (views.ConversationListView, None, "get")):
+            name = view.__name__
+            cases[f"{name}:format"] = answer(send(view, body, method=method,
+                                                  path="/x?format=xml"))
+            cases[f"{name}:format_unsigned"] = answer(send(view, body, method=method,
+                                                           path="/x?format=xml", signed=False))
+            cases[f"{name}:html"] = answer(send(view, body, method=method,
+                                                headers={"HTTP_ACCEPT": "text/html"}))
+        # A2-C1 (DM-99's AK2): every reason the send and a conversation's read raise once they
+        # hold their first lock, through its route.
+        for reason in __SEND_REASONS__:
+            sent.result = ContactResult("refused", reason)
+            cases[f"complete:send:{reason}"] = answer(send(views.MessageView, message))
+        for reason in __CONVERSATION_REASONS__:
+            Reads.answers = {"list": ListResult("refused", reason),
+                             "history": ReadResult("refused", reason),
+                             "cursor": CursorResult("refused", reason)}
+            cases[f"complete:reads:{reason}"] = [
+                answer(send(views.ConversationListView, None, method="get")),
+                answer(send(views.HistoryView, page)),
+                answer(send(views.ReadCursorView, cursor)),
+            ]
+        # The reads' refusals, each as error_for maps it, but the session's reasons in the locks
+        # on a conversation's own reads (A2-C1; DM-99's AK1).
         for reason in ("match_not_active", "conversation_hidden", "blocked", "session_expired",
-                       "message_unavailable"):
+                       "message_unavailable", "session_not_valid", "session_epoch_stale",
+                       "session_changed", "session_missing", "accountsession_missing"):
             Reads.answers = {"list": ListResult("refused", reason),
                              "history": ReadResult("refused", reason),
                              "cursor": CursorResult("refused", reason)}
@@ -502,6 +796,26 @@ with mock.patch.object(interaction_views.interactions, "read_matches",
     cases["matches:query"] = answer(send(interaction_views.MatchListView, None, method="get",
                                          path="/x?state=active"))
     cases["matches:method"] = answer(send(interaction_views.MatchListView, None))
+    cases["matches:format"] = answer(send(interaction_views.MatchListView, None, method="get",
+                                          path="/x?format=xml"))
+    cases["matches:format_unsigned"] = answer(send(interaction_views.MatchListView, None,
+                                                   method="get", path="/x?format=xml",
+                                                   signed=False))
+    cases["matches:html"] = answer(send(interaction_views.MatchListView, None, method="get",
+                                        headers={"HTTP_ACCEPT": "text/html"}))
+# SV3's other views keep DRF's negotiation (DM-99 item 2: carried to P10): the framework still
+# answers the format override on the match read, as before.
+from rest_framework.settings import api_settings
+cases["sv3_negotiation"] = {
+    view.__name__: view.content_negotiation_class is api_settings.DEFAULT_CONTENT_NEGOTIATION_CLASS
+    for view in (interaction_views.InteractionView, interaction_views.UndoView,
+                 interaction_views.UnmatchView, interaction_views.BlockView,
+                 interaction_views.MatchView, interaction_views.OwnVersionsView)
+}
+framework = send(interaction_views.MatchView, None, method="get", path="/x?format=xml",
+                 match_id=UUID(MATCH))
+cases["MatchView:format"] = [framework.status_code, json.loads(framework.content),
+                             framework.has_header("Cache-Control")]
 print(json.dumps({
     "cases": cases,
     "actor_session": str(actor.session_id),
@@ -512,7 +826,10 @@ print(json.dumps({
 
 
 def routes() -> dict[str, object]:
-    return last_json(under_discovery_settings(ROUTES))
+    script = ROUTES.replace("__SEND_REASONS__", json.dumps(sorted(SEND_SERVED))).replace(
+        "__CONVERSATION_REASONS__", json.dumps(sorted(CONVERSATION_SERVED))
+    )
+    return last_json(under_discovery_settings(script))
 
 
 class RouteTests(unittest.TestCase):
@@ -626,31 +943,117 @@ class RouteTests(unittest.TestCase):
                 assert isinstance(body, dict)
                 bodies.append({k: v for k, v in body.items() if k != "request_id"})
         self.assertEqual(len({json.dumps(b, sort_keys=True) for b in bodies}), 1)
-        self.assert_refused("send:stale_contact_version", 409, "stale_version")
+        # A2-C1 (A2R-1, A2R-2; DM-99): a wrong version and a session found ended in the send's
+        # locks answer the one code, with the same body.
+        self.assert_refused("send:stale_contact_version", 404, "not_found")
         self.assert_refused("send:idempotency_conflict", 409, "idempotency_conflict")
-        self.assert_refused("send:session_not_valid", 401, "unauthenticated")
+        self.assert_refused("send:session_not_valid", 404, "not_found")
+        for name in ("send:stale_contact_version", "send:session_not_valid"):
+            body = self.case(name)["body"]
+            assert isinstance(body, dict)
+            self.assertIn({k: v for k, v in body.items() if k != "request_id"}, bodies, name)
         self.assert_refused("send:match_missing", 404, "not_found")
         self.assert_refused("send:not_a_member", 404, "not_found")
         self.assert_refused("send:deadlock", 409, "state_conflict")
         self.assertTrue(self.case("send:deadlock")["retryable"])
 
     def test_the_reads_refusals_are_error_fors(self) -> None:
+        # Each as (the list, the history read, the read cursor). A2-C1 (DM-99's AK1): the
+        # session's reasons in the locks answer the history and the cursor as a hidden
+        # conversation (not_found); the list, session_missing and accountsession_missing keep 401.
+        unauthenticated, not_found = (401, "unauthenticated"), (404, "not_found")
+        in_locks = (unauthenticated, not_found, not_found)
         expected = {
-            "match_not_active": (404, "not_found"),
-            "conversation_hidden": (404, "not_found"),
-            "blocked": (404, "not_found"),
-            "session_expired": (401, "unauthenticated"),
-            "message_unavailable": (404, "not_found"),
-            "transaction_open": (409, "state_conflict"),
+            "match_not_active": (not_found,) * 3,
+            "conversation_hidden": (not_found,) * 3,
+            "blocked": (not_found,) * 3,
+            "session_expired": in_locks,
+            "message_unavailable": (not_found,) * 3,
+            "transaction_open": ((409, "state_conflict"),) * 3,
+            "session_not_valid": in_locks,
+            "session_epoch_stale": in_locks,
+            "session_changed": in_locks,
+            "session_missing": (unauthenticated,) * 3,
+            "accountsession_missing": (unauthenticated,) * 3,
         }
-        for reason, (status, code) in expected.items():
-            for found in self.case_list(f"reads:{reason}"):
+        for reason, answers in expected.items():
+            founds = self.case_list(f"reads:{reason}")
+            self.assertEqual(len(founds), 3)
+            for found, (status, code) in zip(founds, answers, strict=True):
                 with self.subTest(reason=reason):
                     assert isinstance(found, dict)
                     self.assertEqual(
                         (found["status"], found["code"], found["valid"], found["echo"]),
                         (status, code, True, False),
                     )
+
+    def test_every_pinned_reason_is_served_with_its_code_and_status(self) -> None:
+        # DM-99's AK2, through the routes: each reason MappingCompletenessTests reads from the
+        # source, as the route serves it; every not_found has one body on the three routes.
+        status = {"not_found": 404, "unauthenticated": 401, "idempotency_conflict": 409}
+        bodies = set()
+        answered: list[tuple[str, dict[str, object], tuple[str, bool]]] = []
+        for reason, expected in SEND_SERVED.items():
+            answered.append((f"send {reason}", self.case(f"complete:send:{reason}"), expected))
+        for reason, expected in CONVERSATION_SERVED.items():
+            listed, read, moved = self.case_list(f"complete:reads:{reason}")
+            for route, found in (("history", read), ("cursor", moved)):
+                assert isinstance(found, dict)
+                answered.append((f"{route} {reason}", found, expected))
+            assert isinstance(listed, dict)
+            if reason in SESSION_IN_LOCKS:
+                self.assertEqual((listed["status"], listed["code"]), (401, "unauthenticated"))
+        for name, found, (code, retryable) in answered:
+            with self.subTest(route=name):
+                self.assertEqual(
+                    (found["status"], found["code"], found["retryable"], found["valid"]),
+                    (status[code], code, retryable, True),
+                )
+                self.assertFalse(found["echo"])
+                self.assertEqual(found["cache"], "no-store")
+                if code == "not_found":
+                    body = found["body"]
+                    assert isinstance(body, dict)
+                    bodies.add(json.dumps({k: v for k, v in body.items() if k != "request_id"}))
+        self.assertEqual(len(bodies), 1)
+
+    def test_the_negotiation_reads_neither_accept_nor_format(self) -> None:
+        # A2-C1 (A2R-4; DM-99 item 2), on the five routes: ?format=xml meets the routes' own
+        # query-string refusal (400, or 401 unsigned), and Accept: text/html is served as JSON.
+        served = {
+            "MessageView": "message",
+            "HistoryView": "message_page",
+            "ReadCursorView": "conversation",
+            "ConversationListView": "conversation_list",
+            "matches": "match_list",
+        }
+        for name, kind in served.items():
+            with self.subTest(route=name):
+                self.assert_refused(f"{name}:format", 400, "invalid_request")
+                self.assert_refused(f"{name}:format_unsigned", 401, "unauthenticated")
+                self.assert_served(f"{name}:html", kind)
+
+    def test_sv3s_other_views_keep_their_negotiation(self) -> None:
+        self.assertEqual(
+            self.cases["sv3_negotiation"],  # type: ignore[index]
+            {
+                name: True
+                for name in (
+                    "InteractionView",
+                    "UndoView",
+                    "UnmatchView",
+                    "BlockView",
+                    "MatchView",
+                    "OwnVersionsView",
+                )
+            },
+        )
+        # The framework still answers the format override there, before authentication, with no
+        # Cache-Control (carried to P10).
+        self.assertEqual(
+            self.cases["MatchView:format"],  # type: ignore[index]
+            [404, {"detail": "Not found."}, False],
+        )
 
     def test_the_routes_log_codes_only(self) -> None:
         self.assertFalse(self.seen["record_echo"])

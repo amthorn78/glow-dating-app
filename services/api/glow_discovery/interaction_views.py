@@ -170,6 +170,24 @@ class MatchView(_Route):
 class MatchListView(_Route):
     """SV4 A2's ``MatchList`` (its brief's D9): the actor's own matches only."""
 
+    from rest_framework.negotiation import DefaultContentNegotiation
+    from rest_framework.renderers import JSONRenderer
+
+    class _JsonOnly(DefaultContentNegotiation):  # type: ignore[misc]
+        """A2R-4 (DM-99 item 2), as chat's views: the JSON renderer, always, reading neither
+        ``Accept`` nor the ``format`` override, so ``?format=xml`` meets the query-string refusal
+        and ``Accept: text/html`` is answered as any other request. Set on this view only."""
+
+        def select_renderer(
+            self, request: Any, renderers: list[Any], format_suffix: str | None = None
+        ) -> tuple[Any, str]:
+            from rest_framework.renderers import JSONRenderer
+
+            renderer = next(r for r in renderers if isinstance(r, JSONRenderer))
+            return renderer, renderer.media_type
+
+    content_negotiation_class = _JsonOnly
+    renderer_classes = [JSONRenderer]
     http_method_names = ["get"]
 
     def get(self, request: Any) -> Response:

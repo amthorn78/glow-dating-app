@@ -23,9 +23,11 @@ forms), answers one code, ``not_found``, the same for each, so a member never le
 stopped a send. It is the code the reads answer for every refusal about the conversation or the
 other member (``glow_domain.chat_projections.error_for``), so the send tells a member no more
 than the history read does, and the code the mobile fixture and client already treat as
-"unavailable". A stale expected version is ``stale_version`` (checked after the state, so an
-ended contact answers ``not_found`` whatever version is sent; D6), the same key with another
-intent ``idempotency_conflict``, and the member's own session ``unauthenticated``.
+"unavailable". A version other than the match's answers ``not_found`` too, and so does a
+session the send finds ended once it holds its locks: the send checks part of either member's
+state after the version and the session (A2R-1, A2R-2; DM-99), so another answer for either
+would tell causes apart. The same key with another intent is ``idempotency_conflict``, and a
+session that is missing when the send reads or locks it is ``unauthenticated``.
 """
 
 from __future__ import annotations
@@ -161,20 +163,59 @@ def conversation_list(entries: Iterable[tuple[ConversationEntry, bool]]) -> dict
 
 
 def send_error(outcome: str, reason: str) -> tuple[str, bool]:
-    """A refused send as the contract's ``Error`` code and whether it is retryable (D8)."""
+    """A refused send as the contract's ``Error`` code and whether it is retryable (D8).
+
+    ``SEND_STOPPED`` (``not_found``, not retryable), one body for each, answers every stopped
+    cause (``STOPPED_REASONS``), and also (A2R-1, A2R-2; DM-99):
+
+    - ``stale_contact_version``, a version other than the match's;
+    - the session's reasons ``contact.send`` raises once it holds its locks: ``session_changed``,
+      ``session_not_valid``, ``session_expired`` and ``session_epoch_stale``.
+
+    Why: ``send`` checks the match's state and both accounts before the session's state, a block
+    after it, and both profiles and both consents after the version, so any other answer for
+    either would tell a member which cause stopped the send. ``session_missing`` (the read before
+    the locks) and ``accountsession_missing`` (the session's lock finding no row) are found before
+    any cause is checked and stay ``unauthenticated``, as SV1's door answers; the same key with
+    another intent is ``idempotency_conflict``; everything else about the match (not theirs,
+    missing, its channel not usable) is the generic unavailable object; a deadlock or a database
+    error is ``state_conflict``, as ``chat_projections.error_for`` maps them."""
     if outcome in ("deadlock", "error"):
         return projections.error_for(outcome, reason)
-    if reason in STOPPED_REASONS:
+    if reason in STOPPED_REASONS or reason == chat.STALE_CONTACT_VERSION:
         return SEND_STOPPED, False
-    if reason == chat.STALE_CONTACT_VERSION:
-        return STALE_VERSION, False
+    if reason in (
+        chat.SESSION_CHANGED,
+        chat.SESSION_NOT_VALID,
+        chat.SESSION_EXPIRED,
+        chat.SESSION_EPOCH_STALE,
+    ):
+        return SEND_STOPPED, False
     if reason == chat.IDEMPOTENCY_CONFLICT:
         return IDEMPOTENCY_CONFLICT, False
-    # The member's own session is ``unauthenticated``; everything else about the match (not
-    # theirs, missing, its channel not usable) is the generic unavailable object.
     return projections.error_for("refused", reason)
 
 
-def read_error(outcome: str, reason: str) -> tuple[str, bool]:
-    """A refused read as the contract's ``Error`` code: ``chat_projections.error_for``."""
+def read_error(outcome: str, reason: str, *, conversation: bool = False) -> tuple[str, bool]:
+    """A refused read as the contract's ``Error`` code: ``chat_projections.error_for``, but for one
+    conversation's own reads (``conversation``: the history read and the read cursor, DM-99's
+    AK1), whose session's reasons ``reads._authorize`` raises once it holds its locks
+    (``session_changed``, ``session_not_valid``, ``session_expired``, ``session_epoch_stale``)
+    answer ``not_found``, the code a hidden conversation answers: the read rule checks the block
+    and the causes after the session, so ``unauthenticated`` there would tell a cause published
+    ``hidden`` from an ended contact. ``session_missing``, ``accountsession_missing``, SV1's door
+    and the conversation list, which refuses as a whole and names no conversation, keep
+    ``unauthenticated``."""
+    if (
+        conversation
+        and outcome == "refused"
+        and reason
+        in (
+            chat.SESSION_CHANGED,
+            chat.SESSION_NOT_VALID,
+            chat.SESSION_EXPIRED,
+            chat.SESSION_EPOCH_STALE,
+        )
+    ):
+        return NOT_FOUND, False
     return projections.error_for(outcome, reason)

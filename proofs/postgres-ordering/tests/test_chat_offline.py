@@ -596,25 +596,33 @@ PLAN = (
     "transactions.non_atomic_requests",
     "ar12.like_while_a_block_waits_and_a_match_after_unblock",
     "list.bounded_locks",
+    "send.one_answer_for_every_version_and_session",
+    "list.block_session_and_own_account_checks",
     "ar13.history_publication_during_a_read",
     "d5.each_cause_hidden",
+    "reads.session_ended_in_locks_answers_as_hidden",
 )
 
 
 class ChatPlanTests(unittest.TestCase):
     def test_the_case_count_is_pinned(self) -> None:
-        self.assertEqual(chat_cases.CASE_COUNT, 15)
+        self.assertEqual(chat_cases.CASE_COUNT, 18)
         self.assertEqual(len(chat_cases.CASES), chat_cases.CASE_COUNT)
         self.assertEqual(chat_cases.plan(), PLAN)
 
     def test_the_cases_that_publish_hidden_run_last(self) -> None:
         # A cause published hidden cannot be made readable again under the launch consent
-        # version (SV2's D2), so every read-only case comes first.
+        # version (SV2's D2), so every read-only case comes first. A2-C1 adds the third, which
+        # reads a conversation hidden by a cause (DM-99's AK2).
         self.assertEqual(
-            chat_cases.plan()[-2:],
-            ("ar13.history_publication_during_a_read", "d5.each_cause_hidden"),
+            chat_cases.plan()[-3:],
+            (
+                "ar13.history_publication_during_a_read",
+                "d5.each_cause_hidden",
+                "reads.session_ended_in_locks_answers_as_hidden",
+            ),
         )
-        for entry in chat_cases.CASES[:-2]:
+        for entry in chat_cases.CASES[:-3]:
             source = ast.unparse(_function(entry.run.__name__))
             with self.subTest(case=entry.case_id):
                 self.assertNotIn("hidden", re.findall(r'(\w+)="hidden"', source))

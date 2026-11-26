@@ -57,7 +57,7 @@ class Case:
 CASES: list[Case] = []
 # The suite's case count, pinned: a case lost or added without this changing fails the run before
 # any case runs, and the offline tests.
-CASE_COUNT = 15
+CASE_COUNT = 18
 
 
 def case(
@@ -107,13 +107,13 @@ def _pair(ctx: ChatContext) -> tuple[Member, Member, Any]:
     return first, second, ctx.matched(first, second)
 
 
-def _internal_send_reason(member: Member, match_id: Any) -> str:
+def _internal_send_reason(member: Member, match_id: Any, version: int = 1) -> str:
     """The send's own reason for the same state, through ``glow_chat``'s ``send`` (the route
     serves one code for it; the reason is the adapter's, never served)."""
     from glow_domain.chat import SendCommand
 
     result = _chat().send(
-        SendCommand(session_of(member), UUID(str(match_id)), 1, f"k{uuid4().hex}", "x" * 10)
+        SendCommand(session_of(member), UUID(str(match_id)), version, f"k{uuid4().hex}", "x" * 10)
     )
     return str(result.reason or result.outcome)
 
@@ -156,6 +156,93 @@ def _publish_history(ctx: ChatContext, **changes: str) -> None:
     ctx.discovery.publish(ps.HISTORY, content)
 
 
+def _waiting_on(holder_pid: int, ended: Callable[[], bool]) -> int | None:
+    """The backend that waits on ``holder_pid``'s lock, read from ``pg_stat_activity`` on this
+    thread's own connection, or ``None`` if none waits before ``ended`` or the reach time."""
+    import threading
+    import time
+
+    from django.db import connection
+
+    deadline = time.monotonic() + REACH_SECONDS
+    pause = threading.Event()
+    with connection.cursor() as cursor:
+        while time.monotonic() < deadline and not ended():
+            cursor.execute(
+                "SELECT pid FROM pg_stat_activity WHERE %s = ANY(pg_blocking_pids(pid))",
+                [holder_pid],
+            )
+            row = cursor.fetchone()
+            if row is not None:
+                return int(row[0])
+            pause.wait(0.01)
+    return None
+
+
+def _while_held(
+    writer: Callable[[Hold], Any], route: Callable[[], Reply], what: str
+) -> tuple[Reply, Any]:
+    """``writer`` holds its transaction at its commit, with its row locked; the route's request,
+    made then, passes SV1's door (which reads with no lock, so sees the row as it stood) and waits
+    on that row at its own lock (observed in ``pg_stat_activity``); the writer then commits, and
+    the route reads the row as the writer left it. Returns the route's reply and the writer's
+    result."""
+    from glow_ordering_proof.discovery_cases import _Worker
+    from glow_ordering_proof.observe import observe_lock_wait
+
+    held = Hold("before_commit")
+    holder = _Worker(partial(writer, held))
+    request = _Worker(route)
+    waited = None
+    try:
+        holder.start()
+        expect(held.reached["before_commit"].wait(REACH_SECONDS), f"{what}: the writer holds it")
+        request.start()
+        assert held.pid is not None
+        pid = _waiting_on(held.pid, request.ended)
+        if pid is not None:
+            waited = observe_lock_wait(
+                pid, holder_pid=held.pid, finished=request.ended, timeout=REACH_SECONDS
+            )
+    finally:
+        held.free()
+        expect(holder.done(HOLD_SECONDS + 30) and request.done(HOLD_SECONDS + 30), "both ended")
+    expect(waited is not None and waited.observed, f"{what}: the route waited on the writer")
+    expect(holder.error is None and request.error is None, f"{what}: neither raised")
+    expect(isinstance(request.result, Reply), f"{what}: the route answered")
+    return request.result, holder.result
+
+
+def _ended_in_locks(
+    ctx: ChatContext, member: Member, route: Callable[[], Reply], what: str
+) -> Reply:
+    """The member's session ends once the route's request has passed SV1's door and before its
+    session lock: ``glow_chat``'s sign-out (the session row, ``FOR UPDATE``) is held at its commit
+    while the request waits on that row, so the route finds the session revoked once it holds its
+    locks (A2R-2; DM-99's AK1 and AK2)."""
+    session = session_of(member)
+    reply, signed_out = _while_held(lambda held: _chat().sign_out(session, probe=held), route, what)
+    expect(signed_out is not None and signed_out.outcome == "applied", f"{what}: signed out")
+    return reply
+
+
+def _account_suspended_as_test_data(account_id: Any, held: Hold) -> int:
+    """Test data inside a held transaction: the account ``suspended`` with its session left
+    ``valid`` at its epoch, a state no writer leaves (a suspension also moves the epoch, so the
+    session's check refuses first), so the list's own-account check is the one reached."""
+    from django.db import connection, transaction
+    from glow_persistence.models import AppAccount
+
+    with transaction.atomic():
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT pg_backend_pid()")
+            held.on_begin(int(cursor.fetchone()[0]))
+        changed = AppAccount.objects.filter(pk=account_id).update(state="suspended")
+        assert held.before_commit is not None
+        held.before_commit()
+    return int(changed)
+
+
 # -- 1. the routes refuse what is not their DTO (D8) ----------------------------------------------
 
 
@@ -180,12 +267,13 @@ def routes_refuse(ctx: ChatContext) -> str:
     for path, body in bodies.items():
         what = path.rsplit("/", 1)[1]
         call = partial(ctx.profiles.call, one)
-        for name, reply in (
-            ("no token", call("POST", path, body, bearer=False)),
-            ("a refused token", call("POST", path, body, bearer="not-a-token")),
-        ):
+        for name, bearer in (("no token", False), ("a refused token", "not-a-token")):
+            # Each reply's own headers (A2R-8): the challenge checked on the no-token reply too.
+            reply = call("POST", path, body, bearer=bearer)
             _refused(ctx, reply, 401, "unauthenticated", f"{what}: {name}")
-            expect("WWW-Authenticate: Bearer" in _last_headers(ctx), f"{what}: the challenge")
+            expect(
+                "WWW-Authenticate: Bearer" in _last_headers(ctx), f"{what}: {name}: the challenge"
+            )
         for name, sent in (
             ("an extra field", {**body, "extra": "x"}),
             ("a session field", {**body, "session_id": str(uuid4())}),
@@ -226,9 +314,9 @@ def routes_refuse(ctx: ChatContext) -> str:
 def send_replay(ctx: ChatContext) -> str:
     """A send answers ``MessageSubmission`` (pending), with the match read's version as its
     expected version (D6); the same intent replays the same submission, its state the current one;
-    the same key with another text is ``idempotency_conflict``; another version is
-    ``stale_version``; neither writes; once contact has ended the replay is refused as every
-    stopped send is (``not_found``)."""
+    the same key with another text is ``idempotency_conflict``; another version answers the one
+    code, ``not_found``, as every stopped send does (A2-C1; DM-99); neither writes; once contact
+    has ended the replay is refused the same way."""
     from glow_persistence.models import MessageSubmission
 
     one, two, match = _pair(ctx)
@@ -256,8 +344,8 @@ def send_replay(ctx: ChatContext) -> str:
         _refused(
             ctx,
             ctx.send(one, ctx.message(one, match.id, expected=version)),
-            409,
-            "stale_version",
+            404,
+            "not_found",
             f"the version {version}",
         )
     expect(
@@ -273,7 +361,9 @@ def send_replay(ctx: ChatContext) -> str:
     )
     _unmatch(ctx, two, match)
     _refused(ctx, ctx.send(one, body), 404, "not_found", "the replay after the unmatch")
-    return "pending, replayed, accepted; conflict and stale refused, writing nothing; ended: 404"
+    return (
+        "pending, replayed, accepted; conflict and wrong version refused, none written; ended: 404"
+    )
 
 
 # -- 3. history, list and read cursor for both members (D8, D5) ----------------------------------
@@ -282,8 +372,9 @@ def send_replay(ctx: ChatContext) -> str:
 @case("reads.history_list_and_cursor_for_both", "D8", "D5", "F11")
 def reads_for_both(ctx: ChatContext) -> str:
     """Both members read the history, each their own side; pages and cursors follow acceptance;
-    the list shows each the other's unread messages and the latest marker; the read cursor moves
-    forward only; a cursor or a message of another match is refused; the member's own pending
+    the list shows each the other's unread messages and the latest marker; each member's read
+    cursor moves forward only, and neither member's move changes the other's unread count; a
+    cursor or a message of another match is refused; the member's own pending
     message is theirs alone; no served body carries a provider's identifier."""
     from glow_persistence.models import ChatBinding, MessageSubmission
 
@@ -331,6 +422,15 @@ def reads_for_both(ctx: ChatContext) -> str:
     expect(moved["state"] == "open" and moved["unread_count"] == 0, "the cursor moves")
     again = ctx.cursor(one, match.id, sent[1])
     expect(again["unread_count"] == 0, "a cursor behind the current one changes nothing")
+    # Each member's cursor is their own (D10; DM-99's AK11): the other's move changes neither
+    # member's unread count but the mover's.
+    expect(ctx.conversations(two)[str(match.id)]["unread_count"] == 3, "the other's unread kept")
+    theirs = ctx.cursor(two, match.id, sent[2])
+    expect(theirs["state"] == "open" and theirs["unread_count"] == 1, "the other's cursor moves")
+    behind = ctx.cursor(two, match.id, sent[0])
+    expect(behind["unread_count"] == 1, "the other's cursor behind changes nothing")
+    expect(ctx.conversations(one)[str(match.id)]["unread_count"] == 0, "the first's unread kept")
+    expect(ctx.conversations(two)[str(match.id)]["unread_count"] == 1, "the other's own count")
     # Another match's message and page cursor are refused.
     three, four, other_match = _pair(ctx)
     foreign = ctx.sent(three, other_match.id)
@@ -373,7 +473,7 @@ def reads_for_both(ctx: ChatContext) -> str:
     }
     served = json.dumps(ctx.profiles.served)
     expect(refs and not any(str(ref) in served for ref in refs), "no provider ID is served")
-    return "both sides read; pages and cursors in acceptance order; unread and cursor; refusals"
+    return "both sides read; pages and cursors in acceptance order; each one's cursor; refusals"
 
 
 def _flip(author: str) -> str:
@@ -733,11 +833,14 @@ def non_atomic(ctx: ChatContext) -> str:
 
     one, two, match = _pair(ctx)
     submission = ctx.sent(two, match.id)
+    # The send's body, its version from SV3's match read, built before ATOMIC_REQUESTS is on: that
+    # read refuses inside it (A2-C1's resume message; A2R-8: no version is made up for it).
+    body = ctx.message(one, match.id)
     settings = connection.settings_dict
     before = settings.get("ATOMIC_REQUESTS")
     settings["ATOMIC_REQUESTS"] = True
     try:
-        sent = ctx.profiles.data(ctx.send(one, ctx.message(one, match.id)), "message", "send")
+        sent = ctx.profiles.data(ctx.send(one, body), "message", "send")
         page = ctx.history(one, match.id)
         listed = ctx.conversations(one)
         moved = ctx.cursor(one, match.id, submission)
@@ -960,7 +1063,149 @@ def bounded_locks(ctx: ChatContext) -> str:
     return f"{POPULATION + 1} active matches: 200 candidates locked in one statement per table"
 
 
-# -- 14. AR-13: a publication of chat.history during a read (after every read-only case) ----
+# -- 14. the send under every row of the review's probe table (A2-C1; DM-99's AK2) ---------------
+
+
+@case("send.one_answer_for_every_version_and_session", "D8", "OD-60 H", "A2R-1", "A2R-2", "AK2")
+def send_one_answer(ctx: ChatContext) -> str:
+    """A2's exact-head review's probe table, as a case. Under each row (no cause; the other member
+    suspended; the other's pause, the own pause, the other's restriction, the other's consent
+    withdrawn; an unmatch, a block, the other's deletion), the send with the current version
+    (the match read's), with a wrong version (0 and 7) and with a session ended once the send
+    holds its locks: every stopped send answers one status, code and body (``not_found``, 404),
+    though the adapter's own reasons differ, and writes nothing; with no cause the current
+    version is served (200), and the other two answer the same one code."""
+    from glow_persistence.models import Block, MessageSubmission
+
+    def suspended(one: Member, two: Member, match: Any) -> None:
+        _ok(_chat().suspend(two.account_id))
+
+    def paused(one: Member, two: Member, match: Any) -> None:
+        _visibility(ctx, two, "pause")
+
+    def own_paused(one: Member, two: Member, match: Any) -> None:
+        _visibility(ctx, one, "pause")
+
+    def restricted(one: Member, two: Member, match: Any) -> None:
+        _ok(_chat().restrict_profile(two.account_id))
+
+    def withdrawn(one: Member, two: Member, match: Any) -> None:
+        from glow_ordering_proof.interaction_cases import _seed_withdrawn_consent
+
+        # Test data: a withdrawal with the profile left visible, as case 4 writes it.
+        _seed_withdrawn_consent(two)
+
+    def unmatched(one: Member, two: Member, match: Any) -> None:
+        _unmatch(ctx, two, match)
+
+    def blocked(one: Member, two: Member, match: Any) -> None:
+        # Test data: an active block beside an active match, as case 4 writes it.
+        Block.objects.create(actor_id=two.account_id, target_id=one.account_id, state="active")
+
+    def deleted(one: Member, two: Member, match: Any) -> None:
+        _ok(_chat().delete(two.account_id))
+
+    rows: list[tuple[str, Callable[[Member, Member, Any], None] | None]] = [
+        ("no cause", None),
+        ("the other member suspended", suspended),
+        ("the other's pause", paused),
+        ("the own pause", own_paused),
+        ("the other's restriction", restricted),
+        ("the other's consent withdrawn", withdrawn),
+        ("an unmatch", unmatched),
+        ("a block", blocked),
+        ("the other's deletion", deleted),
+    ]
+    bodies: set[str] = set()
+    reasons: set[str] = set()
+    refused = 0
+    for name, apply in rows:
+        one, two, match = _pair(ctx)
+        if apply is not None:
+            apply(one, two, match)
+        current = ctx.match_version(one, match.id)
+        replies: dict[str, Reply] = {}
+        if apply is None:
+            served = ctx.send(one, ctx.message(one, match.id, expected=current))
+            expect(
+                ctx.profiles.data(served, "message", f"{name}: the current version")["state"]
+                == "pending",
+                f"{name}: the current version is served",
+            )
+        written = MessageSubmission.objects.filter(actor_id=one.account_id).count()
+        if apply is not None:
+            replies[f"the version {current} (current)"] = ctx.send(
+                one, ctx.message(one, match.id, expected=current)
+            )
+        for version in (0, 7):
+            replies[f"the version {version}"] = ctx.send(
+                one, ctx.message(one, match.id, expected=version)
+            )
+        # The adapter's own reason at a wrong version, while the session is valid; never served.
+        reasons.add(_internal_send_reason(one, match.id, 0))
+        at_current = ctx.message(one, match.id, expected=current)
+        replies["a session ended in its locks"] = _ended_in_locks(
+            ctx, one, partial(ctx.send, one, at_current), f"{name}: the send"
+        )
+        expect(
+            MessageSubmission.objects.filter(actor_id=one.account_id).count() == written,
+            f"{name}: the refused sends wrote nothing",
+        )
+        for answer, reply in replies.items():
+            _refused(ctx, reply, 404, "not_found", f"{name}: {answer}")
+            bodies.add(_error_body(reply))
+            refused += 1
+    expect(len(bodies) == 1, f"one body for every stopped send ({len(bodies)})")
+    expect(
+        reasons == {"stale_contact_version", "account_not_active", "match_not_active", "blocked"},
+        f"the adapter's reasons at version 0 differ ({', '.join(sorted(reasons))})",
+    )
+    return (
+        f"{len(rows)} rows, {refused} stopped sends: one status, code and body (404 not_found);"
+        f" the adapter's reasons at version 0: {', '.join(sorted(reasons))}"
+    )
+
+
+# -- 15. the list's own checks, each proven (A2-C1; A2R-3) ----------------------------------------
+
+
+@case("list.block_session_and_own_account_checks", "D8", "D5", "A2R-3")
+def list_checks(ctx: ChatContext) -> str:
+    """The served list's checks (``route_reads.RouteConversationReads._list``), each by a case
+    that fails without it: an active block beside an active match (test data) is listed to neither
+    member; a list whose session ends once the request has passed SV1's door is refused
+    ``unauthenticated``; and a list whose account is no longer ``active`` once it holds its locks
+    is refused ``not_found`` (``account_not_active``, through ``error_for``, as A1's reads refuse
+    it). The last is reached only by test data inside a race with SV1's door: every writer that
+    takes an account out of ``active`` also moves its epoch, so the session's check refuses
+    first."""
+    from glow_persistence.models import Block
+
+    one, two, match = _pair(ctx)
+    ctx.sent(two, match.id)
+    for member in (one, two):
+        expect(str(match.id) in ctx.conversations(member), "listed before the block")
+    # Test data: an active block beside an active match, a state no writer leaves (D4).
+    Block.objects.create(actor_id=two.account_id, target_id=one.account_id, state="active")
+    for member in (one, two):
+        expect(str(match.id) not in ctx.conversations(member), "a block is listed to neither")
+    three, four, other = _pair(ctx)
+    expect(str(other.id) in ctx.conversations(three), "listed before the session ends")
+    ended = _ended_in_locks(ctx, three, partial(ctx.conversations_reply, three), "the list")
+    _refused(ctx, ended, 401, "unauthenticated", "a list whose session ended in its locks")
+    five, six, third = _pair(ctx)
+    expect(str(third.id) in ctx.conversations(five), "listed before the account changes")
+    reply, changed = _while_held(
+        partial(_account_suspended_as_test_data, five.account_id),
+        partial(ctx.conversations_reply, five),
+        "the list's own account",
+    )
+    expect(changed == 1, "the account row changed (test data)")
+    _refused(ctx, reply, 404, "not_found", "a list whose account is not active in its locks")
+    return "a block not listed; an ended session and an inactive own account refused, each waited"
+
+
+# -- 16. AR-13: a publication of chat.history during a read (after every read-only case) ----
 
 
 @case("ar13.history_publication_during_a_read", "AR-13", "D5", "D19")
@@ -1046,7 +1291,7 @@ def ar13(ctx: ChatContext) -> str:
     return "each waited on the other; the read served as it stood, then saw the new setting"
 
 
-# -- 15. each D5 cause hidden once the setting says so (runs last) ---------------------------------
+# -- 17. each D5 cause hidden once the setting says so (after AR-13) -----------------------------
 
 
 @case("d5.each_cause_hidden", "D5", "D9", "OD-60 H")
@@ -1088,6 +1333,49 @@ def each_cause_hidden(ctx: ChatContext) -> str:
     ctx.sent(two, match.id)
     expect(ctx.conversations(one)[str(match.id)]["state"] == "open", "no cause: served open")
     return f"{len(key)} causes hidden by the setting, one code; no cause still open"
+
+
+# -- 18. a conversation's reads with a session ended in their locks (last) -------------------------
+
+
+@case("reads.session_ended_in_locks_answers_as_hidden", "D8", "D5", "AK1", "AK2")
+def reads_session_ended(ctx: ChatContext) -> str:
+    """The history read and the read cursor, each with a valid session and with a session ended
+    once they hold their locks, answer the same under a cause published ``hidden`` (the other's
+    pause) as under an unmatch: ``not_found``, one body (DM-99's AK1). The read rule checks the
+    match before the session and the causes after it, so the session's refusal must not be
+    ``unauthenticated`` there. It runs last: it publishes a cause ``hidden`` if no earlier case
+    has."""
+    from glow_domain import profile_settings as ps
+
+    if ctx.discovery.current(ps.HISTORY)["other_pause"] != "hidden":
+        _publish_history(ctx, other_pause="hidden")
+    bodies: set[str] = set()
+    checked = 0
+    for route in ("history", "cursor"):
+        for cause in ("the other's pause, hidden", "an unmatch"):
+            reader, other, match = _pair(ctx)
+            theirs = ctx.sent(other, match.id)
+            if cause == "an unmatch":
+                _unmatch(ctx, other, match)
+            else:
+                _visibility(ctx, other, "pause")
+            call: Callable[[], Reply] = (
+                partial(ctx.history_reply, reader, match.id)
+                if route == "history"
+                else partial(ctx.cursor_reply, reader, match.id, theirs)
+            )
+            what = f"{route}, {cause}"
+            for name, reply in (
+                ("a valid session", call()),
+                ("a session ended in its locks", _ended_in_locks(ctx, reader, call, what)),
+            ):
+                _refused(ctx, reply, 404, "not_found", f"{what}: {name}")
+                bodies.add(_error_body(reply))
+                checked += 1
+            expect(str(match.id) not in ctx.conversations(other), f"{what}: not listed")
+    expect(len(bodies) == 1, f"one body for both causes and both sessions ({len(bodies)})")
+    return f"{checked} reads (history and cursor): hidden and unmatched answer alike, ended too"
 
 
 # -- the run ------------------------------------------------------------------------------------
