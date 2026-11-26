@@ -1,4 +1,4 @@
-# Current handoff — App Manager 13 (26 November 2026; SV4 Stage B's design approved, DM-101; B1's prompt next)
+# Current handoff — App Manager 13 (26 November 2026; SV4 B1, F12's surface, with Nathan)
 
 This file only routes: the current item, what happens next and who waits on whom. Each fact lives in one home, listed in the [documentation map](../README.md); earlier handoffs are in `docs/continuity/history/`, the last as [P06.2 to its merge](history/p06-2-handoff.md).
 
@@ -19,16 +19,16 @@ This file only routes: the current item, what happens next and who waits on whom
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| Nobody | — | App Manager 13 writes B1's prompt from the brief's revision 12 | — |
+| App Manager 13 | Nathan, running B1's session | B1's report: code head, run of record, record section "B1" | Nothing integrates |
 
 ## Next actions (App Manager 13)
 
-1. **SV4 Stage A merged:** A0 with PR57 (`499ccbb`), A1 with PR58 (`43e794a`), A2 with A2-C1 and DM-100 with PR59 (`988a36a`; the SV4 record, "Merge (26 November 2026)"). `main`'s push run 45866641384 passed all twelve jobs. **Now: SV4 Stage B** (the server side of notifications; the M09 record, section 4.3, item 2), designed in the brief's revision 11 (D16 to D31: two sessions, B1 F12's surface and B2 the triggers and sweeps), approved by Dev Manager 7 in DM-101 with AM1 to AM16, applied as revision 12. Next: B1's prompt (F12's surface: D17 to D20). The carried items: "Carried to SV4" (A2's and A2-C1's reviews, DM-98's AJ2 rule), "Carried to the next change to the Foundation workflow (DM-97)".
+1. **SV4 Stage A merged:** A0 with PR57 (`499ccbb`), A1 with PR58 (`43e794a`), A2 with A2-C1 and DM-100 with PR59 (`988a36a`; the SV4 record, "Merge (26 November 2026)"). `main`'s push run 45866641384 passed all twelve jobs. **Now: SV4 Stage B** (the server side of notifications; the M09 record, section 4.3, item 2), designed in the brief's revision 11 (D16 to D31: two sessions, B1 F12's surface and B2 the triggers and sweeps), approved by Dev Manager 7 in DM-101 with AM1 to AM16, applied as revision 12. B1's prompt, revision 1 (`docs/ephemeral/2026-11-26-sv4-b1-f12-surface-prompt.md`), is with Nathan. Next: B1's report, the manager's verification, a new pull request, its review, Dev Manager 7's pre-merge read, the merge; then B2's prompt. The carried items: "Carried to SV4" (A2's and A2-C1's reviews, DM-98's AJ2 rule), "Carried to the next change to the Foundation workflow (DM-97)".
 2. **Manager records:** PF02 1.9 (AM12-31 to AM12-49, AM13-01 to AM13-14; AM12-49's proposed rule: a prompt names both GitHub routes; DM-98's wording of the false-claim class); the manager workflow's next revision: DM-100's AL9 (the delta review's line count), for the Dev Manager's read; the status log's move (M09 (b)); R-07, R-10, R-26, R-28.
 
 **Carried follow-ups** live in their owning homes: [`carried-to-later-items.md`](../planning/carried-to-later-items.md), the P11 plan, the review log's "Deferred conditions".
 
 ## Branches and PRs (26 November 2026)
 
-- **Open PRs:** none.
+- **Open PRs:** none; B1's opens after its verification.
 - **Remote branches, three** (26 November, after PR59's branch cleanup, run 45866641348): `main` (`988a36a`); the manager branch (fast-forwarded to `988a36a`, then this receipt); `claude/dev-manager` (`60325b1`, merged). The cleanup deleted A2's `claude/dazzling-hamilton-ocxuu3` and A2-C1's `claude/affectionate-sagan-r916ba`, both merged.
