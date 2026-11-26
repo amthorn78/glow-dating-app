@@ -1,4 +1,4 @@
-# Current handoff — App Manager 13 (26 November 2026; SV4 A2-C1's correction prompt to Nathan)
+# Current handoff — App Manager 13 (26 November 2026; SV4 A2-C1 stopped; its resume message to Nathan)
 
 This file only routes: the current item, what happens next and who waits on whom. Each fact lives in one home, listed in the [documentation map](../README.md); earlier handoffs are in `docs/continuity/history/`, the last as [P06.2 to its merge](history/p06-2-handoff.md).
 
@@ -19,12 +19,12 @@ This file only routes: the current item, what happens next and who waits on whom
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 13 | GitHub, then Nathan | Codex's pass on A2-C1's prompt's commit; then A2-C1's report (the fix DM-99 decided: AK1 to AK7, AK11) | Nothing merges |
+| App Manager 13 | Nathan | A2-C1's report, after the resume message (one more case named; AM13-07) | Nothing merges |
 
 ## Next actions (App Manager 13)
 
 1. **SV4 A1 merged** with PR58 at `43e794a` (DM-98). **Now: SV4 A2** (D8 to D10, D15) in PR59: code head `26aa7ca` (A2's session, resumed under the brief's revision 9; run of record 45022218979), verified and merged into the manager branch at `0ff9c09`. Its exact-head review (revision 2, from `7e8811e`) requested changes: Codex's P2 confirmed (A2R-1) with A2R-2 to A2R-4 (the SV4 record, "Exact-head review of A2"). DM-99 (`c2ae138`) chose the route-layer fix with AK1 to AK11; the brief is at revision 10. Next: correction A2-C1 and its delta review, then DM's pre-merge read (revisions 8 and 9, the CI policy's change), the merge, and Stage B. The carried items: "Carried to SV4" (DM-98's AJ2 rule for any writer of either version field), "Carried to the next change to the Foundation workflow (DM-97)".
-2. **Manager records:** PF02 1.9 (AM12-31 to AM12-49, AM13-01 to AM13-06; AM12-49's proposed rule: a prompt names both GitHub routes; DM-98's wording of the false-claim class); the status log's move (M09 (b)); R-07, R-10, R-26, R-28.
+2. **Manager records:** PF02 1.9 (AM12-31 to AM12-49, AM13-01 to AM13-07; AM12-49's proposed rule: a prompt names both GitHub routes; DM-98's wording of the false-claim class); the status log's move (M09 (b)); R-07, R-10, R-26, R-28.
 
 **Carried follow-ups** live in their owning homes: [`carried-to-later-items.md`](../planning/carried-to-later-items.md), the P11 plan, the review log's "Deferred conditions".
 
