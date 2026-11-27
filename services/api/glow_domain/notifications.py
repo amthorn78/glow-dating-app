@@ -10,13 +10,15 @@ never the member whose like completed it. The push carries only the kind, Glow's
 count, birth data, compatibility data or provider detail. A trigger type has no field for any of
 those, and the composer refuses a trigger with any field beyond its own.
 
-**Whatever refuses a send refuses a notification.** The composer makes the send's checks, the
-read rule of ``glow_domain/chat_reads.py`` ("Whatever refuses a send refuses a read"), on facts it
-reads through the ``DeliveryFacts`` port on each delivery, never from the trigger: the match
-active with no block either way; both accounts ``active``; both profiles ``visible`` (so neither
-paused nor restricted); both latest onboarding consents ``accepted``. It also composes nothing
-when the recipient's setting for the kind is off or the recipient has no active device. Each
-refusal is a reason code that carries no personal data.
+**Whatever refuses a send refuses a notification.** The composer makes the send's checks
+(``glow_chat``'s send's), on facts it reads through the ``DeliveryFacts`` port on each delivery,
+never from the trigger: the match active with no block either way; both accounts ``active``; both
+profiles ``visible`` (so neither paused nor restricted); both latest onboarding consents
+``accepted``. Since SV4 A1 the conversation reads no longer share them: they follow their own rule
+(``glow_domain/chat_reads.py``), which serves some of these causes read-only; a notification
+follows the send's, so each of them refuses it. It also composes nothing when the recipient's
+setting for the kind is off or the recipient has no active device. Each refusal is a reason code
+that carries no personal data.
 
 **No duplicate push.** The first delivery of a trigger that passes those checks fixes its
 devices: the recipient's active devices then. A later delivery of the same trigger sends only to
@@ -39,8 +41,10 @@ account, its current session and its installation (``Caller``), never as intent 
 session that is no longer current is refused. Each registration records the session that last
 registered or rotated it; a registration whose session is no longer current is not active for
 the composer. ``logout`` revokes the registrations the ending session made, and no other; it is
-the system's F12 logout for any session that ends, which SV4 wires to ``session_revoked`` and
-``session_expired`` (the brief, D9).
+the system's F12 logout for any session that ends, which SV4 B2 wires to ``session_revoked`` and
+``session_expired`` (the SV4 brief, D23). An account holds at most ``MAX_ACTIVE_REGISTRATIONS``
+active registrations; a registration beyond them is refused (``registration_bound``; the SV4
+brief's D25, provisional).
 
 **Versions, at fixture scope.** The contract's ``NotificationSettings`` has one ``version`` and
 one ``device_state``, so one number must let the app address both the installation's
@@ -51,7 +55,7 @@ registration of the account in the same unit of work). A ``DeviceIntent``'s ``ex
 is 0 for an installation with no registration for the account, else that revision; a
 ``NotificationIntent``'s is the requesting installation's revision. A stale value is refused, the
 same idempotency key with other content is a conflict, and a replay changes nothing (the data
-model's rule). How the serving slice versions F12 is SV4's to decide (the brief, D9).
+model's rule). SV4 B1 serves F12 with these versions unchanged (the SV4 brief, D18).
 
 **Token custody.** The token goes to the ``TokenStore`` port before its opaque reference is
 saved, and only the reference is kept; if the store refuses, nothing is saved. When a
@@ -63,11 +67,20 @@ the device by its reference, never its token; only a transport adapter resolves 
 exception message, receipt or composer output carries the token, nor any read, log line or
 refusal the reference. There is no staff projection.
 
-**Fixture scope** (D1, D3). State is in memory, guarded to development and test. The ports'
-only implementations are the fixtures in ``notification_fixtures.py``. No HTTP route, ORM
-adapter, outbox consumer, provider, network client or credential is attached: SV4 serves F12 and
-wires the triggers, P09.2 brings the native module and P11B the transport (D9). The served
-runtime imports none of this module (``tests/test_notifications.py``).
+**The persistence port** (SV4 B1; its brief's D18). F12's devices and settings are reached
+through ``NotificationPersistence``: the owner's read, the device command and the settings
+command, each for a trusted ``Caller``. This module keeps the pure parts (the intents' parsing, the
+transitions, the custody types, the versions' rules, the recipient rule and the wording), and
+``NotificationService`` is the port's in-memory fixture, still guarded to development and test.
+SV4 B1's ORM adapter (``glow_notifications.persistence``) is its other implementation, on a
+disposable PostgreSQL only, sealed until integration.
+
+**Fixture scope** (D1, D3). State is in memory, guarded to development and test. The token
+store's, the transport's and the facts' only implementations are the fixtures in
+``notification_fixtures.py``. No outbox consumer, provider, network client or credential is
+attached: SV4 B1 serves F12 through sealed routes and B2 wires the triggers, P09.2 brings the
+native module and P11B the transport (D9). The served runtime imports none of this module
+(``tests/test_notifications.py``).
 """
 
 from __future__ import annotations
@@ -130,10 +143,19 @@ TRANSITION_FORBIDDEN = "transition_forbidden"
 REGISTRATION_NOT_ACTIVE = "registration_not_active"
 TOKEN_STORE_REFUSED = "token_store_refused"
 FIXTURE_CAPACITY = "fixture_capacity"
+REGISTRATION_BOUND = "registration_bound"
+# SV4 B1-C1 (DM-102's AN1): the save found its new reference's handle, the pending discard written
+# before its transaction, gone (SV4 B2's sweep took it).
+TOKEN_HANDLE_MISSING = "token_handle_missing"
 
 # Bounds for one in-memory fixture service; not product limits.
 MAX_RECEIPTS = 500
 MAX_VERSION = 9_007_199_254_740_991
+
+# SV4's D25 (DM-101's AM12): the active registrations one account may hold; a registration beyond
+# them is refused. Provisional: P10's readiness review confirms it, with its limit that a member at
+# the bound cannot register another installation until one ends, since the app lists no devices.
+MAX_ACTIVE_REGISTRATIONS = 10
 
 _UUID_FORM = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
 _KEY_FORM = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,99}")
@@ -229,9 +251,10 @@ class TokenReference:
 
 
 class TokenStore(Protocol):
-    """Where a push token is kept. ``put`` returns the reference or raises ``TokenStoreError``;
-    ``discard`` removes a stored token or raises ``TokenStoreError``. The domain never resolves a
-    reference."""
+    """Where a push token is kept. ``put`` returns a reference it has never returned before, even
+    for a token it already holds, or raises ``TokenStoreError``; ``discard`` removes the token a
+    reference holds, changes nothing for a reference already discarded, or raises
+    ``TokenStoreError``. The domain never resolves a reference."""
 
     def put(self, token: ProviderToken) -> TokenReference: ...
 
@@ -393,6 +416,14 @@ def _uuid(value: object) -> UUID:
     return UUID(value)
 
 
+def parse_installation(value: object) -> UUID:
+    """The requesting installation, as F12's routes take it from the ``Glow-Installation-Id``
+    header (SV4 B1; its brief's D19): a lower-case UUID, the contract's ``device_id`` pattern. It is
+    the ``Caller``'s ``device_id``, never an intent's field. Anything else raises ``IntentError``,
+    with no value in it."""
+    return _uuid(value)
+
+
 def _trigger_kind(trigger: object) -> NotificationKind | None:
     """The kind of an exact trigger type whose every field is a UUID; ``None`` for anything else,
     including a subclass or any object carrying a field beyond the type's own."""
@@ -537,7 +568,8 @@ class Receipt:
     committed_version: int
 
 
-CommandOutcome = Literal["applied", "replayed", "refused"]
+# ``deadlock`` and ``error`` (a database error, by type only) come from the ORM adapter alone.
+CommandOutcome = Literal["applied", "replayed", "refused", "deadlock", "error"]
 
 
 @dataclass(frozen=True)
@@ -556,9 +588,24 @@ class ReadResult:
     with no registration for the account, since the contract's ``device_state`` has no ``none``;
     or ``refused`` with a code."""
 
-    outcome: Literal["read", "absent", "refused"]
+    outcome: Literal["read", "absent", "refused", "deadlock", "error"]
     reason: str = ""
     settings: NotificationSettingsView | None = None
+
+
+class NotificationPersistence(Protocol):
+    """F12's devices and settings (SV4 B1; its brief's D18): the owner's read of the requesting
+    installation's settings, the device command (``DeviceIntent``: register, which is F12's rotate
+    for an installation already active for the account, or revoke) and the settings command
+    (``NotificationIntent``), each for a trusted ``Caller`` whose installation never comes from an
+    intent's fields. ``NotificationService`` is its in-memory fixture; ``glow_notifications``'s
+    ``OrmNotificationPersistence`` is its ORM adapter. A refusal is a reason code, never a value."""
+
+    def read(self, caller: Caller) -> ReadResult: ...
+
+    def device(self, caller: Caller, intent: object) -> CommandResult: ...
+
+    def settings(self, caller: Caller, intent: object) -> CommandResult: ...
 
 
 DeliveryOutcome = Literal["sent", "nothing", "refused"]
@@ -585,8 +632,9 @@ class _Fixed:
 
 
 class NotificationService:
-    """F12's devices and settings and the notification composer, in memory (D3). Every command
-    and delivery runs under one lock; a command's state is replaced only after all its checks."""
+    """F12's devices and settings and the notification composer, in memory (D3): the
+    ``NotificationPersistence`` port's fixture (SV4 B1), and the composer's. Every command and
+    delivery runs under one lock; a command's state is replaced only after all its checks."""
 
     def __init__(
         self,
@@ -754,6 +802,12 @@ class NotificationService:
     ) -> CommandResult:
         assert command.token is not None
         transition = "rotate" if current is not None and current.state == "active" else "register"
+        if transition == "register" and self._active_count(caller.account_id) >= (
+            MAX_ACTIVE_REGISTRATIONS
+        ):
+            # D25: a registration beyond the bound; a rotation adds none.
+            logger.debug("notification device command refused: %s", REGISTRATION_BOUND)
+            return CommandResult("refused", REGISTRATION_BOUND)
         # Custody: the store takes the token before any reference is saved; a refusal saves nothing.
         try:
             reference = self._tokens.put(command.token)
@@ -794,6 +848,13 @@ class NotificationService:
         logger.debug("notification device command: %s", transition)
         return CommandResult(
             "applied", receipt=receipt, settings=self._view(caller), transition=transition
+        )
+
+    def _active_count(self, account_id: UUID) -> int:
+        return sum(
+            1
+            for registration in self._registrations.values()
+            if registration.account_id == account_id and registration.state == "active"
         )
 
     def _revoke(
@@ -925,8 +986,9 @@ class NotificationService:
     # -- the composer ------------------------------------------------------------------------
 
     def _contact_refusal(self, kind: NotificationKind, trigger: Trigger) -> str:
-        """The send's checks, on facts read now (chat_reads.py: "Whatever refuses a send refuses a
-        read"), and the trigger's recipient rule. Empty when the notification may go."""
+        """The send's checks (``glow_chat``'s send's, which since SV4 A1 the conversation reads no
+        longer share), on facts read now, and the trigger's recipient rule. Empty when the
+        notification may go."""
         match = self._facts.match(trigger.match_id)
         if match is None:
             return chat.MATCH_MISSING

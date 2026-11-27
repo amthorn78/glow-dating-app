@@ -4,8 +4,9 @@ facts and the sessions' checks. Development and test only; no provider, network,
 database. The tokens they handle are synthetic test data (``synthetic_token``).
 
 - **The token store** keeps each token under a fresh opaque reference. ``refuse_next_put`` and
-  ``fail_next_discard`` inject a refusal or a failure. ``resolve`` exists for tests only; the
-  domain never calls it.
+  ``fail_next_discard`` inject a refusal or a failure, and ``reuse_next_put`` a store that breaks
+  its port (SV4 B1-C1): its next ``put`` returns a reference it already gave out. ``resolve``
+  exists for tests only; the domain never calls it.
 - **The transport** records what it was given (the device's reference, the idempotency key and
   the content) and refuses a repeated idempotency key as a ``repeat``. ``fail_next`` makes the
   next send fail before acceptance; ``lose_next_answer`` makes it accept and then fail, as a
@@ -56,6 +57,8 @@ class FixtureTokenStore:
         self._held: dict[str, str] = {}
         self._refuse_puts = 0
         self._fail_discards = 0
+        self._reused: list[TokenReference] = []
+        self._given: set[str] = set()
         self.puts = 0
         self.discarded: list[TokenReference] = []
         self._lock = threading.Lock()
@@ -69,14 +72,25 @@ class FixtureTokenStore:
     def fail_next_discard(self, count: int = 1) -> None:
         self._fail_discards += count
 
+    def reuse_next_put(self, reference: TokenReference) -> None:
+        """SV4 B1-C1: the next ``put`` returns ``reference``, one this store already gave out,
+        breaking the port's rule that each ``put`` returns a new one (``TokenStore``); the token
+        that ``put`` is given is not kept, and what the reference holds is unchanged."""
+        if reference.value not in self._given:
+            raise ValueError("a reference this store never gave out")
+        self._reused.append(reference)
+
     def put(self, token: ProviderToken) -> TokenReference:
         with self._lock:
             if self._refuse_puts:
                 self._refuse_puts -= 1
                 raise TokenStoreError()
             self.puts += 1
+            if self._reused:
+                return self._reused.pop(0)
             reference = TokenReference(f"fixture-token-ref-{uuid.uuid4().hex}")
             self._held[reference.value] = token.reveal()
+            self._given.add(reference.value)
             return reference
 
     def discard(self, reference: TokenReference) -> None:

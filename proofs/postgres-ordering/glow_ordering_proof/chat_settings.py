@@ -22,6 +22,12 @@ names the chat suite's own files). ``ATOMIC_REQUESTS`` is off; chat's views are
 (``chat_support.text_reader``). No provider call leaves the process; no HDE call is possible, as
 the discovery settings' fixture compatibility adapter is in-process.
 
+**F12** (SV4 B1; its brief's D16 and D19; DM-101's AM1): SV4 B1's settings fragment
+(``glow_notifications.conf``) and F12's routes in the chat URL configuration; and, alone in the
+repository, the token store's and the push transport's factories, ``GLOW_NOTIFICATIONS_TOKEN_STORE``
+and ``GLOW_NOTIFICATIONS_PUSH_TRANSPORT``, the in-memory fixtures (``chat_support.token_store`` and
+``chat_support.push_transport``), each of which refuses any environment but development and test.
+
 Run with ``DJANGO_SETTINGS_MODULE=glow_ordering_proof.chat_settings`` in a clean process.
 """
 
@@ -48,6 +54,9 @@ marker.install(environment.expected_comment(environment.database_marker(os.envir
 
 from glow_discovery import conf as _discovery  # noqa: E402 - after the API's path is added
 from glow_identity import conf as _identity  # noqa: E402
+from glow_notifications import (  # type: ignore[import-not-found]  # noqa: E402
+    conf as _notifications,
+)
 from glow_profiles import conf as _profiles  # noqa: E402
 
 globals().update(_identity.settings())
@@ -56,6 +65,7 @@ INSTALLED_APPS = [
     *_identity.INSTALLED_APPS,
     *_profiles.INSTALLED_APPS,
     *_discovery.INSTALLED_APPS,
+    *_notifications.INSTALLED_APPS,
     "glow_ordering_proof.apps.ProofConfig",
 ]
 ROOT_URLCONF = "glow_ordering_proof.chat_urls"
@@ -73,6 +83,10 @@ GLOW_DISCOVERY_COMPATIBILITY_FIXTURE = "explicitly-synthetic-ready"
 GLOW_DISCOVERY_ENVIRONMENT = "test"
 # D8, "The provider": the history read's text reader, the in-memory fixture, named here only.
 GLOW_CHAT_TEXT_READER = "glow_ordering_proof.chat_support.text_reader"
+# SV4 B1 (D16; DM-101's AM1): the token store and the push transport, the in-memory fixtures,
+# named here only.
+GLOW_NOTIFICATIONS_TOKEN_STORE = "glow_ordering_proof.chat_support.token_store"
+GLOW_NOTIFICATIONS_PUSH_TRANSPORT = "glow_ordering_proof.chat_support.push_transport"
 # Every record goes to the root logger at DEBUG, where the suite's capture reads it; no handler is
 # configured here, so nothing is printed by it.
 LOGGING = {

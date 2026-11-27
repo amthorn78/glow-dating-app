@@ -1009,28 +1009,119 @@ class ChatReadCursor(Record):
         ]
 
 
+REGISTRATION_ENDINGS = ("revoke", "logout", "transfer")
+
+
 class DeviceRegistration(Record):
+    """One installation's push registration for one account (F12; SV4 B1, migration 0014; its
+    brief's D17), as the domain keys it (``glow_domain.notifications.Registration``): the pair
+    (``account``, ``installation_id``) is unique, and at most one row per installation is
+    ``active`` (``device_one_active_installation``), so a transfer leaves the earlier account's
+    row ``revoked`` (``ended_by`` ``transfer``).
+
+    The custody rules are database constraints (DM-101's AM2), as ``AccountSession``'s revocation
+    time and ``OutboxEvent``'s lease time are: ``token_secret_ref``, the token store's opaque
+    reference and never a token, is present exactly while the row is ``active`` and unique where
+    present (``device_reference_while_active``); ``ended_by`` names the transition that ended it
+    and is present exactly when the row is ``revoked`` (``device_ended_when_revoked``).
+    ``session`` is the ``AccountSession`` that last registered or rotated it (F12's "owner/session
+    bound"). ``version`` (the base ``Record``'s) is the installation's view revision: 1 at the
+    first registration, advanced by each change to the row and by each settings change of the
+    account. No platform is kept: no contract field carries one (D17)."""
+
     account = models.ForeignKey(AppAccount, on_delete=models.CASCADE)
-    installation_id = models.UUIDField(unique=True)
-    platform = models.CharField(max_length=8, choices=choices("ios", "android"))
-    # Secure processor/vault reference only, never a plaintext push token.
-    token_secret_ref = models.CharField(max_length=255, unique=True)
+    installation_id = models.UUIDField()
+    session = models.ForeignKey(AccountSession, on_delete=models.CASCADE)
+    # Secure processor/vault reference only, never a plaintext push token; held only while active.
+    token_secret_ref = models.CharField(max_length=255, unique=True, null=True, blank=True)
     state = models.CharField(max_length=16, choices=choices("active", "revoked"), default="active")
+    ended_by = models.CharField(
+        max_length=16, null=True, blank=True, choices=choices(*REGISTRATION_ENDINGS)
+    )
 
     class Meta(Record.Meta):
         constraints = Record.Meta.constraints + [
             state_check("active", "revoked"),
+            models.UniqueConstraint(
+                fields=["account", "installation_id"], name="device_account_installation"
+            ),
+            models.UniqueConstraint(
+                fields=["installation_id"],
+                condition=Q(state="active"),
+                name="device_one_active_installation",
+            ),
             models.CheckConstraint(
-                condition=Q(platform__in=["ios", "android"]), name="device_platform"
+                condition=(
+                    Q(state="active") & Q(token_secret_ref__isnull=False) & ~Q(token_secret_ref="")
+                )
+                | (~Q(state="active") & Q(token_secret_ref__isnull=True)),
+                name="device_reference_while_active",
+            ),
+            # ``ended_by__isnull=False`` spelled out: ``NULL IN (...)`` is NULL, which a CHECK
+            # constraint lets through, so without it a revoked row could name no ending.
+            models.CheckConstraint(
+                condition=Q(
+                    state="revoked", ended_by__isnull=False, ended_by__in=REGISTRATION_ENDINGS
+                )
+                | (~Q(state="revoked") & Q(ended_by__isnull=True)),
+                name="device_ended_when_revoked",
             ),
         ]
 
 
 class NotificationSettings(Record):
+    """An account's notification settings, both kinds off until changed (F12; SV4 B1, migration
+    0014; its brief's D17): the contract's names, and no ``push_enabled``, since the contract has
+    no such field and ``device_state`` says whether an installation can receive a push. Its
+    ``version`` is the account's settings revision; the contract's ``version`` is the requesting
+    installation's registration's (``DeviceRegistration.version``)."""
+
     account = models.OneToOneField(AppAccount, on_delete=models.CASCADE)
-    push_enabled = models.BooleanField(default=False)
-    match_updates = models.BooleanField(default=False)
-    message_updates = models.BooleanField(default=False)
+    match_notifications = models.BooleanField(default=False)
+    message_notifications = models.BooleanField(default=False)
+
+
+class NotificationLedgerEntry(Record):
+    """The notification ledger (SV4 B1, migration 0014; its brief's D17 and D25), which SV4 B2's
+    deliverer fills: one row per notification event and installation, ``pending`` when the event's
+    first delivery fixes the installation, ``sent`` once the transport accepts it (or answers that
+    it accepted it before). The installation is the domain's ``device_id``, so a registration
+    revoked and made again keeps its row."""
+
+    event = models.ForeignKey(OutboxEvent, on_delete=models.CASCADE)
+    installation_id = models.UUIDField()
+    state = models.CharField(max_length=16, choices=choices("pending", "sent"), default="pending")
+
+    class Meta(Record.Meta):
+        constraints = Record.Meta.constraints + [
+            state_check("pending", "sent"),
+            models.UniqueConstraint(
+                fields=["event", "installation_id"], name="notification_ledger_entry"
+            ),
+        ]
+
+
+class PendingTokenDiscard(Record):
+    """A token store reference that still has to be discarded, or may have to be (SV4 B1, migration
+    0014; its brief's D17 and D18; DM-101's AM4; B1-C1, DM-102's AN1): a reference only, never a
+    token. **A new reference's handle:** a register writes the reference the store gave it here,
+    in its own statement before its transaction, and only if no registration and no pending
+    discard already holds it; the transaction that saves the reference on a registration deletes
+    this row, and refuses unless it deletes exactly this one. A command whose outcome is known and
+    did not save the reference (a refusal, a deadlock, a replay, or a failure raised before its
+    transaction's body returned) discards it at once and removes the row; one whose outcome is
+    unknown (a failure at the commit) leaves the row for SV4 B2's sweep (its brief's D24), which
+    takes it only once it is old and no registration holds its reference. **A retired
+    reference:** an old reference a command retires (a rotation, a revocation or a transfer) is
+    kept here in the command's own transaction and removed once the store has discarded it after
+    the commit, so a failed discard waits here for the sweep to retry it."""
+
+    token_secret_ref = models.CharField(max_length=255, unique=True)
+
+    class Meta(Record.Meta):
+        constraints = Record.Meta.constraints + [
+            models.CheckConstraint(condition=~Q(token_secret_ref=""), name="pending_discard_ref"),
+        ]
 
 
 class SafetyReport(Record):
@@ -1227,12 +1318,23 @@ class IdempotencyRecord(Record):
     # Immutable commit receipt, never a cached private/current projection.
     result_ref = models.UUIDField(null=True, blank=True)
     result_version = models.PositiveBigIntegerField(null=True, blank=True)
+    # SV4 B1 (its brief's D17): F12's device and settings commands add their four receipt codes.
     outcome_code = models.CharField(
         max_length=16,
         null=True,
         blank=True,
         choices=choices(
-            "committed", "liked", "passed", "unmatched", "blocked", "unblocked", "withdrawn"
+            "committed",
+            "liked",
+            "passed",
+            "unmatched",
+            "blocked",
+            "unblocked",
+            "withdrawn",
+            "register",
+            "rotate",
+            "revoke",
+            "settings",
         ),
     )
     state = models.CharField(
@@ -1259,6 +1361,10 @@ class IdempotencyRecord(Record):
                         "blocked",
                         "unblocked",
                         "withdrawn",
+                        "register",
+                        "rotate",
+                        "revoke",
+                        "settings",
                     ),
                     outcome_code__isnull=False,
                 )
