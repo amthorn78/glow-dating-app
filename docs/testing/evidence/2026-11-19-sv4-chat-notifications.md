@@ -2550,3 +2550,15 @@ Settings needing no active registration, and settings locking one row only, fail
 | r19's database case | **Carried** to B2, which changes the chat suite | A limit: the code's order is right |
 | The seal test's reach; the port's order difference; the migration from `0013` with rows, judged by reading | **Recorded here** as limits | None in a class |
 | Codex's P2 thread (comment 4713760650) | Resolved once B1-C1's fix and Codex's review of its head confirm it | It names B1R-1 |
+
+### Dev Manager 7's DM-102 (27 November 2026)
+
+[DM-102](../../continuity/dev-manager/reviews/2026-11-27-dm-102-sv4-b1-c1-custody.md) (`f86ccaf`, a read of `c331899`; merged at `d0838ad`) decided B1-C1's custody fix: **(b), the new reference's pending discard written as its handle before the command's transaction,** with AN1 to AN11.
+- **Codex's second P2 thread** (comment 4715163584, on `c331899`, `persistence.py` line 461: "Preserve token custody across an unknown commit outcome") is B1R-2, found independently, and suggests (b)'s form. It reached the Dev Manager as the consultation's addition (PF02-R41).
+- **AN1** (D18, applied in the brief's revision 13): the save deletes its handle and refuses (`state_conflict`) unless it deletes exactly that one row; the handle is written only for a reference no registration and no pending discard holds, and a reference already held is `token_store_refused`, with nothing discarded; a failure raised before the transaction's body returned is a known outcome (the reference discarded at once), one after it, at the commit, an unknown one (the handle left to the sweep).
+- **AN2** (D24, applied in revision 13): the sweep takes a pending discard only past its bound and with no registration holding its reference, removes the row in its own transaction before it calls the store, and writes it again if the discard fails.
+- **AN3 to AN8** (the custody sentences in `production-contracts.md` and `data-model.md`, with B1R-4's narrowing, and B1's custody limit marked superseded) and **AN11** (`TokenStore`'s docstring) go into B1-C1. The adapter's module docstring and `PendingTokenDiscard`'s docstring state the same rule.
+- **The proof:** the manager's four cases (B1R-3's; the handle's write failing; a known refusal; an unknown outcome after the commit), and three more, each with its reversal: a save that finds its handle gone refuses; a reused reference is refused; a failure inside the transaction (case 9's race) is known. Two offline structure tests: the handle's write follows the `put` and precedes `_run`; the save's delete checks its count.
+- **AN9 and AN10** update the carried entries for B1R-8 and B1R-5 at B1-C1's integration.
+- **A full exact-head review** follows B1-C1 (a design change), then Dev Manager 7's pre-merge read of PR60.
+- **The dispositions above therefore stand as:** B1R-1 to B1R-7 fixed by B1-C1 in (b)'s form, with AN1 to AN8 and AN11; B1R-8 and B1R-9 carried, B1R-8's and B1R-5's entries updated by AN9 and AN10 at B1-C1's integration; both Codex threads resolved once B1-C1's fix and Codex's review of its head confirm it.
