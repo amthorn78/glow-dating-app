@@ -2813,3 +2813,12 @@ Section "B1" keeps B1's words (DM-100's AL4 and AL5), except AN8's mark in its "
 | B1C1R-6 | **Carried** to B2 (the docstring), recorded here (the record's item 2) | A nit in no class |
 | Codex's two threads (4713760650, 4715163584) | **Proposed:** resolved after DM-103's disposition and before the merge (DM-103, item 5) | Each answered by the code at `48f0801`, as the review found |
 
+### Dev Manager 7's pre-merge read (DM-103, 27 November 2026)
+
+[DM-103](../../continuity/dev-manager/reviews/2026-11-27-dm-103-sv4-b1-pre-merge-read.md) (`2a619de`, a read of `90e386d`; merged at `1a0abb1`) approved B1 and B1-C1 as settled, and set AO1 to AO5, applied as given before the merge:
+- **AO1** (D24, revision 14): the sweep's three steps. It deletes the row by its key in its own transaction, taking no account, session or registration lock, and stops if no row went. It then reads the registrations and stops, discarding nothing, if one holds the reference. Only then does it call the store, writing the row again under a new key if the discard fails. Every transaction that writes a non-null `token_secret_ref` deletes that reference's handle or refuses (D18).
+- **AO2 to AO4** (D18, `production-contracts.md`'s custody bullet, `data-model.md`'s `PendingTokenDiscard` row): a reference held, by the handle's write or the re-read, is the store's refusal and is never discarded; a failed re-read leaves its handle; a failed write may leave its row. AN3, AN7 and D18 had counted a refusal among the outcomes that discard at once. The code was right, and the error was DM-102's (DM-103, section 11).
+- **AO5** (the carried-items file, B1R-8's entry): a failed re-read also leaves a token and a pending row for the sweep.
+- **The manager's calls** agreed: the lookup change is no precedent for passing a stop rule, and B2's prompt adds an offline check that fails under the review's reversal v8.
+- **Codex's two threads** to be resolved before the merge; **Notion** matched.
+
