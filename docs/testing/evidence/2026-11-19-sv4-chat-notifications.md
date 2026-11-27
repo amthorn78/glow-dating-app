@@ -2740,3 +2740,76 @@ Section "B1" keeps B1's words (DM-100's AL4 and AL5), except AN8's mark in its "
 - **AN9 and AN10** applied to the carried-items file at this integration, as DM-102 says.
 - **For the exact-head review:** DM-102's section 5 focus, with B1's threat model's custody parts at the new head.
 
+### Exact-head review of B1-C1 (27 November 2026)
+
+- **Session:** the exact-head review, started by Nathan from [B1-C1's review prompt](https://github.com/amthorn78/glow-dating-app/blob/47ecc48cff398faa4903fe8e2606eb140564d582/docs/ephemeral/2026-11-27-sv4-b1-c1-review-prompt.md), revision 1, from `47ecc48`, in `Glow App - No Stream`.
+- **Its start gate, classification and environment check:**
+  - every start-gate check passed: `HEAD` `47ecc48`; one merge base, `988a36a`; the prompt's commit the live branch's head; the non-Markdown paths equal to `48f0801` at `HEAD` and on the live branch; no review recorded;
+  - the trusted classifier, `main`'s, outside the checkout with `python3 -I`, gave `"full": true`, reason `behavior-or-empty`;
+  - none of the forbidden names; AWS and GitHub token names present and unread;
+  - Python 3.12.14, Node 24.19.0, npm 11.9.0, Docker 29.9.3 (it started the daemon and stopped it), Django 5.2.17;
+  - GitHub read with `gh api` REST `GET` calls only (the GitHub MCP server failed to connect); nothing written anywhere; the checkout clean at `47ecc48`.
+- **Verdict: approve with nits.** Nothing blocking, and nothing in B1-C1's code needs a correction pass. One should-fix item lies in the manager's notes for B2 (B1C1R-1), not in this head.
+
+**What it verified** (its focus items, shortened):
+1. **The handle's write and its condition hold.** `NOT EXISTS` with `ON CONFLICT` writes a handle only for a reference nothing holds. The race `_held_since` answers is real on PostgreSQL 17.11 at READ COMMITTED: with the re-read removed (v1), case B1-C1-6's concurrent part fails and the first registration's live token is discarded. The re-read closes it, since every save must delete the reference's one pending row. AN1's "written in its own statement" is met; the re-read enforces its "only if" under concurrency.
+2. **The save's count check holds.** A save and the sweep cannot both win (case B1-C1-5 with the sweep first; probe P3 with the save first). Every save path consumes its handle. No deadlock was found against B1's commands, chat's writers or a sweep that holds no other lock.
+3. **`_run`'s split holds.** A refusal, a deadlock, a database error inside the body and a failure at the transaction's start are known (probe P4); the `before_commit` point, the commit and a failure of `set_autocommit(True)` after a commit are unknown. A COMMIT the server refuses over a deferred constraint would count unknown, which is conservative and not reachable today. The read and the settings command answer as before.
+4. **The immediate discards hold.** No known path leaves a reference with no row or discards one a registration holds; a double discard is harmless. `transfer_changed` takes the shared path, with no case of its own.
+5. **The unknown-outcome path holds:** after a commit that took effect, the later revoke is accepted (case B1-C1-4); after one that did not (probe P2), the handle is left, and AN2's steps by hand removed it, discarded the token, and a retry answered 200.
+6. **D24's contract for B2 is incomplete** (B1C1R-1, B1C1R-4).
+7. **The cases and simulations hold.** The seven cases match the prompt and DM-102's section 4, none is vacuous, and each fails under its reversal. The simulations are not switches in the adapter; they cannot show a real dropped connection, an insert whose answer was lost, or B2's sweep.
+8. **The earlier tests hold.** Over all nine `_issued_by` calls, the reference found by issue order is the one the by-token lookup found. The count pin goes from 30 to 37, and the hidden-publishing cases still run last.
+9. **The custody sentences are true,** with two nits (B1C1R-2, B1C1R-6). The two stale lines routed to B2 are not false claims under D-07.
+10. **Codex's two threads are both answered by the code:** 4713760650 (`_park` gone; the handle first) and 4715163584 (the save consumes its handle; an unknown outcome discards nothing).
+11. **The rest of B1 is unchanged:** the non-Markdown diff from `e7e7e84` touches only the ten custody paths, and B1's other findings stand.
+
+**Its checks,** in a scratch copy of `48f0801`, from the locks with `--require-hashes`, under `env -i`:
+- **The API:** `Ran 737 tests … OK (skipped=2)` (A1's two history tests, which need git history); Ruff clean, 187 files formatted; `mypy` 99 files and `mypy glow_notifications` 8 files, no issue; `makemigrations --check`: "No changes detected".
+- **The proof:** `Ran 428 tests … OK`; Ruff and `mypy` clean, 78 files.
+- **The chat suite on a throwaway PostgreSQL** under P06.DB's D4 (informational): 37/37 in 207.7 s, both scans clean, `ROW LOCKS (D14): PASS`, `CHAT VERDICT: PASS`; everything removed afterwards.
+
+**Its reversals,** each on its own copy, the pristine copy checked against `48f0801`:
+
+| Reversal | Offline | The 19 F12 cases on the database |
+|---|---|---|
+| v1: `_held_since` removed | the handle's structure test | B1-C1-6; `no_token_in_any_row_or_answer` |
+| v2: `NOT EXISTS` removed | the handle's structure test | **none** (B1C1R-3) |
+| v3: the count check removed | the consume structure test | B1-C1-5 |
+| v4a: every failure unknown | the outcome structure test | case 9; B1-C1-7 |
+| v4b: every failure known | the outcome structure test | B1-C1-4; `no_token_in_any_row_or_answer` |
+| v5: a known outcome leaves its handle | the handle's structure test | eight cases |
+| v6: `_hold_for_discard` a no-op | none | B1-C1-1; B1-C1-6; `no_token_in_any_row_or_answer` |
+| v7: `_discard_unwritten` a no-op | none | B1-C1-2; `no_token_in_any_row_or_answer` |
+| v8: a failed re-read discards | none | **none** (B1C1R-3) |
+| v9: the save's delete by reference only | the consume structure test | none (harmless with an honest store) |
+
+**Its probes** on the unmodified head: P1 (a failed re-read in the race: the holder's revoke answers 409 until the row is removed; removed without a discard, the revoke then answers 200), P2 (a commit that did not take effect), P3 (the save before the sweep's delete), P4 (failures at the hold points), and the lookup check over the nine calls.
+
+**The runs** as it read them: 45941121120 (`push`, `48f0801`) success, twelve jobs, the chat job 37/37 in 122.6 s; 45944433576 (`pull_request`, `47ecc48`) success, twelve jobs, the chat job 37/37 in 117.1 s, the gate "Application checks passed"; the push run 45944427675 on the same commit success. Codex: its code review of `47ecc48` completed at 05:14:29 UTC with no findings; both earlier threads unresolved and outdated.
+
+**Its findings** (in its words, shortened):
+
+| ID | Severity | Where | Finding | Its class |
+|---|---|---|---|---|
+| B1C1R-1 | Should fix (the manager's notes for B2) | The carried-items file's B1-C1 entry; D24 | B2's sweep needs four rules nothing states yet: (a) discard only a reference whose row its own delete removed; (b) take no account, session or registration lock while holding a pending row; (c) every writer of a non-null reference consumes that reference's handle; (d) write a row again under a new key | Class 2 in substance; the fix belongs in the manager's notes or B2's prompt, not a correction session |
+| B1C1R-2 | Nit | `persistence.py` 38 to 41 and 541 to 544; `PendingTokenDiscard`'s docstring; AN3; AN7 | A failed re-read is a known outcome that saved nothing, and the code leaves its handle instead of discarding at once: the safe choice, which the record states and the custody sentences do not | None; for the Dev Manager's pre-merge read |
+| B1C1R-3 | Nit (test reach) | `HANDLE_WRITE`; `persistence.py` 543 | With `NOT EXISTS` removed (v2) or a failed re-read made to discard (v8), all 19 F12 cases pass; both matter only with a store that breaks AN11 | None |
+| B1C1R-4 | Nit (for B2) | The carried entry on a failed re-read | P1 confirms the three-fault limit, and answers how such a row ends: removed without a discard, after which the holder's revoke succeeds | None |
+| B1C1R-5 | Nit (the manager's notes) | The carried-items file, B1's entry | Still describes the custody limits by `_park` and parked references | None |
+| B1C1R-6 | Nit | `_write_handle`'s docstring; the record's B1-C1 item 2 | "Nothing written": an error raised after the server ran the insert can leave the row; the code's response is still safe | None |
+
+**What it did not read or run:** nine of the ten changed modules whole (read as diffs from `e7e7e84`, with the helpers they call); `chat_suite.py` before line 85; the proof README beyond its chat paragraph and line 76; section "B1" beyond AN8's line; DM-102's consultation; Notion; a migration from `0013` with rows; the contract and mobile checks (both runs passed them); the whole suite under each reversal; a deadlock probe with a sweep that takes other locks.
+
+**Disposition** (App Manager 13; the manager workflow's step 6, under D-07). No finding needs a correction pass of B1-C1's code, so PR60 goes to Dev Manager 7's pre-merge read ([DM-103](../../ephemeral/2026-11-27-dm-103-sv4-b1-pre-merge-read.md)):
+
+| Finding | Disposition | Why |
+|---|---|---|
+| B1C1R-1 | **Carried** to B2's design: the four rules in the carried-items file now, and D24's words asked of DM-103 (item 2) | A rule for code B2 builds; B1-C1's code is right |
+| B1C1R-2 | **To DM-103** (item 3) for AN3's and AN7's words, since they are the Dev Manager's; the code's docstrings carried to B2 | A wording gap in words the Dev Manager gave; no decision rests on it today |
+| B1C1R-3 | **Carried** to B2 | A test's reach, outside every class while the store keeps AN11 |
+| B1C1R-4 | **Carried**, the carried entry updated with P1's answer | B2's |
+| B1C1R-5 | **Fixed** in the carried-items file now | The manager's own notes |
+| B1C1R-6 | **Carried** to B2 (the docstring), recorded here (the record's item 2) | A nit in no class |
+| Codex's two threads (4713760650, 4715163584) | **Proposed:** resolved after DM-103's disposition and before the merge (DM-103, item 5) | Each answered by the code at `48f0801`, as the review found |
+
