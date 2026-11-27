@@ -144,6 +144,9 @@ REGISTRATION_NOT_ACTIVE = "registration_not_active"
 TOKEN_STORE_REFUSED = "token_store_refused"
 FIXTURE_CAPACITY = "fixture_capacity"
 REGISTRATION_BOUND = "registration_bound"
+# SV4 B1-C1 (DM-102's AN1): the save found its new reference's handle, the pending discard written
+# before its transaction, gone (SV4 B2's sweep took it).
+TOKEN_HANDLE_MISSING = "token_handle_missing"
 
 # Bounds for one in-memory fixture service; not product limits.
 MAX_RECEIPTS = 500
@@ -248,9 +251,10 @@ class TokenReference:
 
 
 class TokenStore(Protocol):
-    """Where a push token is kept. ``put`` returns the reference or raises ``TokenStoreError``;
-    ``discard`` removes a stored token or raises ``TokenStoreError``. The domain never resolves a
-    reference."""
+    """Where a push token is kept. ``put`` returns a reference it has never returned before, even
+    for a token it already holds, or raises ``TokenStoreError``; ``discard`` removes the token a
+    reference holds, changes nothing for a reference already discarded, or raises
+    ``TokenStoreError``. The domain never resolves a reference."""
 
     def put(self, token: ProviderToken) -> TokenReference: ...
 

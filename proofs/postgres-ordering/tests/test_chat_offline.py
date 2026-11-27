@@ -673,6 +673,14 @@ PLAN = (
     "notifications.two_accounts_one_new_installation",
     "notifications.transfer_changed_under_the_locks",
     "notifications.custody_rules_are_constraints",
+    # SV4 B1-C1 (DM-102): the handle's cases, before the case that checks every reference.
+    "notifications.a_failed_discard_waits_for_the_sweep",
+    "notifications.a_failed_handle_write_discards_at_once",
+    "notifications.a_known_refusal_discards_at_once",
+    "notifications.an_unknown_outcome_leaves_the_handle",
+    "notifications.a_save_whose_handle_is_gone_refuses",
+    "notifications.a_reused_reference_is_refused",
+    "notifications.a_failure_inside_the_transaction_is_known",
     "notifications.no_token_in_any_row_or_answer",
     "ar13.history_publication_during_a_read",
     "d5.each_cause_hidden",
@@ -682,7 +690,7 @@ PLAN = (
 
 class ChatPlanTests(unittest.TestCase):
     def test_the_case_count_is_pinned(self) -> None:
-        self.assertEqual(chat_cases.CASE_COUNT, 30)
+        self.assertEqual(chat_cases.CASE_COUNT, 37)
         self.assertEqual(len(chat_cases.CASES), chat_cases.CASE_COUNT)
         self.assertEqual(chat_cases.plan(), PLAN)
 
@@ -709,11 +717,11 @@ class ChatPlanTests(unittest.TestCase):
 
     def test_each_b1_item_has_its_case_before_the_hidden_ones(self) -> None:
         # SV4 B1 (D29, with DM-101's AM13): F12's cases, contiguous, just before the three cases
-        # that read or publish a cause hidden.
+        # that read or publish a cause hidden; B1-C1 adds seven (DM-102).
         ids = chat_cases.plan()
         b1 = [index for index, case_id in enumerate(ids) if case_id.startswith("notifications.")]
-        self.assertEqual(len(b1), 12)
-        self.assertEqual(b1, list(range(b1[0], b1[0] + 12)))
+        self.assertEqual(len(b1), 19)
+        self.assertEqual(b1, list(range(b1[0], b1[0] + 19)))
         self.assertEqual(b1[-1], len(ids) - 4)
         self.assertEqual(ids[b1[-1]], "notifications.no_token_in_any_row_or_answer")
         labels = {

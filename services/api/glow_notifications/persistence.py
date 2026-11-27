@@ -27,15 +27,26 @@ it. It carries P06.DB's protocol (its brief, D5), as ``glow_chat``'s adapter doe
   checks (P06.DB 5.4: authorize, then deduplicate). The record is written here, with F12's receipt
   code (``register``, ``rotate``, ``revoke`` or ``settings``), as SV3's interactions write theirs;
   its lifetime is SV2's provisional 24 hours.
-- **Custody** (AM4). The token store's ``put`` runs before the command's transaction, never inside
-  it, so no external call holds a lock. A command that does not save the new reference (a refusal,
-  a failure or a replay) leaves it in the pending discards (``PendingTokenDiscard``), for SV4 B2's
-  sweep. A reference the command retires (a rotation's old one, a revocation's, a transfer's) moves
-  from the registration's row to a pending discard in the command's own transaction; after the
-  commit the store discards it and its pending row is removed, and a failed discard leaves the row
-  waiting for the sweep. A reference is held only by an active registration's row, a pending
-  discard's row and (SV4 B2) the push request handed to the transport; no read, log line, answer,
-  exception or receipt holds a token or a reference.
+- **Custody** (AM4; B1-C1, DM-102's AN1). The token store's ``put`` runs before the command's
+  transaction, never inside it, so no external call holds a lock. **Its handle comes first:**
+  before the transaction, the new reference's pending discard (``PendingTokenDiscard``) is written
+  in its own statement, and only if no registration and no pending discard already holds that
+  reference; a reference already held is the store's refusal (``token_store_refused``) and is not
+  discarded, and if the write fails the store discards the reference at once and the command
+  answers its error. The transaction that saves the reference on a registration deletes its
+  pending discard, and refuses (``state_conflict``) unless it deletes exactly that one row. A
+  command whose outcome is known and did not save the reference (a refusal, a deadlock, a replay,
+  or a failure raised before the transaction's body returned) discards it at once, as a retired
+  one is; one whose outcome is unknown (a failure after the body returned, at the commit) leaves
+  the handle to SV4 B2's sweep (``_run`` tells the two apart). So every reference the store holds
+  has a registration or a pending discard, except after a process stop, or a failed write and a
+  failed discard, between the ``put`` and the handle. A reference the command retires (a
+  rotation's old one, a revocation's, a transfer's) moves from the registration's row to a pending
+  discard in the command's own transaction; after the commit the store discards it and its pending
+  row is removed, and a failed discard leaves the row waiting for the sweep. A reference is held
+  only by an active registration's row, a pending discard's row and (SV4 B2) the push request
+  handed to the transport; no read, log line, answer, exception or receipt holds a token or a
+  reference.
 - **The bound** (D25): an account holds at most ``MAX_ACTIVE_REGISTRATIONS`` active
   registrations, counted under its account lock; a registration beyond them is refused
   (``registration_bound``); a rotation adds none.
@@ -54,7 +65,7 @@ from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Literal
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from django.db import IntegrityError, connection, transaction
 from django.db.models import F
@@ -109,6 +120,18 @@ SESSION_SHARED = (
 REGISTRATIONS_FOR_UPDATE = (
     "SELECT id, account_id, installation_id, state, version, token_secret_ref"
     " FROM glow_persistence_deviceregistration WHERE id = ANY(%s) ORDER BY id FOR UPDATE"
+)
+
+# B1-C1 (DM-102's AN1): the new reference's handle, its pending discard, written in one statement
+# before the command's transaction (autocommit), and only if no registration and no pending
+# discard holds the reference: no row is returned when one does (the registration's ``NOT EXISTS``,
+# or the pending discards' uniqueness, ``ON CONFLICT``), and a failed write raises.
+HANDLE_WRITE = (
+    "INSERT INTO glow_persistence_pendingtokendiscard"
+    " (id, created_at, updated_at, version, token_secret_ref)"
+    " SELECT %s, %s, %s, 1, %s WHERE NOT EXISTS ("
+    "SELECT 1 FROM glow_persistence_deviceregistration WHERE token_secret_ref = %s)"
+    " ON CONFLICT (token_secret_ref) DO NOTHING RETURNING id"
 )
 
 Failure = Literal["refused", "deadlock", "error"]
@@ -215,9 +238,20 @@ class OrmNotificationPersistence:
     # -- transaction plumbing --------------------------------------------------------------
 
     @staticmethod
-    def _run(body: Callable[[Tx], _Done], probe: TransactionProbe | None) -> tuple[str, str, Any]:
-        """One transaction: ``("ok", "", done)``, or a failure and its reason, never a value. A
-        refusal rolls back; a deadlock or any other database error is a result by type only."""
+    def _run(
+        body: Callable[[Tx], _Done], probe: TransactionProbe | None
+    ) -> tuple[str, str, Any, bool]:
+        """One transaction: ``("ok", "", done, True)``, or a failure, its reason (never a value) and
+        whether its outcome is known. A refusal rolls back; a deadlock or any other database error
+        is a result by type only.
+
+        **The split** (B1-C1; DM-102's AN1) falls where the body returns. A failure raised before
+        it returned (a refusal, a deadlock, any database error inside the body, the one-active-row
+        constraint's ``IntegrityError`` included, or one at the transaction's start) rolled the
+        transaction back: its outcome is known. One raised after it returned, as the block exits
+        (at the commit, or at the ``before_commit`` hold point before it), is unknown: the commit
+        may have taken effect. The answer served is the same either way."""
+        returned = False
         try:
             with transaction.atomic(durable=True):
                 cursor = connection.cursor()
@@ -231,18 +265,20 @@ class OrmNotificationPersistence:
                     done = body(tx)
                 except _Refused as refused:
                     raise _Rollback(refused.reason) from None
+                returned = True
                 signal(probe, "before_commit")
         except _Rollback as rollback:
-            return "refused", rollback.reason, None
+            return "refused", rollback.reason, None, True
         except Exception as exc:  # noqa: BLE001 - a result the caller judges; never retried
+            known = not returned
             cause = exc.__cause__
             # The driver's DeadlockDetected, by its SQLSTATE: the API installs no driver.
             if getattr(cause, "sqlstate", None) == DEADLOCK_DETECTED:
-                return "deadlock", "DeadlockDetected", None
+                return "deadlock", "DeadlockDetected", None, known
             if isinstance(exc, IntegrityError):
-                return "error", f"IntegrityError:{type(cause).__name__}", None
-            return "error", type(exc).__name__, None
-        return "ok", "", done
+                return "error", f"IntegrityError:{type(cause).__name__}", None, known
+            return "error", type(exc).__name__, None, known
+        return "ok", "", done, True
 
     @staticmethod
     def _failed(outcome: str, reason: str) -> n.CommandResult:
@@ -367,13 +403,54 @@ class OrmNotificationPersistence:
         )
 
     @staticmethod
-    def _park(reference: n.TokenReference) -> None:
-        """AM4: the new reference a command did not save, left in the pending discards for SV4
-        B2's sweep, in its own statement after the command's transaction."""
+    def _write_handle(reference: n.TokenReference) -> UUID | None:
+        """B1-C1 (DM-102's AN1): before the command's transaction, in its own statement, the new
+        reference's pending discard, its handle: its ID, or ``None`` when a registration or a
+        pending discard already holds the reference (``HANDLE_WRITE``); raises when the write fails,
+        nothing written. Alone, the statement tells the two apart: no row returned is a reference
+        held, an error a failed write."""
+        stamp = timezone.now()
+        with connection.cursor() as cursor:
+            cursor.execute(HANDLE_WRITE, [uuid4(), stamp, stamp, reference.value, reference.value])
+            row = cursor.fetchone()
+        return None if row is None else UUID(str(row[0]))
+
+    @staticmethod
+    def _held_since(reference: n.TokenReference, handle: UUID) -> bool:
+        """Under concurrency, the handle's statement can miss a holder: its ``NOT EXISTS`` reads
+        the statement's snapshot, so a save of the same reference that deletes that reference's
+        handle and commits while the statement waits on the pending discards' uniqueness leaves
+        a registration the statement does not see. So the registrations are read again, in a new
+        snapshot, once the handle is written; if one holds the reference now, the handle's row is
+        removed by its key and the reference is the store's refusal. A save must delete the
+        reference's one pending discard (``_consume_handle``), so no holder can appear after this
+        read. Raises if the read fails; the row is then left for SV4 B2's sweep, which takes none
+        a registration holds (D24)."""
+        if DeviceRegistration.objects.filter(token_secret_ref=reference.value).exists():
+            PendingTokenDiscard.objects.filter(pk=handle).delete()
+            return True
+        return False
+
+    @staticmethod
+    def _consume_handle(handle: UUID | None, fresh: n.TokenReference) -> None:
+        """Inside the transaction that saves the new reference, under the command's locks, after
+        the registrations': its handle's row deleted, and a refusal unless exactly that one row
+        was (B1-C1; DM-102's AN1), so a save and SV4 B2's sweep, which removes a pending discard
+        before it calls the store (D24), cannot both win."""
+        deleted, _ = PendingTokenDiscard.objects.filter(
+            pk=handle, token_secret_ref=fresh.value
+        ).delete()
+        if deleted != 1:
+            raise _Refused(n.TOKEN_HANDLE_MISSING)
+
+    def _discard_unwritten(self, reference: n.TokenReference) -> None:
+        """The handle's write failed, so no row holds the reference: the store discards it at
+        once. If that fails too, the token is held by no row (the custody limit, AN1)."""
         try:
-            PendingTokenDiscard.objects.create(token_secret_ref=reference.value)
+            assert self._tokens is not None
+            self._tokens.discard(reference)
         except Exception:  # noqa: BLE001 - recorded by a fixed line; the reference is never logged
-            logger.warning("notification token reference not kept for its discard: error")
+            logger.warning("notification token reference held by no row: its discard failed")
 
     def _discard(self, references: Iterable[str]) -> None:
         """After the commit: each retired reference discarded through the store, and its pending
@@ -418,7 +495,7 @@ class OrmNotificationPersistence:
                 n.ReadResult("absent") if view is None else n.ReadResult("read", settings=view)
             )
 
-        outcome, reason, done = self._run(body, probe)
+        outcome, reason, done, _known = self._run(body, probe)
         if done is not None:
             assert isinstance(done.result, n.ReadResult)
             return done.result
@@ -445,6 +522,7 @@ class OrmNotificationPersistence:
         assert isinstance(intent, Mapping)
         digest = _digest(DEVICE_OPERATION, intent, caller)
         fresh: n.TokenReference | None = None
+        handle: UUID | None = None
         if command.action == "register":
             assert command.token is not None
             # AM4: the store takes the token before the command's transaction, never inside it.
@@ -454,11 +532,27 @@ class OrmNotificationPersistence:
                 return n.CommandResult("refused", n.TOKEN_STORE_REFUSED)
             if not isinstance(fresh, n.TokenReference):
                 return n.CommandResult("refused", n.TOKEN_STORE_REFUSED)
-        outcome, reason, done = self._run(
-            lambda tx: self._device(tx, caller, command, digest, fresh), probe
+            # B1-C1 (DM-102's AN1): the reference's handle, before the transaction.
+            try:
+                handle = self._write_handle(fresh)
+            except Exception as exc:  # noqa: BLE001 - a result, by type only; never retried
+                self._discard_unwritten(fresh)
+                return n.CommandResult("error", type(exc).__name__)
+            try:
+                held = handle is None or self._held_since(fresh, handle)
+            except Exception as exc:  # noqa: BLE001 - the handle waits for SV4 B2's sweep
+                return n.CommandResult("error", type(exc).__name__)
+            if held:
+                # Another holder's reference (the store broke its port, AN11): never discarded.
+                return n.CommandResult("refused", n.TOKEN_STORE_REFUSED)
+        outcome, reason, done, known = self._run(
+            lambda tx: self._device(tx, caller, command, digest, fresh, handle), probe
         )
         if fresh is not None and (done is None or not done.saved):
-            self._park(fresh)
+            # Not saved (AN1): a known outcome discards the reference at once, as a retired one
+            # is; an unknown one (a failure at the commit) leaves its handle to SV4 B2's sweep.
+            if known:
+                self._discard([fresh.value])
         if done is None:
             return self._failed(outcome, reason)
         self._discard(done.retired)
@@ -472,6 +566,7 @@ class OrmNotificationPersistence:
         command: n.DeviceCommand,
         digest: str,
         fresh: n.TokenReference | None,
+        handle: UUID | None,
     ) -> _Done:
         # Before the locks, identifiers only: the other account that holds the installation
         # active, for a register (a transfer).
@@ -511,7 +606,7 @@ class OrmNotificationPersistence:
             return self._revoke(caller, command, digest, current, now)
         assert fresh is not None
         held = None if holder is None else rows[holder[0]]
-        return self._register(caller, command, digest, current, held, fresh, now)
+        return self._register(caller, command, digest, current, held, fresh, handle, now)
 
     def _revoke(
         self,
@@ -558,6 +653,7 @@ class OrmNotificationPersistence:
         current: _Row | None,
         held: _Row | None,
         fresh: n.TokenReference,
+        handle: UUID | None,
         now: datetime,
     ) -> _Done:
         transition = "rotate" if current is not None and current.state == "active" else "register"
@@ -584,6 +680,8 @@ class OrmNotificationPersistence:
                 updated_at=stamp,
             )
             retired.append(held.token_secret_ref)
+        # B1-C1 (DM-102's AN1): the save consumes the new reference's handle, or refuses.
+        self._consume_handle(handle, fresh)
         if current is None:
             created = DeviceRegistration.objects.create(
                 account_id=caller.account_id,
@@ -699,7 +797,7 @@ class OrmNotificationPersistence:
             )
             return _Done(n.CommandResult("applied", receipt=receipt, settings=_view(caller)))
 
-        outcome, reason, done = self._run(body, probe)
+        outcome, reason, done, _known = self._run(body, probe)
         if done is None:
             return self._failed(outcome, reason)
         assert isinstance(done.result, n.CommandResult)

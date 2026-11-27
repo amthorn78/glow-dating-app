@@ -23,7 +23,10 @@ DM-101's AM1 to AM7).
   SV1's authentication only; the token store's ``put`` before the command's transaction; the lock
   order (the account row, the session row ``FOR SHARE``, then the registrations by primary key);
   the digest binding the requesting installation; no account lock but SV2's, no
-  ``select_for_update``; the installation read from the header only.
+  ``select_for_update``; the installation read from the header only. B1-C1 (DM-102's AN1): the
+  new reference's handle written after the ``put`` and before the transaction; the save's delete
+  of its handle checking its count; ``_run``'s known and unknown outcomes split where the body
+  returns.
 
 The database cases run on a disposable PostgreSQL in ``proofs/postgres-ordering``'s chat suite,
 through the HTTP endpoints with no enclosing transaction. All data is synthetic.
@@ -234,6 +237,8 @@ ADAPTER_SERVED = {
     n.TRANSITION_FORBIDDEN: ("state_conflict", False),
     n.REGISTRATION_BOUND: ("state_conflict", False),
     n.REGISTRATION_NOT_ACTIVE: ("state_conflict", False),
+    # B1-C1 (DM-102's AN1): the save found its handle gone.
+    n.TOKEN_HANDLE_MISSING: ("state_conflict", False),
 }
 # Every reason the port's in-memory fixture (``NotificationService``) can answer refused, as the
 # routes serve it over the fixture.
@@ -912,7 +917,100 @@ class StructureTests(unittest.TestCase):
                 self.assertNotIn(".put(", source)
         device = ast.unparse(_function(tree, "OrmNotificationPersistence", "device"))
         self.assertIn("if fresh is not None and (done is None or not done.saved):", device)
-        self.assertIn("self._park(fresh)", device)
+        self.assertIn("handle = self._write_handle(fresh)", device)
+
+    def test_the_handle_is_written_after_the_put_and_before_the_transaction(self) -> None:
+        # B1-C1 (DM-102's AN1): the handle follows the put and precedes _run, in device()'s own
+        # body; it is written only where no registration and no pending discard holds the
+        # reference, and read again once written; a known outcome alone discards the reference.
+        tree = parsed(ADAPTER)
+        command = _function(tree, "OrmNotificationPersistence", "device")
+        calls = _called_lines(command)
+        put = _first(calls, "self._tokens.put")
+        write = _first(calls, "self._write_handle")
+        again = _first(calls, "self._held_since")
+        run = _first(calls, "self._run")
+        self.assertEqual(sorted([put, write, again, run]), [put, write, again, run])
+        for node in ast.walk(command):
+            if node is not command and isinstance(node, ast.FunctionDef | ast.Lambda):
+                with self.subTest(nested=node.lineno):
+                    self.assertNotIn("_write_handle(", ast.unparse(node))
+        for name in ("_device", "_register", "_revoke", "settings", "read", "_run"):
+            source = ast.unparse(_function(tree, "OrmNotificationPersistence", name))
+            with self.subTest(function=name):
+                self.assertNotIn("_write_handle(", source)
+        text = ast.unparse(command)
+        self.assertNotIn("_park", text)
+        self.assertIn("if known:\n            self._discard([fresh.value])", text)
+        self.assertIn("return n.CommandResult('refused', n.TOKEN_STORE_REFUSED)", text)
+        statement = next(
+            node.value.value
+            for node in tree.body
+            if isinstance(node, ast.Assign)
+            and any(isinstance(t, ast.Name) and t.id == "HANDLE_WRITE" for t in node.targets)
+            and isinstance(node.value, ast.Constant)
+        )
+        self.assertTrue(statement.startswith("INSERT INTO glow_persistence_pendingtokendiscard"))
+        self.assertIn(
+            "WHERE NOT EXISTS (SELECT 1 FROM glow_persistence_deviceregistration"
+            " WHERE token_secret_ref = %s)",
+            statement,
+        )
+        self.assertTrue(
+            statement.endswith("ON CONFLICT (token_secret_ref) DO NOTHING RETURNING id")
+        )
+        held = ast.unparse(_function(tree, "OrmNotificationPersistence", "_held_since"))
+        self.assertIn("DeviceRegistration.objects.filter(token_secret_ref=reference.value)", held)
+        self.assertIn("PendingTokenDiscard.objects.filter(pk=handle).delete()", held)
+
+    def test_the_save_consumes_its_handle_and_checks_the_count(self) -> None:
+        # B1-C1 (DM-102's AN1): the transaction that saves the reference deletes its handle's
+        # row, by its key and its reference, and refuses unless exactly that one row went; the
+        # delete precedes both writes of the reference.
+        tree = parsed(ADAPTER)
+        consume = _function(tree, "OrmNotificationPersistence", "_consume_handle")
+        text = ast.unparse(consume)
+        self.assertIn(
+            "deleted, _ = PendingTokenDiscard.objects.filter(pk=handle,"
+            " token_secret_ref=fresh.value).delete()",
+            text,
+        )
+        self.assertIn("if deleted != 1:\n        raise _Refused(n.TOKEN_HANDLE_MISSING)", text)
+        register = _function(tree, "OrmNotificationPersistence", "_register")
+        calls = _called_lines(register)
+        consumed = _first(calls, "self._consume_handle")
+        self.assertLess(consumed, _first(calls, "DeviceRegistration.objects.create"))
+        saves = [
+            node.lineno
+            for node in ast.walk(register)
+            if isinstance(node, ast.Call)
+            and any(
+                k.arg == "token_secret_ref" and ast.unparse(k.value) == "fresh.value"
+                for k in node.keywords
+            )
+        ]
+        self.assertEqual(len(saves), 2)
+        self.assertLess(consumed, min(saves))
+        self.assertIn("self._consume_handle(handle, fresh)", ast.unparse(register))
+        self.assertEqual(
+            contract.refusal("refused", n.TOKEN_HANDLE_MISSING), ("state_conflict", False)
+        )
+
+    def test_the_outcome_is_known_until_the_body_returns(self) -> None:
+        # B1-C1 (DM-102's AN1): _run marks the body's return before the commit, and a failure is
+        # known only if it was raised before that mark; a refusal is known.
+        run = ast.unparse(_function(parsed(ADAPTER), "OrmNotificationPersistence", "_run"))
+        self.assertIn("returned = False\n", run)
+        self.assertIn(
+            "done = body(tx)\n            except _Refused as refused:\n"
+            "                raise _Rollback(refused.reason) from None\n"
+            "            returned = True\n"
+            "            signal(probe, 'before_commit')",
+            run,
+        )
+        self.assertIn("known = not returned", run)
+        self.assertIn("return ('refused', rollback.reason, None, True)", run)
+        self.assertEqual(run.count(", known)"), 3)
 
     def test_the_lock_order_is_the_account_the_session_then_the_registrations(self) -> None:
         tree = parsed(ADAPTER)

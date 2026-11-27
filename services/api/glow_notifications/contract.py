@@ -88,6 +88,8 @@ REFUSALS: dict[str, tuple[str, bool]] = {
     n.REGISTRATION_BOUND: (STATE_CONFLICT, False),
     TRANSFER_CHANGED: (STATE_CONFLICT, False),
     REGISTRATION_MISSING: (STATE_CONFLICT, False),
+    # B1-C1 (DM-102's AN1): a save whose new reference's handle is gone (SV4 B2's sweep took it).
+    n.TOKEN_HANDLE_MISSING: (STATE_CONFLICT, False),
     n.FIXTURE_CAPACITY: (STATE_CONFLICT, False),
     # The token store: its refusal (retryable), or none named (D16; the served runtime's case).
     n.TOKEN_STORE_REFUSED: (PROVIDER_UNAVAILABLE, True),
