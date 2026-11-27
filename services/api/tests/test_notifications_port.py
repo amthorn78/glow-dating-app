@@ -17,7 +17,11 @@ import uuid
 from pathlib import Path
 
 from glow_domain import notifications as n
-from glow_domain.notification_fixtures import notification_fixture, synthetic_token
+from glow_domain.notification_fixtures import (
+    FixtureTokenStore,
+    notification_fixture,
+    synthetic_token,
+)
 
 API_ROOT = Path(__file__).resolve().parents[1]
 ADAPTER = API_ROOT / "glow_notifications" / "persistence.py"
@@ -128,6 +132,44 @@ class FixtureBoundTests(unittest.TestCase):
             n.Caller(second, second_session, device), register(device, 0, "b", "b")
         )
         self.assertEqual(result.outcome, "applied")
+
+
+class FixtureTokenStoreTests(unittest.TestCase):
+    """The port's rules for a token store (``TokenStore``, AN11; B1R-5; DM-102), as the fixture
+    keeps them, and the fixture's way to break the first (``reuse_next_put``, B1-C1)."""
+
+    def test_each_put_returns_a_new_reference_even_for_one_token(self) -> None:
+        store = FixtureTokenStore("test")
+        token = synthetic_token("port-one-token")
+        references = [store.put(n.ProviderToken(token)) for _ in range(3)]
+        self.assertEqual(len({reference.value for reference in references}), 3)
+        self.assertEqual([store.resolve(reference) for reference in references], [token] * 3)
+
+    def test_a_discard_of_a_reference_already_discarded_changes_nothing(self) -> None:
+        store = FixtureTokenStore("test")
+        kept = store.put(n.ProviderToken(synthetic_token("port-kept")))
+        gone = store.put(n.ProviderToken(synthetic_token("port-gone")))
+        store.discard(gone)
+        store.discard(gone)
+        store.discard(n.TokenReference("fixture-token-ref-never-given"))
+        self.assertIsNone(store.resolve(gone))
+        self.assertEqual(store.resolve(kept), synthetic_token("port-kept"))
+        self.assertEqual(store.held, 1)
+
+    def test_reuse_next_put_returns_a_reference_it_gave_out_once(self) -> None:
+        store = FixtureTokenStore("test")
+        first = store.put(n.ProviderToken(synthetic_token("port-first")))
+        store.reuse_next_put(first)
+        again = store.put(n.ProviderToken(synthetic_token("port-second")))
+        self.assertEqual(again, first)
+        # What the reference holds is unchanged, and the second token is not kept.
+        self.assertEqual(store.resolve(first), synthetic_token("port-first"))
+        self.assertEqual(store.held, 1)
+        self.assertNotEqual(store.put(n.ProviderToken(synthetic_token("port-third"))), first)
+        with self.assertRaises(ValueError):
+            store.reuse_next_put(n.TokenReference("fixture-token-ref-never-given"))
+        with self.assertRaises(ValueError):
+            FixtureTokenStore("production")
 
 
 class InstallationTests(unittest.TestCase):

@@ -17,7 +17,8 @@ way there is, reciprocal likes through SV3's like (``interaction_cases._matched`
   ledger, so the suite's scan finds it in no log record, write or results JSON; the provider's
   own identifiers (channels and messages) join it too, so none is served or logged;
 - **Holds** (``Hold``): a transaction probe that holds its transaction at any of its points until
-  the case releases it, recording its backend; it only signals and waits (DM-13 2.1);
+  the case releases it, recording its backend; it only signals and waits (DM-13 2.1). SV4 B1-C1
+  adds ``BeginHold``, which holds a transaction at its start (``on_begin``);
 - **The list's statements** (``lock_statements``): every statement this thread's connection runs
   inside a block that takes a row lock, with its parameters, kept in memory for the bounded-lock
   case's check and never logged;
@@ -29,6 +30,12 @@ way there is, reciprocal likes through SV3's like (``interaction_cases._matched`
   secrets from the start; and each installation identifier, made at random and held among the
   member values, so neither a token nor an installation is logged, written or served. F12's routes
   are called with the member's own access token and the ``Glow-Installation-Id`` header.
+- **F12's custody failures, simulated from the suite's side** (SV4 B1-C1; DM-102), with no switch
+  in the adapter: ``handle_write_fails`` makes the statement that writes a new reference's handle
+  raise on this thread's connection, as a database unreachable for that one statement would; and
+  ``commit_answer_lost`` lets this thread's next commit take effect and then raises, as a commit
+  whose acknowledgement was lost would. Each raises Django's own ``OperationalError``, with a fixed
+  message, through Django's own hooks (an execute wrapper; the connection's ``commit``).
 
 Rows written only in setup (a seeded population and its matches, a state no writer leaves) are test
 data, never an application writer, and each is named where a case writes it.
@@ -184,6 +191,78 @@ class Hold:
     def free(self) -> None:
         for event in self.release.values():
             event.set()
+
+
+class BeginHold:
+    """SV4 B1-C1: a transaction probe that holds its transaction at its start (``on_begin``, after
+    its first statement, before any lock), until the case releases it, recording its backend's
+    pid. It only signals and waits (DM-13 2.1)."""
+
+    after_first_lock = None
+    after_locks = None
+    before_commit = None
+
+    def __init__(self) -> None:
+        self.pid: int | None = None
+        self.reached = threading.Event()
+        self.release = threading.Event()
+
+    def on_begin(self, pid: int) -> None:
+        self.pid = pid
+        self.reached.set()
+        self.release.wait(HOLD_SECONDS)
+
+    def free(self) -> None:
+        self.release.set()
+
+
+@contextmanager
+def handle_write_fails() -> Iterator[list[int]]:
+    """SV4 B1-C1's simulation of a failed handle write: on this thread's connection, the adapter's
+    statement that writes a new reference's handle (``HANDLE_WRITE``) raises Django's
+    ``OperationalError`` before it reaches the server, as a database unreachable for that one
+    statement would; every other statement runs. Yields the count of statements it refused."""
+    from django.db import OperationalError, connection
+    from glow_notifications.persistence import (  # type: ignore[import-not-found]
+        HANDLE_WRITE,
+    )
+
+    refused: list[int] = []
+
+    def refuse(execute: Callable[..., Any], sql: str, params: Any, many: bool, ctx: Any) -> Any:
+        if sql == HANDLE_WRITE:
+            refused.append(1)
+            raise OperationalError("simulated: the database unreachable for this statement")
+        return execute(sql, params, many, ctx)
+
+    with connection.execute_wrapper(refuse):
+        yield refused
+
+
+@contextmanager
+def commit_answer_lost() -> Iterator[list[int]]:
+    """SV4 B1-C1's simulation of an unknown outcome, as B1's exact-head review made it (B1R-2): this
+    thread's next commit takes effect, and then Django's ``OperationalError`` is raised, as for a
+    commit whose acknowledgement was lost; later commits run as they are. Yields the count of
+    commits it made fail."""
+    from django.db import OperationalError, connections
+
+    wrapper = connections["default"]
+    commit = wrapper.commit
+    lost: list[int] = []
+
+    def committed_then_lost() -> None:
+        commit()
+        if not lost:
+            lost.append(1)
+            raise OperationalError("simulated: the commit's acknowledgement lost")
+
+    # An attribute of this connection's wrapper, shadowing its class's ``commit`` until removed.
+    wrapper.commit = committed_then_lost
+    try:
+        yield lost
+    finally:
+        del wrapper.commit
 
 
 @dataclass

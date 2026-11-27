@@ -1102,12 +1102,19 @@ class NotificationLedgerEntry(Record):
 
 
 class PendingTokenDiscard(Record):
-    """A token store reference that still has to be discarded (SV4 B1, migration 0014; its brief's
-    D17 and D18; DM-101's AM4): a reference only, never a token. A command that does not save the
-    reference the store gave it (a refusal, a failure or a replay) leaves it here; an old reference
-    a command retires (a rotation, a revocation or a transfer) is kept here in the command's own
-    transaction and removed once the store has discarded it after the commit, so a failed discard
-    waits here for SV4 B2's sweep to retry it."""
+    """A token store reference that still has to be discarded, or may have to be (SV4 B1, migration
+    0014; its brief's D17 and D18; DM-101's AM4; B1-C1, DM-102's AN1): a reference only, never a
+    token. **A new reference's handle:** a register writes the reference the store gave it here,
+    in its own statement before its transaction, and only if no registration and no pending
+    discard already holds it; the transaction that saves the reference on a registration deletes
+    this row, and refuses unless it deletes exactly this one. A command whose outcome is known and
+    did not save the reference (a refusal, a deadlock, a replay, or a failure raised before its
+    transaction's body returned) discards it at once and removes the row; one whose outcome is
+    unknown (a failure at the commit) leaves the row for SV4 B2's sweep (its brief's D24), which
+    takes it only once it is old and no registration holds its reference. **A retired
+    reference:** an old reference a command retires (a rotation, a revocation or a transfer) is
+    kept here in the command's own transaction and removed once the store has discarded it after
+    the commit, so a failed discard waits here for the sweep to retry it."""
 
     token_secret_ref = models.CharField(max_length=255, unique=True)
 
