@@ -19,12 +19,12 @@ This file only routes: the current item, what happens next and who waits on whom
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| Nathan | App Manager 13 | B2's prompt, from the brief's revision 14, after Codex's pass on the commit that holds it | Nothing starts |
+| Nathan | App Manager 13 | B2's prompt, revision 1 (committed with this handoff), after its start gate (no pull request is open, so no Codex pass applies; AM13-23) | Nothing starts |
 
 ## Next actions (App Manager 13)
 
-1. **SV4 Stage A merged:** A0 (PR57, `499ccbb`), A1 (PR58, `43e794a`), A2 with A2-C1 (PR59, `988a36a`). **Now: SV4 Stage B** (the M09 record, section 4.3, item 2), the brief's revision 14 (D16 to D31). **B1 merged** with PR60 at `1310896` (B1 `e7e7e84` and its correction B1-C1 `48f0801`, DM-102's form (b); DM-103's pre-merge read; the SV4 record, "Merge (27 November 2026)"). **Next: B2's prompt** (the triggers, the deliverer, `logout`, the sweeps with AO1's rules, G-04's read; D21 to D27), its owned paths taking the carried-items file's B2 entries (B1's record, B1's review, B1-C1's record and review, DM-103's v8 check, the custody docstrings). Carried items: "Carried to SV4".
-2. **Manager records:** PF02 1.9 (AM12-31 to AM12-49, AM13-01 to AM13-22; AM12-49's proposed rule: a prompt names both GitHub routes; DM-98's wording of the false-claim class); the manager workflow's next revision: DM-100's AL9 (the delta review's line count), for the Dev Manager's read; the status log's move (M09 (b)); R-07, R-10, R-26, R-28.
+1. **SV4 Stage A merged:** A0 (PR57, `499ccbb`), A1 (PR58, `43e794a`), A2 with A2-C1 (PR59, `988a36a`). **Now: SV4 Stage B** (the M09 record, section 4.3, item 2), the brief's revision 14 (D16 to D31). **B1 merged** with PR60 at `1310896` (B1 `e7e7e84` and its correction B1-C1 `48f0801`, DM-102's form (b); DM-103's pre-merge read; the SV4 record, "Merge (27 November 2026)"). **Next: B2's prompt, revision 1** ([the prompt](../ephemeral/2026-11-27-sv4-b2-triggers-sweeps-prompt.md); TypeSafe v8.2: Opus 5.5 at extra high): the triggers, the deliverer, `logout`, the sweeps with AO1's rules and G-04's read (D21 to D27), with the carried B2 entries. It goes to Nathan after its start gate. Carried items: "Carried to SV4".
+2. **Manager records:** PF02 1.9 (AM12-31 to AM12-49, AM13-01 to AM13-23; AM12-49's proposed rule: a prompt names both GitHub routes; DM-98's wording of the false-claim class); the manager workflow's next revision: DM-100's AL9 (the delta review's line count), for the Dev Manager's read; the status log's move (M09 (b)); R-07, R-10, R-26, R-28.
 
 **Carried follow-ups** live in their owning homes: [`carried-to-later-items.md`](../planning/carried-to-later-items.md), the P11 plan, the review log's "Deferred conditions".
 
