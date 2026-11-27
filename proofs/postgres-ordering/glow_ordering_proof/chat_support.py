@@ -37,6 +37,16 @@ way there is, reciprocal likes through SV3's like (``interaction_cases._matched`
   whose acknowledgement was lost would. Each raises Django's own ``OperationalError``, with a fixed
   message, through Django's own hooks (an execute wrapper; the connection's ``commit``).
 
+- **SV4 B2** (its brief's D21 to D27 and D29): the notification deliverer and the sweeps, reached
+  only through the API's own entry points (``notification_delivery``, ``run_sweeps``), which take
+  the transport and the token store from the chat settings' factories; ``ChatContext.notify``,
+  which delivers every due notification event (the earlier cases' included) to the suite's
+  transport; and two more probes that only signal and wait: ``StagedHold``, which holds a
+  transaction at its start and again before its commit, and ``Signal``, the deliverer's own hold
+  point after its lease commits and before any call (``DeliveryProbe.after_lease``); and one more
+  failure simulated from the suite's side, ``registrations_read_fails``, which makes the sweep's
+  read of the registrations raise Django's ``OperationalError`` once, through an execute wrapper.
+
 Rows written only in setup (a seeded population and its matches, a state no writer leaves) are test
 data, never an application writer, and each is named where a case writes it.
 """
@@ -216,6 +226,70 @@ class BeginHold:
         self.release.set()
 
 
+class StagedHold:
+    """SV4 B2: a transaction probe that holds its transaction twice, at its start (``on_begin``)
+    and before its commit (``before_commit``), each until the case releases it, recording its
+    backend's pid. It only signals and waits (DM-13 2.1)."""
+
+    after_first_lock = None
+    after_locks = None
+
+    def __init__(self) -> None:
+        self.pid: int | None = None
+        self.began = threading.Event()
+        self.go = threading.Event()
+        self.committing = threading.Event()
+        self.commit = threading.Event()
+
+    def on_begin(self, pid: int) -> None:
+        self.pid = pid
+        self.began.set()
+        self.go.wait(HOLD_SECONDS)
+
+    def before_commit(self) -> None:
+        self.committing.set()
+        self.commit.wait(HOLD_SECONDS)
+
+    def free(self) -> None:
+        self.go.set()
+        self.commit.set()
+
+
+class Signal:
+    """SV4 B2: a hold point of the notification deliverer's own (``DeliveryProbe.after_lease``),
+    held until the case releases it. It only signals and waits (DM-13 2.1)."""
+
+    def __init__(self) -> None:
+        self.reached = threading.Event()
+        self.release = threading.Event()
+
+    def __call__(self) -> None:
+        self.reached.set()
+        self.release.wait(HOLD_SECONDS)
+
+    def free(self) -> None:
+        self.release.set()
+
+
+def notification_delivery() -> Any:
+    """SV4 B2's deliverer (``glow_notifications.delivery``, its brief's D22 and D23), which takes
+    the transport and the token store from the factories the chat settings name."""
+    from glow_notifications.delivery import (  # type: ignore[import-not-found]
+        NotificationDelivery,
+    )
+
+    return NotificationDelivery()
+
+
+def run_sweeps() -> Any:
+    """SV4 B2's one sealed entry point for the sweeps (``glow_notifications.sweeps``, D24)."""
+    from glow_notifications.sweeps import (  # type: ignore[import-not-found]
+        run_sweeps as sweeps,
+    )
+
+    return sweeps()
+
+
 @contextmanager
 def handle_write_fails() -> Iterator[list[int]]:
     """SV4 B1-C1's simulation of a failed handle write: on this thread's connection, the adapter's
@@ -263,6 +337,27 @@ def commit_answer_lost() -> Iterator[list[int]]:
         yield lost
     finally:
         del wrapper.commit
+
+
+@contextmanager
+def registrations_read_fails() -> Iterator[list[int]]:
+    """SV4 B2's simulation of a failed read by the sweep's second step: on this thread's connection,
+    the next statement that reads whether a registration holds a reference raises Django's
+    ``OperationalError`` before it reaches the server, as a database unreachable for that one
+    statement would; every other statement runs. Yields the count of statements it refused."""
+    from django.db import OperationalError, connection
+
+    refused: list[int] = []
+    marker = '"glow_persistence_deviceregistration"."token_secret_ref" ='
+
+    def refuse(execute: Callable[..., Any], sql: str, params: Any, many: bool, ctx: Any) -> Any:
+        if not refused and marker in sql and sql.lstrip().upper().startswith("SELECT"):
+            refused.append(1)
+            raise OperationalError("simulated: the database unreachable for this statement")
+        return execute(sql, params, many, ctx)
+
+    with connection.execute_wrapper(refuse):
+        yield refused
 
 
 @dataclass
@@ -343,6 +438,18 @@ class ChatContext:
                 f"delivery stalled: {done[-1].event_type} {done[-1].outcome}",
             )
         raise AssertionError("delivery did not finish")
+
+    def notify(self) -> list[Any]:
+        """SV4 B2: every due notification event delivered by its deliverer (its four types, the
+        earlier cases' included), to the suite's transport; a database error is a fixture fault."""
+        done: list[Any] = []
+        for _ in range(100):
+            batch = notification_delivery().deliver_due(limit=1000)
+            if not batch:
+                return done
+            done.extend(batch)
+            expect(batch[-1].outcome != "error", f"notification delivery: {batch[-1].code}")
+        raise AssertionError("notification delivery did not finish")
 
     def hold_provider_ids(self) -> None:
         """The provider's own identifiers join the value ledger: none may be served or logged."""

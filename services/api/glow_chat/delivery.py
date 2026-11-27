@@ -61,6 +61,7 @@ from uuid import UUID
 from django.db import connection, transaction
 
 from glow_chat import events
+from glow_domain import notifications
 from glow_domain.chat_provider import (
     CHANNEL_UNAVAILABLE,
     MEMBER_UNAVAILABLE,
@@ -285,6 +286,24 @@ class OutboxDelivery:
                     row.state = "accepted"
                     row.version += 1
                     row.save(update_fields=["state", "version", "updated_at"])
+                    # SV4 B2 (D21): the message's notification event, in the transaction that
+                    # marks it accepted, once per acceptance, for the match's other member, its
+                    # payload reference. A refused or dead-lettered message writes none.
+                    pair = (
+                        Match.objects.filter(pk=binding.match_id)
+                        .values_list("account_low_id", "account_high_id")
+                        .get()
+                    )
+                    OutboxEvent.objects.create(
+                        aggregate_id=row.id,
+                        aggregate_version=row.version,
+                        event_type=notifications.NOTIFY_MESSAGE,
+                        schema_version=notifications.NOTIFICATIONS_SCHEMA_VERSION,
+                        dedup_key=f"{notifications.NOTIFY_MESSAGE}:{row.id}:{row.version}",
+                        payload_ref=pair[1] if row.actor_id == pair[0] else pair[0],
+                        state="pending",
+                        available_at=now,
+                    )
 
             return _Plan(
                 lambda: provider.send_message(channel_id, sender_ref, message_id, text),

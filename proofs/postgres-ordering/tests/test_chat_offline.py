@@ -661,6 +661,32 @@ PLAN = (
     "list.bounded_locks",
     "send.one_answer_for_every_version_and_session",
     "list.block_session_and_own_account_checks",
+    # SV4 B2 (D29): the triggers', the deliverer's, logout's, the sweeps' and G-04's cases, before
+    # F12's, so that B1's last case queries the rows for every token after the deliverer and the
+    # sweeps have run.
+    "triggers.a_match_notifies_the_earlier_liker_only",
+    "triggers.an_accepted_message_notifies_the_other_member_only",
+    "deliverer.each_send_check_refuses",
+    "deliverer.reads_its_facts_under_share_locks",
+    "deliverer.a_redelivery_sends_only_the_devices_not_yet_recorded",
+    "logout.sign_out_expiry_and_password_change_revoke_registrations",
+    "logout.locks_the_account_before_the_registrations",
+    "sweeps.mark_a_session_past_its_expiry_with_no_user_session",
+    "sweeps.revoke_a_suspended_accounts_registrations",
+    "sweeps.stop_at_their_bound",
+    "d26.no_notification_tells_a_block_from_an_unmatch",
+    "g04.message_recipients_after_an_unmatch_and_a_block",
+    "ledger.retention_after_thirty_days",
+    "deliverer.a_retried_push_holds_no_later_event",
+    "deliverer.the_window_as_recorded",
+    "deliverer.takes_its_four_types_only",
+    "sweeps.a_handle_removed_before_its_save_refuses_the_save",
+    "sweeps.a_held_reference_is_removed_and_not_discarded",
+    "sweeps.a_save_before_the_sweeps_delete_wins",
+    "sweeps.a_failed_discard_is_written_again_under_a_new_key",
+    "sweeps.a_failed_read_writes_the_row_again",
+    "locks.a_settings_command_and_a_send_at_once",
+    "deliverer.no_push_twice_and_only_p063s_content",
     # SV4 B1 (D29): F12's cases, before the three that read or publish a cause hidden.
     "notifications.routes_refuse_what_is_not_their_dto",
     "notifications.register_rotate_revoke_and_register_again",
@@ -690,7 +716,7 @@ PLAN = (
 
 class ChatPlanTests(unittest.TestCase):
     def test_the_case_count_is_pinned(self) -> None:
-        self.assertEqual(chat_cases.CASE_COUNT, 37)
+        self.assertEqual(chat_cases.CASE_COUNT, 60)
         self.assertEqual(len(chat_cases.CASES), chat_cases.CASE_COUNT)
         self.assertEqual(chat_cases.plan(), PLAN)
 
@@ -731,6 +757,38 @@ class ChatPlanTests(unittest.TestCase):
             for check in entry.checks
         }
         for label in ("D17", "D18", "D19", "D25", "D29", "AM2", "AM3", "AM4", "AM5", "AM6", "AM13"):
+            with self.subTest(label=label):
+                self.assertIn(label, labels)
+
+    def test_each_b2_item_has_its_case_before_the_f12_cases(self) -> None:
+        # SV4 B2 (D29): its cases, contiguous, just before B1's F12 cases, so that B1's last case
+        # queries the rows for every token after the deliverer and the sweeps have run.
+        ids = chat_cases.plan()
+        prefixes = ("triggers.", "deliverer.", "logout.", "sweeps.", "d26.", "g04.", "ledger.")
+        b2 = [i for i, case_id in enumerate(ids) if case_id.startswith((*prefixes, "locks."))]
+        self.assertEqual(len(b2), 23)
+        self.assertEqual(b2, list(range(b2[0], b2[0] + 23)))
+        self.assertEqual(ids[b2[-1] + 1], "notifications.routes_refuse_what_is_not_their_dto")
+        self.assertEqual(ids[b2[-1]], "deliverer.no_push_twice_and_only_p063s_content")
+        labels = {check for entry in chat_cases.CASES[b2[0] : b2[-1] + 1] for check in entry.checks}
+        for label in (
+            "D21",
+            "D22",
+            "D23",
+            "D24",
+            "D25",
+            "D26",
+            "D27",
+            "AM8",
+            "AM9",
+            "AM10",
+            "AM11",
+            "AO1",
+            "F-9",
+            "P1",
+            "P3",
+            "r19",
+        ):
             with self.subTest(label=label):
                 self.assertIn(label, labels)
 
@@ -870,7 +928,12 @@ class ChatSupportTests(unittest.TestCase):
         self.assertEqual(chat_support.MATCHES, "/api/v1/matches")
 
     def test_the_text_reader_is_the_suites_one_provider(self) -> None:
-        with mock.patch.object(chat_support, "_PROVIDER", None):
+        # SV4 B2 (D30, B1's record): the API on the path for this test only, as B1 did for its two:
+        # run alone, no settings import has added it.
+        with (
+            mock.patch.object(sys, "path", [str(API_ROOT), *sys.path]),
+            mock.patch.object(chat_support, "_PROVIDER", None),
+        ):
             first = chat_support.text_reader()
             self.assertIs(chat_support.text_reader(), first)
             self.assertIs(chat_support.provider(), first)
@@ -940,6 +1003,37 @@ class ChatSupportTests(unittest.TestCase):
         hold.free()
         with self.assertRaises(ValueError):
             chat_support.Hold("on_commit")
+
+    def test_the_staged_hold_and_the_signal_hold_only_their_points(self) -> None:
+        # SV4 B2: StagedHold holds at the transaction's start and before its commit, and nothing
+        # else; Signal is the deliverer's after-lease hold. Each only signals and waits.
+        staged = chat_support.StagedHold()
+        self.assertIsNone(staged.after_first_lock)
+        self.assertIsNone(staged.after_locks)
+        staged.go.set()
+        staged.on_begin(11)
+        self.assertEqual(staged.pid, 11)
+        self.assertTrue(staged.began.is_set())
+        staged.commit.set()
+        staged.before_commit()
+        self.assertTrue(staged.committing.is_set())
+        signal = chat_support.Signal()
+        signal.free()
+        signal()
+        self.assertTrue(signal.reached.is_set())
+
+    def test_the_deliverer_and_the_sweeps_are_the_apis(self) -> None:
+        # SV4 B2: the cases reach the deliverer and the sweeps only through the API's own entry
+        # points, which take the transport and the token store from the chat settings' factories.
+        source = (PROOF / "chat_support.py").read_text(encoding="utf-8")
+        self.assertIn("from glow_notifications.delivery import (", source)
+        self.assertIn("NotificationDelivery,", source)
+        self.assertIn("return NotificationDelivery()", source)
+        self.assertIn("from glow_notifications.sweeps import (", source)
+        self.assertIn("run_sweeps as sweeps,", source)
+        cases = (PROOF / "chat_cases.py").read_text(encoding="utf-8")
+        self.assertNotIn("NotificationDelivery(", cases)
+        self.assertIn('call_command("notification_sweeps", stdout=printed)', cases)
 
     def test_the_message_texts_are_unique_and_held(self) -> None:
         held: list[str] = []

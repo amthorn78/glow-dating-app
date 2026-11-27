@@ -75,12 +75,23 @@ transitions, the custody types, the versions' rules, the recipient rule and the 
 SV4 B1's ORM adapter (``glow_notifications.persistence``) is its other implementation, on a
 disposable PostgreSQL only, sealed until integration.
 
+**The events** (SV4 B2; its brief's D21 to D23). The triggers' outbox events are of their own
+schema (``NOTIFICATIONS_SCHEMA_VERSION``): ``notify_match``, written by SV3's like in the
+transaction that makes the match, and ``notify_message``, written by chat's delivery receipt in
+the transaction that marks a message ``accepted``. Each names its recipient as its payload
+reference. SV4 B2's deliverer (``glow_notifications.delivery``) takes exactly those two and chat's
+two session events (``session_revoked`` and ``session_expired``, chat's schema), whose ``logout``
+it is. The names live here, the one module both writers and the deliverer import, so neither slice
+imports the other; a test pins the chat names equal to ``glow_chat.events``'. The deliverer reads
+the facts under share locks and applies the composer's own checks (``send_refusal``) and wording
+(``push_content``) to them.
+
 **Fixture scope** (D1, D3). State is in memory, guarded to development and test. The token
 store's, the transport's and the facts' only implementations are the fixtures in
-``notification_fixtures.py``. No outbox consumer, provider, network client or credential is
-attached: SV4 B1 serves F12 through sealed routes and B2 wires the triggers, P09.2 brings the
-native module and P11B the transport (D9). The served runtime imports none of this module
-(``tests/test_notifications.py``).
+``notification_fixtures.py``. No provider, network client or credential is attached: SV4 B1 serves
+F12 through sealed routes and B2 wires the triggers and the deliverer, sealed and in process under
+the disposable-database proof; P09.2 brings the native module and P11B the transport (D9). The
+served runtime imports none of this module (``tests/test_notifications.py``).
 """
 
 from __future__ import annotations
@@ -156,6 +167,21 @@ MAX_VERSION = 9_007_199_254_740_991
 # them is refused. Provisional: P10's readiness review confirms it, with its limit that a member at
 # the bound cannot register another installation until one ends, since the app lists no devices.
 MAX_ACTIVE_REGISTRATIONS = 10
+
+# SV4 B2 (its brief's D21 to D23): the notification events' schema and types, each naming its
+# recipient as its payload reference; and chat's two session events, with chat's schema, which the
+# notification deliverer also takes as F12's ``logout`` (D23; DM-101's AM11: it is their one
+# consumer). Kept here, the one module both writers and the deliverer may import, so that
+# ``glow_chat`` and ``glow_discovery`` import nothing from ``glow_notifications``, and it nothing
+# from them; a test pins the chat names equal to ``glow_chat.events``'.
+NOTIFICATIONS_SCHEMA_VERSION = "glow-notifications-1"
+NOTIFY_MATCH = "notify_match"
+NOTIFY_MESSAGE = "notify_message"
+EVENT_KINDS: Mapping[str, NotificationKind] = {NOTIFY_MATCH: "match", NOTIFY_MESSAGE: "message"}
+CHAT_SCHEMA_VERSION = "glow-chat-1"
+SESSION_REVOKED = "session_revoked"
+SESSION_EXPIRED = "session_expired"
+SESSION_ENDINGS: tuple[str, ...] = (SESSION_REVOKED, SESSION_EXPIRED)
 
 _UUID_FORM = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
 _KEY_FORM = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,99}")
@@ -628,6 +654,68 @@ class _Fixed:
     devices: frozenset[UUID]
 
 
+# -- the composer's rules (the in-memory service's, and SV4 B2's deliverer's) ------------------
+
+
+def send_refusal(trigger: Trigger, facts: DeliveryFacts) -> str:
+    """The send's checks (``glow_chat``'s send's, which since SV4 A1 the conversation reads no
+    longer share), on facts read now through ``facts``, never from the trigger, and the trigger's
+    recipient rule. Empty when the notification may go. The in-memory composer reads its world;
+    SV4 B2's deliverer (``glow_notifications.delivery``) the rows it holds under share locks. A
+    match that is no longer ``active`` is refused before the block is read, so a block and an
+    unmatch, both of which store ``unmatched`` since SV4 A1, are refused alike (D26)."""
+    match = facts.match(trigger.match_id)
+    if match is None:
+        return chat.MATCH_MISSING
+    if trigger.recipient not in match.participants:
+        return chat.NOT_A_MEMBER
+    if isinstance(trigger, MessageAccepted):
+        message = facts.message(trigger.submission_id)
+        if message is None:
+            return MESSAGE_MISSING
+        if message.match_id != trigger.match_id:
+            return MESSAGE_MATCH_MISMATCH
+        if message.sender not in match.participants:
+            return chat.NOT_A_MEMBER
+        if message.sender == trigger.recipient:
+            return RECIPIENT_IS_SENDER
+        if message.state != "accepted":
+            return MESSAGE_NOT_ACCEPTED
+    elif match.completed_by == trigger.recipient:
+        return RECIPIENT_COMPLETED_MATCH
+    if match.state != "active":
+        return chat.MATCH_NOT_ACTIVE
+    if match.blocked:
+        return chat.BLOCKED
+    members = [facts.member(account) for account in match.participants]
+    for member in members:
+        if member is None:
+            return chat.ACCOUNT_MISSING
+        if member.account_state != "active":
+            return chat.ACCOUNT_NOT_ACTIVE
+    for member in members:
+        assert member is not None
+        if member.profile_state != "visible":
+            return chat.PROFILE_UNAVAILABLE
+    for member in members:
+        assert member is not None
+        if member.consent_state != "accepted":
+            return chat.CONSENT_NOT_CURRENT
+    return ""
+
+
+def push_content(kind: NotificationKind) -> PushContent:
+    """What a push of ``kind`` shows and opens (D4): Glow's title and sentence, the kind and its
+    fixed route; nothing else."""
+    return PushContent(TITLE, WORDING[kind], kind, ROUTES[kind])
+
+
+def ledger_key(event_id: UUID, device_id: UUID) -> str:
+    """The ledger's key, the transport's idempotency key: the trigger's event with the
+    installation, so a registration revoked and made again keeps its key (P06.3)."""
+    return f"{event_id}:{device_id}"
+
+
 # -- the service -------------------------------------------------------------------------------
 
 
@@ -986,47 +1074,9 @@ class NotificationService:
     # -- the composer ------------------------------------------------------------------------
 
     def _contact_refusal(self, kind: NotificationKind, trigger: Trigger) -> str:
-        """The send's checks (``glow_chat``'s send's, which since SV4 A1 the conversation reads no
-        longer share), on facts read now, and the trigger's recipient rule. Empty when the
-        notification may go."""
-        match = self._facts.match(trigger.match_id)
-        if match is None:
-            return chat.MATCH_MISSING
-        if trigger.recipient not in match.participants:
-            return chat.NOT_A_MEMBER
-        if isinstance(trigger, MessageAccepted):
-            message = self._facts.message(trigger.submission_id)
-            if message is None:
-                return MESSAGE_MISSING
-            if message.match_id != trigger.match_id:
-                return MESSAGE_MATCH_MISMATCH
-            if message.sender not in match.participants:
-                return chat.NOT_A_MEMBER
-            if message.sender == trigger.recipient:
-                return RECIPIENT_IS_SENDER
-            if message.state != "accepted":
-                return MESSAGE_NOT_ACCEPTED
-        elif match.completed_by == trigger.recipient:
-            return RECIPIENT_COMPLETED_MATCH
-        if match.state != "active":
-            return chat.MATCH_NOT_ACTIVE
-        if match.blocked:
-            return chat.BLOCKED
-        members = [self._facts.member(account) for account in match.participants]
-        for member in members:
-            if member is None:
-                return chat.ACCOUNT_MISSING
-            if member.account_state != "active":
-                return chat.ACCOUNT_NOT_ACTIVE
-        for member in members:
-            assert member is not None
-            if member.profile_state != "visible":
-                return chat.PROFILE_UNAVAILABLE
-        for member in members:
-            assert member is not None
-            if member.consent_state != "accepted":
-                return chat.CONSENT_NOT_CURRENT
-        return ""
+        """The send's checks and the trigger's recipient rule (``send_refusal``), on the world's
+        facts read now. Empty when the notification may go."""
+        return send_refusal(trigger, self._facts)
 
     def _active_devices(self, account_id: UUID) -> frozenset[UUID]:
         return frozenset(
@@ -1037,7 +1087,7 @@ class NotificationService:
 
     @staticmethod
     def ledger_key(event_id: UUID, device_id: UUID) -> str:
-        return f"{event_id}:{device_id}"
+        return ledger_key(event_id, device_id)
 
     def deliver(self, trigger: object) -> DeliveryResult:
         """One delivery of a trigger: a first one or a redelivery of the same event."""
@@ -1075,7 +1125,7 @@ class NotificationService:
             ]
             if not unsent:
                 return DeliveryResult("nothing", ALREADY_DELIVERED)
-            content = PushContent(TITLE, WORDING[kind], kind, ROUTES[kind])
+            content = push_content(kind)
             sent = pending = recorded = 0
             for device_id in unsent:
                 registration = self._registrations.get((trigger.recipient, device_id))

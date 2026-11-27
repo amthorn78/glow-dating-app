@@ -85,6 +85,7 @@ from django.db.models.functions import Now
 from glow_chat.contact import OrmContactPersistence
 from glow_discovery import contract, pages, policy, predicates
 from glow_discovery.eligibility import OrmPairActionTransaction, parameters
+from glow_domain import notifications
 from glow_domain.chat import ContactResult, TransactionProbe
 from glow_domain.identity import AccountId
 from glow_domain.trusted_eligibility import EligibilityDecisionState, TrustedEligibilityService
@@ -93,6 +94,7 @@ from glow_persistence.models import (
     DirectionalInteraction,
     IdempotencyRecord,
     Match,
+    OutboxEvent,
     Profile,
     RecommendationBatch,
     RecommendationEntry,
@@ -383,6 +385,21 @@ def interact(
             if activated.outcome != "applied":
                 raise Refused(STATE_CONFLICT, f"chat:{activated.reason}")
             tx.events.extend(activated.events)
+            # SV4 B2 (D21; DM-101's AM8): the match's notification event, in the transaction that
+            # makes the match, for the like's target, the member whose earlier like this like
+            # matched (the actor sees the match in its own answer). Its payload reference is that
+            # recipient; the match is new, so its version is 1, as its ``match_activated`` says.
+            notified = OutboxEvent.objects.create(
+                aggregate_id=activated.match_id,
+                aggregate_version=1,
+                event_type=notifications.NOTIFY_MATCH,
+                schema_version=notifications.NOTIFICATIONS_SCHEMA_VERSION,
+                dedup_key=f"{notifications.NOTIFY_MATCH}:{activated.match_id}:1",
+                payload_ref=target_id,
+                state="pending",
+                available_at=now,
+            )
+            tx.events.append(notified.id)
         _store(
             account_id,
             INTERACTION,
