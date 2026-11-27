@@ -2536,7 +2536,7 @@ Settings needing no active registration, and settings locking one row only, fail
 - **B1R-2, read:** the same condition reads `done is None`, an unknown outcome (a commit whose acknowledgement was lost included), as "not saved".
 - **B1R-3, read:** the only test that calls `fail_next_discard` is `tests/test_notifications.py` line 933, against the in-memory fixture. No adapter test or database case makes a retired reference's discard fail.
 
-**Disposition** (App Manager 13; the manager workflow's step 6, "What a correction pass is for" and "Fix or carry, by rule", under D-07). Either form of B1R-1's fix changes a custody decision (AM4's and D18's sentences, and with (b) B2's sweep), so the form goes to Dev Manager 7 first ([DM-102](../../ephemeral/2026-11-27-dm-102-sv4-b1-c1-custody.md)):
+**Disposition** (App Manager 13; the manager workflow's step 6, "What a correction pass is for" and "Fix or carry, by rule", under D-07). Either form of B1R-1's fix changes a custody decision (AM4's and D18's sentences, and with (b) B2's sweep), so the form goes to Dev Manager 7 first ([DM-102](https://github.com/amthorn78/glow-dating-app/blob/13108961f5fb3989c72d6a9291e8a163f15a7226/docs/ephemeral/2026-11-27-dm-102-sv4-b1-c1-custody.md)):
 
 | Finding | Disposition | Why |
 |---|---|---|
@@ -2801,7 +2801,7 @@ Section "B1" keeps B1's words (DM-100's AL4 and AL5), except AN8's mark in its "
 
 **What it did not read or run:** nine of the ten changed modules whole (read as diffs from `e7e7e84`, with the helpers they call); `chat_suite.py` before line 85; the proof README beyond its chat paragraph and line 76; section "B1" beyond AN8's line; DM-102's consultation; Notion; a migration from `0013` with rows; the contract and mobile checks (both runs passed them); the whole suite under each reversal; a deadlock probe with a sweep that takes other locks.
 
-**Disposition** (App Manager 13; the manager workflow's step 6, under D-07). No finding needs a correction pass of B1-C1's code, so PR60 goes to Dev Manager 7's pre-merge read ([DM-103](../../ephemeral/2026-11-27-dm-103-sv4-b1-pre-merge-read.md)):
+**Disposition** (App Manager 13; the manager workflow's step 6, under D-07). No finding needs a correction pass of B1-C1's code, so PR60 goes to Dev Manager 7's pre-merge read ([DM-103](https://github.com/amthorn78/glow-dating-app/blob/13108961f5fb3989c72d6a9291e8a163f15a7226/docs/ephemeral/2026-11-27-dm-103-sv4-b1-pre-merge-read.md)):
 
 | Finding | Disposition | Why |
 |---|---|---|
@@ -2821,4 +2821,22 @@ Section "B1" keeps B1's words (DM-100's AL4 and AL5), except AN8's mark in its "
 - **AO5** (the carried-items file, B1R-8's entry): a failed re-read also leaves a token and a pending row for the sweep.
 - **The manager's calls** agreed: the lookup change is no precedent for passing a stop rule, and B2's prompt adds an offline check that fails under the review's reversal v8.
 - **Codex's two threads** to be resolved before the merge; **Notion** matched.
+
+### Merge (27 November 2026)
+
+- **PR60 merged** into `main` at `1310896` (App Manager 13, with `gh api`, the expected head `14bde0f` pinned in the call, 06:54:43 UTC). DM-103's conditions held:
+  - AO1 to AO5 were applied as given at `14bde0f`, in the batch that records the disposition;
+  - PR run 45953977134 (`pull_request`, `14bde0f`) passed all twelve jobs: Database proof checks (chat) 37/37 in 118.0 s, both scans clean (2003 secrets and 1335 member values held, 0 found), `ROW LOCKS (D14): PASS`, `CHAT VERDICT: PASS`. Its gate printed "Application checks passed";
+  - Codex's code review of `14bde0f` completed with no findings;
+  - Codex's two threads (4713760650 and 4715163584) were resolved before the merge, as DM-103 agreed;
+  - PR60's checklist was filled.
+- **The code merged is the code reviewed:** `git diff --name-only 48f0801 14bde0f -- . ':!*.md'` lists nothing. **`main`'s tree** at `1310896` equals `14bde0f`'s.
+- **`main`'s push run** 45954918003 (`push`, `1310896`) was in progress when this receipt was committed; its result is recorded in the next batch.
+- **The branch cleanup,** run 45954917951 (`push`, `1310896`): success.
+  - Deleted, each merged into `main`: `claude/lucid-fermi-droq7u` (`f106105`, B1) and `claude/funny-hypatia-lpzbn0` (`1502359`, B1-C1).
+  - Kept, on the keep-list: `main` (`1310896`), the manager branch (`14bde0f`) and `claude/dev-manager` (`2a619de`).
+  - `git ls-remote` afterwards lists those three only.
+- **The manager branch** was fast-forwarded to `main` (`1310896`) before this receipt.
+- **Pruned** with this receipt: B1's prompt and its exact-head review prompt, DM-102's consultation, B1-C1's prompt and its exact-head review prompt, and DM-103's consultation. Their links in the brief, this record and the review log are pinned at `1310896`. DM-101's consultation stays until Stage B's last pull request merges.
+- **SV4 B1 is complete:** F12's surface, with the token's custody as DM-102 and DM-103 set it. B2 (the triggers, the deliverer, `logout`, the sweeps and G-04's read; D21 to D27, with AO1's sweep rules) is next. Its prompt takes the carried-items file's B2 entries.
 
