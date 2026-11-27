@@ -2423,3 +2423,130 @@ These B1 tests read source text or pin a digest rather than run the behavior; ea
 
 - **PR60** carries B1 into `main` (opened at `cd920fd`). PR run 45902955792 (`pull_request`, `cd920fd`) passed all twelve jobs, and its gate printed "Application checks passed". Codex's code review of `cd920fd` completed with one finding, a P2 thread, comment 4713760650, on `services/api/glow_notifications/persistence.py`, line 376 (`_park`): "Preserve token custody when parking the reference fails". If the store's `put` succeeds and the database then fails, `_run` answers an error and `_park`'s insert can fail too; `_park` only logs, so the token stays in the store with no registration and no pending discard, and no sweep can find it, during a handled failure with no process stop. The session's own custody limit names only a stop between `put` and `_park`.
 - **Disposition:** to B1's exact-head review, as its focus item 3 (revision 1 of the review prompt), so that it joins that review instead of starting another pass (manager workflow, step 6). The thread stays unresolved until the review's disposition and any correction answer it.
+
+### Exact-head review of B1 (26 to 27 November 2026)
+
+- **Session:** the exact-head review, started by Nathan from [B1's review prompt](https://github.com/amthorn78/glow-dating-app/blob/9bf714159151189941b4dfc93f401233cba19d57/docs/ephemeral/2026-11-26-sv4-b1-review-prompt.md), revision 1, from `9bf7141`, in `Glow App - No Stream`. Nathan relayed its report on 27 November.
+- **Its start gate, classification and environment check:**
+  - every start-gate check passed: `HEAD` `9bf7141`; one merge base, `988a36a`; the prompt's commit on the live branch; the non-Markdown paths equal to `e7e7e84` at `HEAD` and on the live branch; no review recorded;
+  - the trusted classifier, `main`'s, outside the checkout with `python3 -I`, gave `"full": true`, reason `behavior-or-empty`, 45 paths;
+  - none of `DATABASE_URL`, `HD_API_KEY`, `GEO_API_KEY` or the `STREAM_`, `PG`, `R2_`, `CLOUDFLARE_`, `CF_` or `RAILWAY_` names; AWS and GitHub token names present and unread;
+  - Python 3.12.14, Node 24.19.0, npm 11.9.0, Docker 29.9.3 (it started the daemon and stopped it at the end);
+  - GitHub read with `gh api` REST `GET` calls only; the checkout left clean.
+- **Verdict: changes requested.** No blocking finding. F12's behaviour holds on every route, but Codex's P2 is confirmed on a database (B1R-1), with two related should-fix findings (B1R-2, B1R-3); B1R-4 to B1R-9 are nits or carries. The report numbers its findings F-1 to F-9; they are B1R-1 to B1R-9 here.
+
+**What it verified** (its focus items, shortened):
+- **Who may act (D19):** no route serves or changes another account's registration or settings; the read answers another account's installation `not_found`, as it answers none; a revoke reaches only the caller's own row.
+- **The transfer (AM7):** the re-read under both accounts' locks closed every race it tried (the holder suspended, rotating, revoking). A registration row cannot change without its account's lock in B1's writers; B2 must keep that.
+- **The locks (AM3):** a register, a settings change, a revoke, a rotation and a read each waited on a sign-out and were refused with the challenge (probed). It found no deadlock order against chat's, SV2's or SV3's writers (a 12-second stress, no deadlock). The read never paired a new version with old settings (0 mismatches in 950 reads against 949 concurrent changes).
+- **r19 is a limit, not a defect:** the code's order is right. Reversed, the settings command deadlocked against a chat send of the same session (`DeadlockDetected`), so a database case could pin the order.
+- **The bound, idempotency, the codes, the routes' shape:**
+  - two commands cannot pass the bound together;
+  - a replay changes nothing and parks its reference;
+  - the completeness test reaches every reason the adapter, the fixture and SV2's helpers raise;
+  - no refusal names a value;
+  - each view refuses a caller's transaction before the `put`;
+  - no answer is outside the contract's `Error`.
+- **The port and the fixture:** they answer alike, except that the adapter's `put` comes before the replay and version checks, so a store refusal wins there. `test_notifications.py` keeps every earlier assertion, and the fixture's guard is unchanged.
+- **The models and `0014`:**
+  - the migration applies from zero in all five database jobs and locally;
+  - from `0013`, judged by reading: the renames keep their values, the removals drop theirs, and a registration row would fail the new foreign key and roll the migration back;
+  - `test_model_definitions.py` gains only B1's entries.
+- **The seal:** the seal test catches a module reached at import time at any depth, but not a lazy import made at request time from outside `glow_api/*.py` (its reach, to record). The runtime names no factory.
+- **The cases:** all twelve match D29 and AM13, none vacuous. The token pool's derivation is sound and held by the scan before case 1. The follow-ups (F1, F4, A2R-6, A2R-7, the README's list, A2R-13, A1's lines) are done as their entries say.
+- **The records:** they hold except under B1R-1, B1R-4, B1R-6 and B1R-7. Of the four items routed to B2 (CI's `mypy` list, the CI policy's line 13, the README's lines 76 and 216, A2's order-dependent test), none is a defect D-07 names.
+
+**Its probe of B1R-1** (a throwaway PostgreSQL 17.11):
+1. A register's `put` succeeded, then the database was made unreachable at the command's commit.
+2. `device()` answered `error`, which the route serves as `state_conflict`.
+3. `_park` logged its fixed line.
+4. With the database back: no registration row, the reference in no pending discard, the store still holding the token, and no process stopped.
+
+A single terminated connection does not lose the reference: Django reconnects, and `_park` succeeds. The loss needs the database unreachable for `_park`'s own statement.
+
+**Its checks,** in a `git archive` copy of `e7e7e84`, each package from its own lock with `--require-hashes`, under `env -i`:
+- **The API:**
+  - `check`: clean;
+  - tests: `Ran 731 tests … OK (skipped=2)` (A1's two history tests, which need git history the archive lacks);
+  - Ruff and format: clean (187 files);
+  - `mypy`: 99 files; `mypy glow_notifications`: 8 files, no issue;
+  - `makemigrations --check`: "No changes detected".
+- **The proof:** `Ran 428 tests … OK`; Ruff and mypy clean (78 files).
+- **Local database runs** under P06.DB's D4 (informational): the chat suite 30/30 in 179.2 s, both scans clean, `ROW LOCKS (D14): PASS`, `CHAT VERDICT: PASS`. Everything was removed afterwards.
+
+**Its reversals,** each on a copy, restored byte for byte:
+
+| Reversal | What fails |
+|---|---|
+| The installation from the body | 4 offline tests; cases 1, 4 |
+| The `put` inside the transaction | the store-first structure test; cases 4, 12 |
+| The installation left out of the digest | its structure test; case 5 |
+| A 401 inside the locks without the challenge | 3 offline tests; case 8 |
+| The adapter's bound removed | the substring pin only; case 7 |
+| A refusal naming a value | `RouteTests` (7); 8 cases |
+| The runtime including `glow_notifications.urls`, or serving an F12 path | the test command or `test_the_runtime_serves_none_of_b1s_routes` |
+| `_park` doing nothing | no offline test; cases 5, 7, 8, 9, 12 |
+| The transfer's re-read not compared | no offline test; case 10 |
+| **`_hold_for_discard` doing nothing** | **none** (B1R-3) |
+| The session row unlocked | case 8 |
+| A token written to a row | cases 2, 5, 12 |
+
+Settings needing no active registration, and settings locking one row only, failed no offline test; it did not run their database halves.
+
+**The runs** as it read them:
+- **45900925199** (`push`, `e7e7e84`): all twelve jobs passed, the gate "Application checks passed"; the chat job 179 s, 30/30 in 113.5 s.
+- **45904055757** (`pull_request`, `9bf7141`): all twelve passed; the chat job 176 s, 30/30 in 109.4 s.
+- **Codex:**
+  - review 6081023564 of `cd920fd` left one P2 thread, comment 4713760650, on `persistence.py` line 376; unresolved, not outdated, no reply;
+  - its review of `9bf7141` completed at 22:21 UTC with no new comment.
+
+**Its findings** (in its words, shortened):
+
+| ID | Severity | Where (at `e7e7e84`) | Finding | Its class |
+|---|---|---|---|---|
+| B1R-1 | Should fix | `glow_notifications/persistence.py` 370 to 376 (`_park`), called at 460 to 461 | Codex's P2, confirmed on a database. A handled database failure after the store's `put` loses the reference: no registration, no pending discard, the token held, and no sweep can find it. The custody sentences in `production-contracts.md` and `data-model.md` state AM4's rule without this exception; the record's limit names only a process stop | Security boundary: a custody rule left open |
+| B1R-2 | Should fix | `persistence.py` 460 (`done is None` read as "not saved") | After a commit whose acknowledgement is lost (simulated), the saved reference is also parked. The owner's later revoke answers 409 `state_conflict`, since the pending discards' uniqueness refuses the retire; a rotation or a transfer fails the same way. B2's sweep would then discard a token in use. No constraint stops a reference being in both tables | Security boundary (custody), and behaviour (a revoke from `active` refused) |
+| B1R-3 | Should fix (tests) | `persistence.py` 362 to 367 (`_hold_for_discard`), 381 to 387 | With `_hold_for_discard` a no-op, all 94 of B1's offline tests and all 12 of its cases pass. The behaviour is right: with the store's discard made to fail, a rotation, a revoke and a transfer each left the retired reference pending. D18's "a failed discard waits in its table" is unproven | Missing test at a security boundary |
+| B1R-4 | Nit | The database server's log | On the one-active-row constraint's refusal, PostgreSQL's own log wrote the installation (`DETAIL: Key (installation_id)=…`) and the failing statement with a store reference. No token appeared; CI never prints the container's log. AM7's "never logged" holds for the application only | No: a limit, the database's log settings to P11 |
+| B1R-5 | Nit | `glow_domain/notifications.py` 250 to 257 | The port does not say that `put` returns a fresh reference each time, which the adapter relies on: a store returning one reference per token would make a rotation with the same token discard the reference it had just saved. The fixture issues a new one | No: to P09.2 and P11B, with a docstring line |
+| B1R-6 | Nit | The record, "The threat model's inputs" | In a race, a first register's `state_conflict` is reachable only when another account holds, held or is registering that installation; a transfer's answer waits for the holder's token's discard, which a first registration's does not. The caller already holds the identifier | No |
+| B1R-7 | Nit | `production-contracts.md`, the codes bullet | "(503, retryable), and so is a device command when no token store is configured" reads as retryable; the code answers not retryable (`contract.py` 94), as the record says | No |
+| B1R-8 | Nit | `persistence.py`, `device()` | Every register costs a `put` before any check inside the locks: a refused, replayed or conflicting one leaves a token and a pending row until B2's sweep, and nothing bounds a member's rate | No: to B2's sweep and P11B |
+| B1R-9 | Nit | `models.py`, `DeviceRegistration.session` | It cascades on delete, as `account` does: a deleted session row would drop registrations with their references. No writer deletes one today | No: to D30's P08 carry |
+
+**Its proposed remedies for B1R-1:**
+- **(a) the smallest:** `_park`'s `except` discards through the store, with a second fixed log line if that fails too. Its residual: after a lost commit acknowledgement with the database unreachable, that discard removes a token the committed registration holds.
+- **(b) Codex's "recoverable handle":** write the pending row before the transaction and delete it in the transaction that saves the reference. That closes B1R-1 and B1R-2 and narrows the process-stop limit. It changes D18's custody sentence (a design point in B1's stop rule) and constrains B2's sweep, which must not discard a row whose command is in flight.
+- **B1R-2,** if (a): don't park a reference a registration holds (one conditional insert), or carry it to B2's sweep with a recorded limit.
+- **B1R-3:** one case using the store's `fail_next_discard` for the three transitions.
+
+**What it did not read or run:**
+- `chat_cases.py`, `chat_support.py`, `test_chat_offline.py`, `test_model_definitions.py`, `test_notifications.py` and `models.py` whole; it read every changed hunk and the parts B1 relies on.
+- A migration from `0013` with rows present: its session's permission check refused the partial `migrate`, which the prompt allows only through the proof's own commands.
+- The contract's and the mobile app's checks (B1 changes neither; both runs passed them).
+- The record's other reversals, and the whole suite under each reversal (it ran B1's twelve cases through a subset runner).
+- Notion, DM-99 and DM-100, the carried-items file, and P06.DB's brief beyond D4 and D5.
+
+**The manager's checks** (App Manager 13, 27 November 2026):
+- **The live state:**
+  - `main` at `988a36a`; the manager branch and PR60 at `9bf7141`; B1's branch at `f106105`; `claude/dev-manager` at `60325b1`;
+  - PR60's one thread (comment 4713760650) unresolved, not outdated;
+  - the runs on `9bf7141`: 45904055757 (`pull_request`) and 45904050215 (`push`), both success.
+- **B1R-1, read:** `device()` parks the fresh reference after `_run` whenever `done is None or not done.saved` (`persistence.py` 460 to 461). `_park` catches every exception from its insert and logs a fixed line only (370 to 376), so nothing holds the reference once that insert fails.
+- **B1R-2, read:** the same condition reads `done is None`, an unknown outcome (a commit whose acknowledgement was lost included), as "not saved".
+- **B1R-3, read:** the only test that calls `fail_next_discard` is `tests/test_notifications.py` line 933, against the in-memory fixture. No adapter test or database case makes a retired reference's discard fail.
+
+**Disposition** (App Manager 13; the manager workflow's step 6, "What a correction pass is for" and "Fix or carry, by rule", under D-07). Either form of B1R-1's fix changes a custody decision (AM4's and D18's sentences, and with (b) B2's sweep), so the form goes to Dev Manager 7 first ([DM-102](../../ephemeral/2026-11-27-dm-102-sv4-b1-c1-custody.md)):
+
+| Finding | Disposition | Why |
+|---|---|---|
+| B1R-1 | **Fixed before the merge**, by correction B1-C1; the form by DM-102, item 1 | A custody rule left open at a security boundary in B1's own code, and custody sentences the merge reads; classes 2 and 3 of the review prompt |
+| B1R-2 | **Fixed with B1R-1**, by B1-C1; the form by DM-102, item 1 | The same root, at the same boundary, and a revoke from `active` refused (class 1) |
+| B1R-3 | **Fixed**, by B1-C1 (a test that fails with `_hold_for_discard` a no-op); its form by DM-102, item 2 | A missing test at a security boundary (custody) |
+| B1R-5 | **Fixed**, by B1-C1 (the port's docstring states it), and carried to P09.2 and P11B (the real store must meet it) | Either form of B1R-1's fix rests on it |
+| B1R-4, B1R-6, B1R-7 | **Fixed**, by B1-C1, in the files it changes (AM7's sentence narrowed to the application; the record's two sentences; the codes bullet); the database's log settings carried to P11 | Nits in files the correction changes, as A2R-5 in A2-C1 |
+| B1R-8 | **Carried** to B2 (the sweep's bound) and P11B (rate limits) | A nit in no class |
+| B1R-9 | **Carried** to P08, with D30's carry | A nit in no class |
+| r19's database case | **Carried** to B2, which changes the chat suite | A limit: the code's order is right |
+| The seal test's reach; the port's order difference; the migration from `0013` with rows, judged by reading | **Recorded here** as limits | None in a class |
+| Codex's P2 thread (comment 4713760650) | Resolved once B1-C1's fix and Codex's review of its head confirm it | It names B1R-1 |
