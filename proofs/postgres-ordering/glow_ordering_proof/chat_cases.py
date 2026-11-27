@@ -15,7 +15,12 @@ D2): a cause published ``hidden`` stays hidden for the rest of the run. So every
 cause read-only runs first, and the three cases that read or publish a cause ``hidden``
 (``ar13.*``, ``d5.each_cause_hidden`` and ``reads.session_ended_in_locks_answers_as_hidden``) run
 last, in that order. SV4 B1's cases (``notifications.*``: F12's devices and settings through F12's
-routes; its brief's D16 to D20 and D29) run just before them, and read no conversation.
+routes; its brief's D16 to D20 and D29) run just before them, and read no conversation. SV4 B2's
+cases (``triggers.*``, ``deliverer.*``, ``logout.*``, ``sweeps.*``, ``d26.*``, ``g04.*``,
+``ledger.*`` and ``locks.*``: the triggers, the notification deliverer, F12's ``logout``, the
+sweeps, D26's sameness, G-04's read and the ledger; its brief's D21 to D27 and D29, with the items
+carried to B2) run just before B1's, so that B1's last case queries the rows for every token after
+the deliverer and the sweeps have run; none publishes a cause hidden.
 
 Rows written only in setup (a seeded population and its matches, an active block beside an active
 match, a withdrawn consent with a visible profile, an ``incomplete`` profile) are test data, named
@@ -25,7 +30,7 @@ where a case writes each, never an application writer.
 from __future__ import annotations
 
 import json
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from functools import partial
 from typing import Any
@@ -48,8 +53,10 @@ from glow_ordering_proof.chat_support import (
     commit_answer_lost,
     handle_write_fails,
     lock_statements,
+    notification_delivery,
     provider,
     route_reads,
+    run_sweeps,
     session_of,
     token_store,
 )
@@ -66,7 +73,7 @@ class Case:
 CASES: list[Case] = []
 # The suite's case count, pinned: a case lost or added without this changing fails the run before
 # any case runs, and the offline tests.
-CASE_COUNT = 37
+CASE_COUNT = 60
 
 
 def case(
@@ -1269,11 +1276,6 @@ def _token_of(reference: str) -> str | None:
     return None if found is None else str(found)
 
 
-def _references_of(token: str) -> list[str]:
-    """Every reference the store issued for ``token`` (a replay's ``put`` issues another)."""
-    return [ref for ref in token_store().issued if _token_of(ref) == token]
-
-
 def _issued_by(call: Callable[[], Any]) -> tuple[Any, list[str]]:
     """``call``'s result, and the references the store issued while it ran, in order (SV4 B1-C1):
     a reference a command discarded resolves to no token any more, so it is found by when it was
@@ -1355,6 +1357,1324 @@ def _held_against(
     expect(waited is not None and waited.observed, f"{what}: it waited on the writer")
     expect(holder.error is None and request.error is None, f"{what}: neither raised")
     return request.result, holder.result
+
+
+# -- SV4 B2: the triggers, the deliverer, logout, the sweeps and G-04's read ---------------------
+#
+# Its brief's D21 to D27 and D29's B2 cases, with the items carried to B2. They run before B1's F12
+# cases, so that B1's last case, ``notifications.no_token_in_any_row_or_answer``, queries the rows
+# for every token after the deliverer and the sweeps have run. The deliverer and the sweeps take
+# every due row of the database, the earlier cases' included, so each case first drains the
+# notification outbox, then judges only its own events, rows and pushes, and leaves no event of its
+# own waiting on a backoff. Rows a case backdates (a session's expiry, an event's or a pending
+# discard's time) are test data, standing for time passing; each is named where it is written.
+
+NOTIFICATIONS_SCHEMA = "glow-notifications-1"
+# P06.3's content (D4), written out here rather than read from the code it checks.
+CONTENT = {
+    "match": {
+        "title": "Glow",
+        "body": "You have a new match.",
+        "data": {"kind": "match", "route": "/matches"},
+    },
+    "message": {
+        "title": "Glow",
+        "body": "You have a new message.",
+        "data": {"kind": "message", "route": "/conversations"},
+    },
+}
+
+
+def _transport() -> Any:
+    from glow_ordering_proof.chat_support import push_transport
+
+    return push_transport()
+
+
+def _second_device(ctx: ChatContext, member: Member) -> Member:
+    """The same member on another device: a new session of the account (SV1's sign-in)."""
+    return Member(
+        member.email,
+        member.password,
+        member.user_id,
+        member.account_id,
+        ctx.profiles.identity.sign_in(member),
+    )
+
+
+def _session_id(ctx: ChatContext, member: Member) -> UUID:
+    """The ``AccountSession`` of the member's own device, by its access token."""
+    access = member.device.access
+    expect(access is not None, "the device holds an access token")
+    assert access is not None
+    return UUID(str(ctx.profiles.identity.account_session_of(access).pk))
+
+
+def _device(ctx: ChatContext, member: Member) -> str:
+    """A new installation registered from the member's device; its settings are the account's."""
+    installation = ctx.installation()
+    ctx.notifications(ctx.register(member, installation, 0), "a register")
+    return installation
+
+
+def _ready(ctx: ChatContext, member: Member, *, match: bool = True, message: bool = True) -> str:
+    """A new installation registered from the member's device, and the account's settings set."""
+    installation = ctx.installation()
+    first = ctx.notifications(ctx.register(member, installation, 0), "a register")
+    ctx.notifications(
+        ctx.save_settings(member, installation, match, message, int(first["version"])),
+        "the settings",
+    )
+    return installation
+
+
+def _notification(event_type: str, aggregate_id: Any) -> Any:
+    from glow_persistence.models import OutboxEvent
+
+    rows = list(
+        OutboxEvent.objects.filter(
+            schema_version=NOTIFICATIONS_SCHEMA, event_type=event_type, aggregate_id=aggregate_id
+        )
+    )
+    expect(len(rows) == 1, f"one {event_type} event for its aggregate ({len(rows)})")
+    return rows[0]
+
+
+def _notifications_of(event_type: str, aggregate_id: Any) -> int:
+    from glow_persistence.models import OutboxEvent
+
+    return int(
+        OutboxEvent.objects.filter(
+            schema_version=NOTIFICATIONS_SCHEMA, event_type=event_type, aggregate_id=aggregate_id
+        ).count()
+    )
+
+
+def _session_event(event_type: str, session_id: Any) -> Any:
+    from glow_persistence.models import OutboxEvent
+
+    rows = list(
+        OutboxEvent.objects.filter(
+            schema_version="glow-chat-1", event_type=event_type, aggregate_id=session_id
+        )
+    )
+    expect(len(rows) == 1, f"one {event_type} event for the session ({len(rows)})")
+    return rows[0]
+
+
+def _for(deliveries: list[Any], event_id: Any) -> Any:
+    """The one delivery of ``event_id`` among ``deliveries``."""
+    found = [d for d in deliveries if str(d.event_id) == str(event_id)]
+    expect(len(found) == 1, f"one delivery of the case's event ({len(found)})")
+    return found[0]
+
+
+def _pushes(event_id: Any) -> list[Any]:
+    """Every push the transport was given for the event, in order (in memory; never logged)."""
+    prefix = f"{event_id}:"
+    return [push for push in _transport().recorded if push.idempotency_key.startswith(prefix)]
+
+
+def _outcomes(event_id: Any, installation: str) -> list[str]:
+    key = f"{event_id}:{installation}"
+    return [push.outcome for push in _transport().recorded if push.idempotency_key == key]
+
+
+def _ledger(event_id: Any) -> dict[str, str]:
+    from glow_persistence.models import NotificationLedgerEntry
+
+    return {
+        str(installation): str(state)
+        for installation, state in NotificationLedgerEntry.objects.filter(
+            event_id=event_id
+        ).values_list("installation_id", "state")
+    }
+
+
+def _reference_of(member: Member, installation: str) -> str | None:
+    row = _registration(member.account_id, installation)
+    return None if row is None or row.token_secret_ref is None else str(row.token_secret_ref)
+
+
+def _settled(event_id: Any) -> tuple[str, int]:
+    from glow_persistence.models import OutboxEvent
+
+    row = OutboxEvent.objects.get(pk=event_id)
+    return str(row.state), int(row.attempts)
+
+
+def _writer_of(table: str, pk: Any) -> str:
+    """When the transaction that last wrote the row committed (``pg_xact_commit_timestamp`` of its
+    ``xmin``; the job's PostgreSQL tracks commit timestamps, and a savepoint's rows carry their
+    transaction's), to show that an event and its fact were written by one transaction; read
+    before either row is written again."""
+    from django.db import connection
+
+    with connection.cursor() as cursor:
+        cursor.execute(
+            f"SELECT pg_xact_commit_timestamp(xmin)::text FROM glow_persistence_{table}"
+            " WHERE id = %s",
+            [pk],
+        )
+        row = cursor.fetchone()
+    expect(row is not None and row[0] is not None, f"the {table} row's commit time")
+    return str(row[0])
+
+
+def _db_now() -> Any:
+    from django.db import connection
+
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT clock_timestamp()")
+        return cursor.fetchone()[0]
+
+
+def _due_now(event_id: Any) -> None:
+    """Test data: the event's backoff taken as elapsed (its ``available_at`` moved to now)."""
+    from glow_persistence.models import OutboxEvent
+
+    OutboxEvent.objects.filter(pk=event_id).update(available_at=_db_now())
+
+
+def _logged_out(member: Member, installation: str) -> bool:
+    row = _registration(member.account_id, installation)
+    return row is not None and (row.state, row.ended_by, row.token_secret_ref) == (
+        "revoked",
+        "logout",
+        None,
+    )
+
+
+def _discarded(references: Iterable[str | None]) -> bool:
+    """Each reference's token gone from the store and in no pending discard."""
+    pending = _pending()
+    return all(
+        reference is not None and _token_of(reference) is None and reference not in pending
+        for reference in references
+    )
+
+
+# -- B2-1. a match notifies the earlier liker only (D21, D22; AM8) -------------------------------
+
+
+@case("triggers.a_match_notifies_the_earlier_liker_only", "D21", "D22", "AM8", "F09", "F12")
+def a_match_notifies_the_earlier_liker_only(ctx: ChatContext) -> str:
+    """SV3's like writes ``notify_match`` in the transaction that makes the match, naming the like's
+    target, the member whose earlier like it matched, as its recipient; the deliverer pushes P06.3's
+    content to that member's installation only, under the ledger key, naming the device by its
+    reference, and records it; the completing liker's installation gets nothing (AM8: the recipient
+    rule rests on the like's writer)."""
+    first, second = ctx.visible(), ctx.visible()
+    earlier, later = _ready(ctx, first), _ready(ctx, second)
+    ctx.notify()
+    match = ctx.matched(first, second)  # ``first`` likes first; ``second``'s like matches it
+    event = _notification("notify_match", match.id)
+    expect(
+        (str(event.payload_ref), str(event.state), int(event.aggregate_version))
+        == (str(first.account_id), "pending", 1),
+        "the event names the earlier liker as its recipient, pending",
+    )
+    expect(event.dedup_key == f"notify_match:{match.id}:1", "its dedup key: type, match, version")
+    expect(
+        _writer_of("outboxevent", event.id) == _writer_of("match", match.id),
+        "written by the transaction that made the match",
+    )
+    done = _for(ctx.notify(), event.id)
+    expect((done.outcome, done.sent) == ("delivered", 1), f"delivered once ({done.outcome})")
+    pushes = _pushes(event.id)
+    expect(
+        [push.idempotency_key for push in pushes] == [f"{event.id}:{earlier}"],
+        "one push, to the earlier liker's installation, under its ledger key",
+    )
+    expect(
+        pushes[0].outcome == "accepted" and pushes[0].payload == CONTENT["match"],
+        "accepted, with P06.3's content",
+    )
+    expect(pushes[0].reference == _reference_of(first, earlier), "the device named by reference")
+    expect(
+        not any(push.idempotency_key.endswith(later) for push in _transport().recorded),
+        "the completing liker's installation got nothing",
+    )
+    expect(_ledger(event.id) == {earlier: "sent"}, "the ledger: one row, sent")
+    expect(_settled(event.id) == ("delivered", 1), "the event delivered at its first attempt")
+    return "notify_match for the earlier liker only: one push, P06.3's content, recorded"
+
+
+# -- B2-2. an accepted message notifies the other member only; a refused one nobody (D21) ---------
+
+
+@case("triggers.an_accepted_message_notifies_the_other_member_only", "D21", "D22", "F11", "F12")
+def an_accepted_message_notifies_the_other_member_only(ctx: ChatContext) -> str:
+    """Chat's delivery receipt writes ``notify_message`` in the transaction that marks a message
+    ``accepted``, once, naming the match's other member; the deliverer pushes to that member's
+    installation only. A refused send writes no submission and no event, and a message whose
+    delivery is dead-lettered (its submission ``failed``) writes none."""
+    from glow_domain.chat_provider import PROVIDER_REJECTED
+    from glow_persistence.models import MessageSubmission, OutboxEvent
+
+    one, two, match = _pair(ctx)
+    own, theirs = _ready(ctx, one), _ready(ctx, two)
+    ctx.notify()
+    submission = ctx.sent(one, match.id)
+    event = _notification("notify_message", submission)
+    expect(
+        (str(event.payload_ref), int(event.aggregate_version)) == (str(two.account_id), 2),
+        "the event names the other member, at the accepted submission's version",
+    )
+    expect(
+        _writer_of("outboxevent", event.id) == _writer_of("messagesubmission", submission),
+        "written by the transaction that marked the message accepted",
+    )
+    done = _for(ctx.notify(), event.id)
+    expect((done.outcome, done.sent) == ("delivered", 1), f"delivered once ({done.outcome})")
+    pushes = _pushes(event.id)
+    expect(
+        [push.idempotency_key for push in pushes] == [f"{event.id}:{theirs}"]
+        and pushes[0].payload == CONTENT["message"],
+        "one push, to the other member's installation, with P06.3's content",
+    )
+    expect(not _outcomes(event.id, own), "the sender's installation got nothing")
+    notified = OutboxEvent.objects.filter(
+        schema_version=NOTIFICATIONS_SCHEMA, event_type="notify_message"
+    ).count()
+    _refused(
+        ctx, ctx.send(one, ctx.message(one, match.id, expected=99)), 404, "not_found", "a send"
+    )
+    provider().fail_next("send_message", code=PROVIDER_REJECTED)
+    failed = ctx.sent(one, match.id)
+    expect(
+        MessageSubmission.objects.get(pk=failed).state == "failed",
+        "the message's delivery was dead-lettered",
+    )
+    expect(_notifications_of("notify_message", failed) == 0, "the failed message wrote none")
+    expect(
+        OutboxEvent.objects.filter(
+            schema_version=NOTIFICATIONS_SCHEMA, event_type="notify_message"
+        ).count()
+        == notified,
+        "neither the refused send nor the dead letter wrote an event",
+    )
+    return "notify_message for the other member only; a refused send and a dead letter: none"
+
+
+# -- B2-3. each send check refuses (D22, with D26) ------------------------------------------------
+
+
+@case("deliverer.each_send_check_refuses", "D22", "D26", "F12", "OD-12")
+def each_send_check_refuses(ctx: ChatContext) -> str:
+    """Whatever refuses a send refuses a notification, on facts read on each delivery: an accepted
+    message's notification, then each cause, then the deliverer: refused with its reason, no push,
+    no ledger row, the event settled at its first attempt. A block ends an active match as an
+    unmatch does (SV4 A1, D4), so both refuse ``match_not_active``; an active block beside an
+    active match (test data) reaches the block check."""
+    from glow_persistence.models import Block
+
+    from glow_ordering_proof.interaction_cases import _seed_withdrawn_consent
+
+    def block(one: Member, two: Member, match: Any, installation: str) -> None:
+        _block(ctx, one, two)
+
+    def beside(one: Member, two: Member, match: Any, installation: str) -> None:
+        # Test data: an active block beside an active match, a state no writer leaves.
+        Block.objects.create(actor_id=two.account_id, target_id=one.account_id, state="active")
+
+    def unmatch(one: Member, two: Member, match: Any, installation: str) -> None:
+        _unmatch(ctx, two, match)
+
+    def pause(one: Member, two: Member, match: Any, installation: str) -> None:
+        _visibility(ctx, two, "pause")
+
+    def own_pause(one: Member, two: Member, match: Any, installation: str) -> None:
+        _visibility(ctx, one, "pause")
+
+    def restriction(one: Member, two: Member, match: Any, installation: str) -> None:
+        _ok(_chat().restrict_profile(two.account_id))
+
+    def suspension(one: Member, two: Member, match: Any, installation: str) -> None:
+        _ok(_chat().suspend(one.account_id))
+
+    def consent(one: Member, two: Member, match: Any, installation: str) -> None:
+        # Test data: a withdrawal with the profile left visible, so the consent check is reached.
+        _seed_withdrawn_consent(two)
+
+    def no_device(one: Member, two: Member, match: Any, installation: str) -> None:
+        ctx.notifications(ctx.revoke(two, installation, 2), "the revoke")
+
+    def nothing(one: Member, two: Member, match: Any, installation: str) -> None:
+        return None
+
+    causes: list[tuple[str, Callable[[Member, Member, Any, str], None], str, bool]] = [
+        ("a block", block, "match_not_active", True),
+        ("an active block beside an active match", beside, "blocked", True),
+        ("an unmatch", unmatch, "match_not_active", True),
+        ("the recipient's pause", pause, "profile_unavailable", True),
+        ("the sender's pause", own_pause, "profile_unavailable", True),
+        ("a restriction", restriction, "profile_unavailable", True),
+        ("the sender's suspension", suspension, "account_not_active", True),
+        ("a withdrawn consent", consent, "consent_not_current", True),
+        ("the message setting off", nothing, "setting_off", False),
+        ("no device", no_device, "no_active_device", True),
+    ]
+    for name, apply, reason, message in causes:
+        one, two, match = _pair(ctx)
+        installation = _ready(ctx, two, message=message)
+        ctx.notify()
+        event = _notification("notify_message", ctx.sent(one, match.id))
+        apply(one, two, match, installation)
+        done = _for(ctx.notify(), event.id)
+        expect((done.outcome, done.code) == ("refused", reason), f"{name}: {done.code}")
+        expect(not _pushes(event.id) and not _ledger(event.id), f"{name}: no push, no ledger row")
+        expect(_settled(event.id) == ("delivered", 1), f"{name}: settled at its first attempt")
+    return f"{len(causes)} causes, each refused with its reason, no push, settled once"
+
+
+# -- B2-4. the checks read their facts under share locks (D22) ----------------------------------
+
+
+@case("deliverer.reads_its_facts_under_share_locks", "D22", "P06.DB 5.6", "AM10")
+def reads_its_facts_under_share_locks(ctx: ChatContext) -> str:
+    """The lease's transaction locks the event by its key, then reads every fact under a share
+    lock, in the check's order (both accounts, the lower first; the match; the message; the
+    profiles; the consents; the block rows; the recipient's settings, registrations and their
+    sessions), and the receipt locks the event again. A pause held at its commit is waited for,
+    and the delivery then refuses on the pause it committed."""
+    import re
+
+    one, two, match = _pair(ctx)
+    _ready(ctx, two)
+    ctx.notify()
+    event = _notification("notify_message", ctx.sent(one, match.id))
+    with lock_statements() as sent:
+        done = notification_delivery().deliver_next()
+    expect(done is not None and str(done.event_id) == str(event.id), "the case's event delivered")
+    expect(done.outcome == "delivered", f"delivered ({done.outcome})")
+    locks = []
+    for text, params in sent.statements:
+        table = re.search(r"\bFROM\s+(\w+)", text)
+        mode = re.search(r"\bFOR\s+(SHARE|UPDATE)\b", text)
+        expect(table is not None and mode is not None, "each locking statement names its table")
+        assert table is not None and mode is not None
+        locks.append((table.group(1).removeprefix("glow_persistence_"), mode.group(1), params))
+    order = [(table, mode) for table, mode, _ in locks]
+    expected = [
+        ("outboxevent", "UPDATE"),
+        ("appaccount", "SHARE"),
+        ("appaccount", "SHARE"),
+        ("match", "SHARE"),
+        ("messagesubmission", "SHARE"),
+        ("profile", "SHARE"),
+        ("consentdecision", "SHARE"),
+        ("consentdecision", "SHARE"),
+        ("block", "SHARE"),
+        ("notificationsettings", "SHARE"),
+        ("deviceregistration", "SHARE"),
+        ("accountsession", "SHARE"),
+        ("outboxevent", "UPDATE"),
+    ]
+    expect(order == expected, f"the locks in the check's order ({order})")
+    low, high = sorted((str(one.account_id), str(two.account_id)))
+    accounts = [str(params[0]) for table, _, params in locks if table == "appaccount"]
+    expect(accounts == [low, high], "the lower account first")
+    second = _notification("notify_message", ctx.sent(one, match.id))
+    result, paused = _held_against(
+        lambda held: _chat().pause_profile(two.account_id, probe=held),
+        lambda: notification_delivery().deliver_next(),
+        "the delivery against a pause",
+    )
+    expect(paused.outcome == "applied", "the pause applied")
+    expect(
+        result is not None
+        and str(result.event_id) == str(second.id)
+        and (result.outcome, result.code) == ("refused", "profile_unavailable"),
+        "the delivery waited, then refused on the committed pause",
+    )
+    return f"{len(order)} locks in the check's order; a held pause waited for, then refused"
+
+
+# -- B2-5. a redelivery sends only the devices not yet recorded (D22, D25) ------------------------
+
+
+@case(
+    "deliverer.a_redelivery_sends_only_the_devices_not_yet_recorded",
+    "D22",
+    "D25",
+    "P06.3",
+    "PV05",
+)
+def a_redelivery_sends_only_the_devices_not_yet_recorded(ctx: ChatContext) -> str:
+    """The first delivery fixes the recipient's active devices as ledger rows; a push the transport
+    accepted but whose answer was lost is retried after the backoff, which moves the event's
+    ``available_at``; the redelivery sends only the device not yet recorded, under the same ledger
+    key, so the transport answers ``repeat`` and the ledger records it; the device already recorded
+    is not sent again, and a device registered after the first delivery gets nothing."""
+    from datetime import timedelta
+
+    one, two, match = _pair(ctx)
+    first = _ready(ctx, two)
+    second = _device(ctx, two)
+    ctx.notify()
+    event = _notification("notify_message", ctx.sent(one, match.id))
+    lost, kept = sorted((first, second))
+    _transport().lose_next_answer(1)
+    done = _for(ctx.notify(), event.id)
+    expect(
+        (done.outcome, done.sent, done.code) == ("retry", 1, "transport_unavailable"),
+        f"retried: one recorded, one answer lost ({done.outcome})",
+    )
+    expect(_ledger(event.id) == {lost: "pending", kept: "sent"}, "both fixed; one recorded")
+    from glow_persistence.models import OutboxEvent
+
+    row = OutboxEvent.objects.get(pk=event.id)
+    expect(
+        row.state == "pending" and row.available_at - _db_now() > timedelta(seconds=25),
+        "pending, its available_at moved by its backoff",
+    )
+    late = _device(ctx, two)
+    _due_now(event.id)  # test data: the backoff elapsed
+    done = _for(ctx.notify(), event.id)
+    expect((done.outcome, done.sent) == ("delivered", 1), f"delivered ({done.outcome})")
+    expect(_outcomes(event.id, lost) == ["lost", "repeat"], "the lost one: a repeat, recorded")
+    expect(_outcomes(event.id, kept) == ["accepted"], "the recorded one: never sent again")
+    expect(not _outcomes(event.id, late), "the device registered later: nothing")
+    expect(_ledger(event.id) == {lost: "sent", kept: "sent"}, "the ledger: both sent, no third")
+    # The transport took each key once: ``accepted``, or ``lost`` (taken, its answer lost).
+    taken = [p.idempotency_key for p in _pushes(event.id) if p.outcome in ("accepted", "lost")]
+    expect(len(taken) == len(set(taken)) == 2, "the transport took each installation once")
+    expect(_settled(event.id) == ("delivered", 2), "delivered at its second attempt")
+    return "a lost answer retried after its backoff as a repeat; the recorded device not again"
+
+
+# -- B2-6. a sign-out, an expiry and a password change log out (D23) -----------------------------
+
+
+@case("logout.sign_out_expiry_and_password_change_revoke_registrations", "D23", "AM11", "F12")
+def sign_out_expiry_and_password_change_revoke_registrations(ctx: ChatContext) -> str:
+    """The deliverer takes ``session_revoked`` and ``session_expired`` (chat's, their one consumer)
+    as F12's ``logout``: a sign-out (SV1's logout route), an expiry (the actor finding the session
+    past its expiry, SV1's D6) and a password change (``sign_out_account``, every valid session)
+    each revoke the registrations that session made (``ended_by`` ``logout``), and only those, and
+    each token is discarded after the commit."""
+    from django.db.models.functions import Now
+    from glow_persistence.models import AccountSession
+
+    member = _f12_member(ctx)
+    phone, tablet = _second_device(ctx, member), _second_device(ctx, member)
+    first, second, third = _device(ctx, member), _device(ctx, phone), _device(ctx, tablet)
+    sessions = [_session_id(ctx, m) for m in (member, phone, tablet)]
+    references = [_reference_of(member, i) for i in (first, second, third)]
+    ctx.notify()
+    expect(
+        member.device.app("DELETE", "auth/session", bearer=member.device.access).status == 401,
+        "the first session signed out",
+    )
+    event = _session_event("session_revoked", sessions[0])
+    done = _for(ctx.notify(), event.id)
+    expect((done.outcome, done.revoked) == ("delivered", 1), f"a logout: {done.revoked}")
+    expect(_logged_out(member, first), "its registration revoked by logout")
+    expect(
+        _registration(member.account_id, second).state == "active"
+        and _registration(member.account_id, third).state == "active",
+        "the other sessions' registrations stay active",
+    )
+    # Test data: the phone's session past its expiry; the actor finds it on the next request.
+    AccountSession.objects.filter(pk=sessions[1]).update(expires_at=Now())
+    _refused(ctx, ctx.read_settings(phone, second), 401, "unauthenticated", "the expired session")
+    expect(AccountSession.objects.get(pk=sessions[1]).state == "expired", "the actor marked it")
+    event = _session_event("session_expired", sessions[1])
+    done = _for(ctx.notify(), event.id)
+    expect((done.outcome, done.revoked) == ("delivered", 1), f"an expiry: {done.revoked}")
+    expect(_logged_out(member, second), "its registration revoked by logout")
+    changed = tablet.device.app(
+        "POST",
+        "account/password/change",
+        {"current_password": member.password, "new_password": ctx.profiles.identity.password()},
+        bearer=tablet.device.access,
+    )
+    expect(changed.status == 401, "the password change signs every session out")
+    event = _session_event("session_revoked", sessions[2])
+    done = _for(ctx.notify(), event.id)
+    expect((done.outcome, done.revoked) == ("delivered", 1), f"a password change: {done.revoked}")
+    expect(_logged_out(member, third), "its registration revoked by logout")
+    expect(_discarded(references), "each token discarded after the commit, no pending row")
+    return "a sign-out, an expiry and a password change: each session's registration logged out"
+
+
+# -- B2-7. logout locks the account before the registrations (D23; B1's transfer) ------------------
+
+
+@case("logout.locks_the_account_before_the_registrations", "D23", "AM11", "AM3")
+def logout_locks_the_account_before_the_registrations(ctx: ChatContext) -> str:
+    """A rotation from another session holds the account row (its first lock) while a logout of
+    the session that made the registration is delivered: the logout waits on the account, as every
+    writer of a registration takes it first (B1's transfer relies on it), then finds the
+    registration rotated to the other session and changes nothing; neither deadlocks."""
+    from glow_ordering_proof.discovery_cases import _Worker
+
+    member = _f12_member(ctx)
+    phone = _second_device(ctx, member)
+    installation = _device(ctx, member)
+    session = _session_id(ctx, member)
+    ctx.notify()
+    expect(
+        member.device.app("DELETE", "auth/session", bearer=member.device.access).status == 401,
+        "the first session signed out",
+    )
+    event = _session_event("session_revoked", session)
+    body = ctx.device_body(installation, "register", 1, token=ctx.push_token())
+    caller = _f12_caller(phone, installation)
+    held = Hold("after_first_lock")
+    rotation = _Worker(lambda: _adapter().device(caller, body, probe=held))
+    logout = _Worker(lambda: notification_delivery().deliver_next())
+    waited = None
+    try:
+        rotation.start()
+        expect(held.reached["after_first_lock"].wait(REACH_SECONDS), "the rotation holds")
+        logout.start()
+        assert held.pid is not None
+        waited = _waiting_on(held.pid, logout.ended)
+    finally:
+        held.free()
+        expect(rotation.done(HOLD_SECONDS + 30) and logout.done(HOLD_SECONDS + 30), "both ended")
+    expect(waited is not None, "the logout waited on the rotation's account lock")
+    expect(rotation.error is None and logout.error is None, "neither raised")
+    expect(
+        (rotation.result.outcome, rotation.result.transition) == ("applied", "rotate"),
+        f"the rotation applied ({rotation.result.outcome}: {rotation.result.reason})",
+    )
+    done = logout.result
+    expect(
+        done is not None
+        and str(done.event_id) == str(event.id)
+        and (done.outcome, done.revoked) == ("delivered", 0),
+        "the logout delivered, changing nothing",
+    )
+    row = _registration(member.account_id, installation)
+    expect(
+        row.state == "active" and str(row.session_id) == str(session_of(phone)),
+        "the registration active, rotated to the other session",
+    )
+    return "the logout waited on the account, then found the registration rotated: no deadlock"
+
+
+# -- B2-8. the sweep marks a session past its expiry with no UserSession row (D24; F-9) ------------
+
+
+@case("sweeps.mark_a_session_past_its_expiry_with_no_user_session", "D24", "F-9", "D23")
+def sweeps_mark_a_session_past_its_expiry(ctx: ChatContext) -> str:
+    """Once allauth has purged a session's ``UserSession``, the actor refuses before its expiry
+    check, so no request marks it (F-9). The sweep, run by its management command, finds it by
+    ``expires_at``, marks it ``expired`` through ``expire_session`` (``session_expired`` written)
+    and, in the same run, revokes its registration as inert, discarding its token; the event's
+    later logout then changes nothing."""
+    import io
+
+    from allauth.usersessions.models import UserSession
+    from django.core.management import call_command
+    from django.db.models.functions import Now
+    from glow_persistence.models import AccountSession
+
+    member = _f12_member(ctx)
+    installation = _device(ctx, member)
+    reference = _reference_of(member, installation)
+    session = AccountSession.objects.get(pk=_session_id(ctx, member))
+    ctx.notify()
+    # Test data: allauth's purge of the UserSession, and the session past its expiry.
+    UserSession.objects.filter(pk=session.auth_session_ref).delete()
+    AccountSession.objects.filter(pk=session.pk).update(expires_at=Now())
+    _refused(ctx, ctx.read_settings(member, installation), 401, "unauthenticated", "the actor")
+    expect(AccountSession.objects.get(pk=session.pk).state == "valid", "no request marks it")
+    printed = io.StringIO()
+    call_command("notification_sweeps", stdout=printed)
+    expect(printed.getvalue().startswith("notification sweeps: "), "the command printed counts")
+    expect(AccountSession.objects.get(pk=session.pk).state == "expired", "the sweep marked it")
+    event = _session_event("session_expired", session.pk)
+    expect(_logged_out(member, installation), "its registration revoked as inert, by logout")
+    expect(_discarded([reference]), "its token discarded")
+    done = _for(ctx.notify(), event.id)
+    expect((done.outcome, done.revoked) == ("delivered", 0), "the later logout: no change")
+    return "a session with no UserSession found by expires_at, marked, its registration revoked"
+
+
+# -- B2-9. a suspended account's registrations revoked by the sweep (D23, D24) --------------------
+
+
+@case("sweeps.revoke_a_suspended_accounts_registrations", "D23", "D24", "F12")
+def sweeps_revoke_a_suspended_accounts_registrations(ctx: ChatContext) -> str:
+    """A suspension moves the account's epoch and writes no session event, so its registrations
+    stay ``active`` but inert (the deliverer refuses them); the sweep revokes each as ``logout``
+    under the account's lock, held in the account's suspended state, and discards its token."""
+    member = _f12_member(ctx)
+    phone = _second_device(ctx, member)
+    first, second = _device(ctx, member), _device(ctx, phone)
+    references = [_reference_of(member, i) for i in (first, second)]
+    _ok(_chat().suspend(member.account_id))
+    ctx.notify()
+    expect(
+        _registration(member.account_id, first).state == "active"
+        and _registration(member.account_id, second).state == "active",
+        "no event revokes them: both still active, inert",
+    )
+    report = run_sweeps()
+    expect(report.registrations_revoked >= 2, "the sweep revoked them")
+    expect(_logged_out(member, first) and _logged_out(member, second), "both revoked by logout")
+    expect(_discarded(references), "both tokens discarded")
+    return "a suspended account's two registrations revoked by the sweep, tokens discarded"
+
+
+# -- B2-10. the sweeps stop at their bound (D24) ------------------------------------------------
+
+
+@case("sweeps.stop_at_their_bound", "D24")
+def sweeps_stop_at_their_bound(ctx: ChatContext) -> str:
+    """One run marks at most 500 expired sessions, the earliest ``expires_at`` first; the next run
+    marks the rest. The sessions are test data: 501 rows of one account, each past its expiry."""
+    from datetime import timedelta
+
+    from glow_persistence.models import AccountSession, AppAccount
+
+    from glow_ordering_proof.chat_support import run_sweeps as sweeps
+
+    member = _f12_member(ctx)
+    epoch = AppAccount.objects.values_list("session_epoch", flat=True).get(pk=member.account_id)
+    sweeps()  # any session an earlier case left past its expiry is marked first
+    now = _db_now()
+    AccountSession.objects.bulk_create(
+        [
+            AccountSession(
+                account_id=member.account_id,
+                auth_session_ref=f"test-data-session-{uuid4().hex}",
+                epoch=epoch,
+                state="valid",
+                expires_at=now - timedelta(hours=1, seconds=index),
+            )
+            for index in range(501)
+        ]
+    )
+    latest = (
+        AccountSession.objects.filter(
+            account_id=member.account_id, state="valid", expires_at__lt=now
+        )
+        .order_by("-expires_at")
+        .values_list("pk", flat=True)
+        .first()
+    )
+    first = sweeps()
+    left = list(
+        AccountSession.objects.filter(
+            account_id=member.account_id, state="valid", expires_at__lt=now
+        ).values_list("pk", flat=True)
+    )
+    expect(first.sessions_marked == 500, f"the first run marked 500 ({first.sessions_marked})")
+    expect([str(pk) for pk in left] == [str(latest)], "the latest expiry left for the next run")
+    second = sweeps()
+    expect(second.sessions_marked == 1, f"the next run marked the rest ({second.sessions_marked})")
+    ctx.notify()  # their logouts, which change nothing
+    return "501 expired sessions: 500 in the first run, 1 in the next"
+
+
+# -- B2-11. no notification tells a block from an unmatch (D26) ---------------------------------
+
+
+@case("d26.no_notification_tells_a_block_from_an_unmatch", "D26", "D4", "DM-96", "F13")
+def no_notification_tells_a_block_from_an_unmatch(ctx: ChatContext) -> str:
+    """A message accepted, and a match made, just before a block and just before an unmatch, and
+    before a block that its blocker then lifts: every notification is refused with the same
+    reason, no push and no ledger row, and its event settles the same way, so neither member's
+    devices see a difference."""
+    seen = set()
+    for trigger in ("message", "match"):
+        for name in ("block", "unmatch", "block then unblock"):
+            if trigger == "message":
+                one, two, match = _pair(ctx)
+                _ready(ctx, two)
+                ctx.notify()
+                event = _notification("notify_message", ctx.sent(one, match.id))
+                blocker, blocked = one, two
+            else:
+                earlier, other = ctx.visible(), ctx.visible()
+                _ready(ctx, earlier)
+                ctx.notify()
+                match = ctx.matched(earlier, other)
+                event = _notification("notify_match", match.id)
+                blocker, blocked = other, earlier
+            if name == "unmatch":
+                _unmatch(ctx, blocker, match)
+            else:
+                _block(ctx, blocker, blocked)
+                if name == "block then unblock":
+                    _block(ctx, blocker, blocked, "unblock")
+            done = _for(ctx.notify(), event.id)
+            outcome = (done.outcome, done.code, done.sent, _settled(event.id))
+            expect(not _pushes(event.id) and not _ledger(event.id), f"{trigger}, {name}: none")
+            seen.add(outcome)
+    expect(
+        seen == {("refused", "match_not_active", 0, ("delivered", 1))},
+        f"one answer for every cause ({sorted(seen)})",
+    )
+    return "6 notifications (a message and a match; block, unmatch, block then unblock): alike"
+
+
+# -- B2-12. G-04's read after an unmatch and after a block (D27) -----------------------------------
+
+
+@case("g04.message_recipients_after_an_unmatch_and_a_block", "D27", "G-04")
+def message_recipients_after_an_unmatch_and_a_block(ctx: ChatContext) -> str:
+    """``message_recipients(sender)`` names each member who received an accepted message from the
+    sender, by match, and whether they answered there; a match with no message names no one; the
+    same after the sender unmatches one recipient and the other blocks the sender."""
+    from glow_notifications.recipients import (  # type: ignore[import-not-found]
+        message_recipients,
+    )
+
+    sender = ctx.visible()
+    answering, silent, quiet = ctx.visible(), ctx.visible(), ctx.visible()
+    first = ctx.matched(sender, answering)
+    second = ctx.matched(sender, silent)
+    ctx.matched(sender, quiet)
+    ctx.sent(sender, first.id)
+    ctx.sent(answering, first.id)
+    ctx.sent(sender, second.id)
+
+    def read() -> set[tuple[str, str, bool]]:
+        return {
+            (str(r.account_id), str(r.match_id), bool(r.answered))
+            for r in message_recipients(UUID(str(sender.account_id)))
+        }
+
+    expected = {
+        (str(answering.account_id), str(first.id), True),
+        (str(silent.account_id), str(second.id), False),
+    }
+    expect(read() == expected, "the two recipients, and who answered")
+    _unmatch(ctx, sender, first)
+    _block(ctx, silent, sender)
+    expect(read() == expected, "the same after an unmatch and a block")
+    back = {
+        (str(r.account_id), str(r.match_id), bool(r.answered))
+        for r in message_recipients(UUID(str(answering.account_id)))
+    }
+    expect(back == {(str(sender.account_id), str(first.id), True)}, "the answerer's own read")
+    ctx.notify()
+    return "2 recipients (one answered), kept after an unmatch and a block; no message, no one"
+
+
+# -- B2-13. the ledger's retention (D25) ---------------------------------------------------------
+
+
+@case("ledger.retention_after_thirty_days", "D25", "A05")
+def ledger_retention_after_thirty_days(ctx: ChatContext) -> str:
+    """The sweep removes a ledger row 30 days after its event was settled, delivered or
+    dead-lettered, measured from the event's ``updated_at``; it keeps a settled event's rows at 29
+    days and an unsettled event's rows however old. The ages are test data."""
+    from datetime import timedelta
+
+    from django.utils import timezone
+    from glow_persistence.models import OutboxEvent
+
+    one, two, match = _pair(ctx)
+    installation = _ready(ctx, two)
+    ctx.notify()
+
+    def delivered() -> Any:
+        event = _notification("notify_message", ctx.sent(one, match.id))
+        expect(_for(ctx.notify(), event.id).outcome == "delivered", "a delivered event")
+        return event
+
+    old, young = delivered(), delivered()
+    unsettled = _notification("notify_message", ctx.sent(one, match.id))
+    _transport().fail_next(1)
+    expect(_for(ctx.notify(), unsettled.id).outcome == "retry", "an unsettled event, retried")
+    dead = _notification("notify_message", ctx.sent(one, match.id))
+    _transport().fail_next(5)
+    for _ in range(5):
+        _due_now(dead.id)  # test data: each backoff elapsed
+        _for(ctx.notify(), dead.id)
+    expect(_settled(dead.id) == ("dead_letter", 5), "a dead-lettered event, after five attempts")
+    now = timezone.now()
+    for event, age in ((old, 31), (young, 29), (unsettled, 31), (dead, 31)):
+        # Test data: the event settled (or last changed) this many days ago.
+        OutboxEvent.objects.filter(pk=event.id).update(updated_at=now - timedelta(days=age))
+    report = run_sweeps()
+    expect(report.ledger_removed >= 2, f"the sweep removed rows ({report.ledger_removed})")
+    expect(not _ledger(old.id), "delivered 31 days ago: removed")
+    expect(not _ledger(dead.id), "dead-lettered 31 days ago: removed")
+    expect(_ledger(young.id) == {installation: "sent"}, "delivered 29 days ago: kept")
+    expect(_ledger(unsettled.id) == {installation: "pending"}, "unsettled: kept however old")
+    _due_now(unsettled.id)
+    expect(_for(ctx.notify(), unsettled.id).outcome == "delivered", "the unsettled one delivered")
+    return "removed at 31 days (delivered, dead-lettered); kept at 29 days and while unsettled"
+
+
+# -- B2-14. a retried push holds no later event (D22; AM9) ----------------------------------------
+
+
+@case("deliverer.a_retried_push_holds_no_later_event", "D22", "AM9", "D23")
+def a_retried_push_holds_no_later_event(ctx: ChatContext) -> str:
+    """A push whose call fails is retried after its backoff, which moves its ``available_at``, so
+    the next delivery takes the event behind it, here the recipient's sign-out, whose logout is
+    delivered first; the retried push then finds its fixed device revoked and sends nothing."""
+    one, two, match = _pair(ctx)
+    installation = _ready(ctx, two)
+    ctx.notify()
+    push = _notification("notify_message", ctx.sent(one, match.id))
+    session = _session_id(ctx, two)
+    _transport().fail_next(1)
+    delivery = notification_delivery()
+    first = delivery.deliver_next()
+    expect(
+        first is not None and str(first.event_id) == str(push.id) and first.outcome == "retry",
+        "the push's device fixed, its call failed, the event retried",
+    )
+    expect(
+        two.device.app("DELETE", "auth/session", bearer=two.device.access).status == 401,
+        "the recipient signed out, after the push",
+    )
+    logout = _session_event("session_revoked", session)
+    second = delivery.deliver_next()
+    expect(
+        second is not None
+        and str(second.event_id) == str(logout.id)
+        and (second.outcome, second.revoked) == ("delivered", 1),
+        "the logout behind it delivered next",
+    )
+    expect(_logged_out(two, installation), "the registration logged out")
+    _due_now(push.id)  # test data: the backoff elapsed
+    third = delivery.deliver_next()
+    expect(
+        third is not None
+        and str(third.event_id) == str(push.id)
+        and (third.outcome, third.sent, third.code) == ("delivered", 0, "no_active_device"),
+        "the retried push: its fixed device revoked, nothing sent",
+    )
+    expect(_outcomes(push.id, installation) == ["failed"], "one failed call, never sent")
+    return "the failed push moved by its backoff; the logout behind it delivered first"
+
+
+# -- B2-15. the window as recorded (D22; AM10) ----------------------------------------------------
+
+
+@case("deliverer.the_window_as_recorded", "D22", "AM10", "D26")
+def the_window_as_recorded(ctx: ChatContext) -> str:
+    """D22's recorded limit: a block committed after the lease's check and before the call does
+    not stop that push (the content says nothing of the other member); a later change that closes
+    the window would fail this case."""
+    from glow_notifications.delivery import DeliveryProbe  # type: ignore[import-not-found]
+    from glow_persistence.models import Block
+
+    from glow_ordering_proof.chat_support import Signal
+    from glow_ordering_proof.discovery_cases import _Worker
+
+    one, two, match = _pair(ctx)
+    installation = _ready(ctx, two)
+    ctx.notify()
+    event = _notification("notify_message", ctx.sent(one, match.id))
+
+    held = Signal()
+    worker = _Worker(lambda: notification_delivery().deliver_next(DeliveryProbe(after_lease=held)))
+    try:
+        worker.start()
+        expect(held.reached.wait(REACH_SECONDS), "the lease committed; the call not yet made")
+        _block(ctx, one, two)
+        expect(
+            Block.objects.filter(
+                actor_id=one.account_id, target_id=two.account_id, state="active"
+            ).exists(),
+            "the block committed",
+        )
+    finally:
+        held.free()
+        expect(worker.done(HOLD_SECONDS + 30), "the delivery ended")
+    expect(worker.error is None, "the delivery raised nothing")
+    done = worker.result
+    expect(
+        done is not None and (done.outcome, done.sent) == ("delivered", 1),
+        "the push still went (the window)",
+    )
+    expect(_outcomes(event.id, installation) == ["accepted"], "accepted, once")
+    return "a block committed between the check and the call did not stop that push (recorded)"
+
+
+# -- B2-16. the deliverer takes its four types only; chat's takes neither (D22, D23; AM11) -------
+
+
+@case("deliverer.takes_its_four_types_only", "D22", "D23", "AM11", "D21")
+def takes_its_four_types_only(ctx: ChatContext) -> str:
+    """The notification deliverer takes ``notify_match`` and ``notify_message`` in its schema and
+    ``session_revoked`` and ``session_expired`` in chat's, and no other event: a type of its own
+    schema it does not know, its types under chat's schema, chat's session types under its schema
+    and another chat type (test data) stay pending, untouched. Chat's deliverer takes neither
+    notification type: a match's and a message's notification stay pending through chat's
+    delivery, and the notification deliverer then settles both."""
+    from glow_persistence.models import OutboxEvent
+
+    planted = []
+    for schema, kind in (
+        (NOTIFICATIONS_SCHEMA, "notify_other"),
+        ("glow-chat-1", "notify_match"),
+        ("glow-chat-1", "notify_message"),
+        (NOTIFICATIONS_SCHEMA, "session_revoked"),
+        ("glow-chat-1", "block_changed"),
+    ):
+        # Test data: an event the deliverer must not take, due now.
+        aggregate = uuid4()
+        planted.append(
+            OutboxEvent.objects.create(
+                aggregate_id=aggregate,
+                aggregate_version=1,
+                event_type=kind,
+                schema_version=schema,
+                dedup_key=f"test-data:{kind}:{aggregate}:1",
+                payload_ref=aggregate,
+                state="pending",
+                available_at=_db_now(),
+            ).id
+        )
+    one, two = ctx.visible(), ctx.visible()
+    _ready(ctx, one)
+    match = ctx.matched(one, two)  # chat's delivery runs inside
+    submission = ctx.sent(two, match.id)  # and again
+    ours = [_notification("notify_match", match.id), _notification("notify_message", submission)]
+    expect(
+        all(_settled(event.id) == ("pending", 0) for event in ours),
+        "chat's deliverer took neither notification",
+    )
+    done = ctx.notify()
+    expect(all(_settled(event.id)[0] == "delivered" for event in ours), "the deliverer took both")
+    expect(
+        all(_settled(pk) == ("pending", 0) for pk in planted)
+        and not any(str(d.event_id) in {str(pk) for pk in planted} for d in done),
+        "no other event leased or touched",
+    )
+    OutboxEvent.objects.filter(pk__in=planted).delete()  # the test data removed
+    return "its four types only: 5 other events untouched; chat's deliverer took neither of ours"
+
+
+# -- B2-17 to B2-20. the pending discards' retry (D24's three steps; AO1; carried to B2) -----------
+
+
+def _aged(reference: str) -> None:
+    """Test data: the pending discard of ``reference`` older than the sweep's bound."""
+    from datetime import timedelta
+
+    from django.utils import timezone
+    from glow_persistence.models import PendingTokenDiscard
+
+    PendingTokenDiscard.objects.filter(token_secret_ref=reference).update(
+        created_at=timezone.now() - timedelta(minutes=16)
+    )
+
+
+@case("sweeps.a_handle_removed_before_its_save_refuses_the_save", "D24", "AO1", "D18", "AN1")
+def a_handle_removed_before_its_save(ctx: ChatContext) -> str:
+    """A register held at its transaction's start has written its handle; a sweep then leaves the
+    handle, younger than its bound, to its command; once the handle is past the bound (test data)
+    the sweep takes it (deletes it, finds no registration holding the reference, discards the
+    token); the save then finds its handle gone and refuses (``token_handle_missing``,
+    ``state_conflict``), and no registration holds the reference."""
+    from glow_persistence.models import DeviceRegistration
+
+    from glow_ordering_proof.discovery_cases import _Worker
+
+    member = _f12_member(ctx)
+    installation = ctx.installation()
+    body = ctx.device_body(installation, "register", 0, token=ctx.push_token())
+    caller = _f12_caller(member, installation)
+    before = len(token_store().issued)
+    held = BeginHold()
+    worker = _Worker(lambda: _adapter().device(caller, body, probe=held))
+    try:
+        worker.start()
+        expect(held.reached.wait(REACH_SECONDS), "the register holds at its transaction's start")
+        issued = token_store().issued[before:]
+        expect(len(issued) == 1 and issued[0] in _pending(), "its handle written")
+        run_sweeps()
+        expect(
+            issued[0] in _pending() and _token_of(issued[0]) is not None,
+            "a handle younger than the bound is left to its command",
+        )
+        _aged(issued[0])
+        report = run_sweeps()
+        expect(report.discards_taken >= 1 and report.discarded >= 1, "the sweep took, discarded")
+        expect(issued[0] not in _pending() and _token_of(issued[0]) is None, "the handle gone")
+    finally:
+        held.free()
+        expect(worker.done(HOLD_SECONDS + 30), "the register ended")
+    expect(worker.error is None, "the register raised nothing")
+    result = worker.result
+    expect(
+        (result.outcome, result.reason) == ("refused", "token_handle_missing"),
+        f"the save refused ({result.outcome}: {result.reason})",
+    )
+    expect(_served(result) == ("state_conflict", False), "served state_conflict")
+    expect(
+        not DeviceRegistration.objects.filter(token_secret_ref=issued[0]).exists(),
+        "no registration holds the reference",
+    )
+    expect(_discarded(issued), "the token discarded, no pending row")
+    return "the sweep took the handle first: the save refused token_handle_missing, nothing held"
+
+
+@case("sweeps.a_held_reference_is_removed_and_not_discarded", "D24", "AO1", "B1C1R-4", "P1")
+def a_held_reference_is_removed_and_not_discarded(ctx: ChatContext) -> str:
+    """A pending discard whose reference a registration holds (a failed re-read's handle; test
+    data): while it exists the holder's revoke is refused (the pending discards' uniqueness). The
+    sweep deletes the row, reads the registrations with no lock (the holder's next revoke holds the
+    registration's row ``FOR UPDATE`` meanwhile, and the sweep does not wait on it), finds the
+    holder and discards nothing; the holder's revoke then succeeds and discards its own token."""
+    from glow_persistence.models import PendingTokenDiscard
+
+    from glow_ordering_proof.discovery_cases import _Worker
+
+    member = _f12_member(ctx)
+    installation = _device(ctx, member)
+    reference = _reference_of(member, installation)
+    assert reference is not None
+    # Test data: the row a failed re-read leaves, for a reference the registration holds.
+    PendingTokenDiscard.objects.create(token_secret_ref=reference)
+    _aged(reference)
+    refused = ctx.revoke(member, installation, 1)
+    _refused(ctx, refused, 409, "state_conflict", "the holder's revoke while the row exists")
+    expect(_token_of(reference) is not None, "its token still held")
+    body = ctx.device_body(installation, "revoke", 1)
+    caller = _f12_caller(member, installation)
+    held = Hold("after_locks")
+    revoke = _Worker(lambda: _adapter().device(caller, body, probe=held))
+    sweep = _Worker(run_sweeps)
+    try:
+        revoke.start()
+        expect(held.reached["after_locks"].wait(REACH_SECONDS), "the revoke holds its locks")
+        sweep.start()
+        expect(sweep.done(REACH_SECONDS), "the sweep finished while the revoke held its locks")
+    finally:
+        held.free()
+        expect(revoke.done(HOLD_SECONDS + 30) and sweep.done(HOLD_SECONDS + 30), "both ended")
+    expect(sweep.error is None and revoke.error is None, "neither raised")
+    report = sweep.result
+    expect(
+        report.discards_held >= 1 and report.discarded == 0,
+        "the sweep removed the row and discarded nothing",
+    )
+    expect(
+        (revoke.result.outcome, revoke.result.transition) == ("applied", "revoke"),
+        f"the holder's revoke then succeeded ({revoke.result.outcome})",
+    )
+    expect(_discarded([reference]), "the holder discarded its own token")
+    return "the row removed, the held token kept; the holder's revoke then succeeded"
+
+
+@case("sweeps.a_save_before_the_sweeps_delete_wins", "D24", "AO1", "P3", "DM-102")
+def a_save_before_the_sweeps_delete(ctx: ChatContext) -> str:
+    """A register's save has deleted its handle and holds at its commit; the sweep, which read the
+    handle as a candidate past its bound, waits on that row at its own delete; the save commits, so
+    the sweep's delete removes no row and the sweep discards nothing: the registration keeps its
+    token."""
+    from glow_ordering_proof.chat_support import StagedHold
+    from glow_ordering_proof.discovery_cases import _Worker
+
+    member = _f12_member(ctx)
+    installation = ctx.installation()
+    body = ctx.device_body(installation, "register", 0, token=ctx.push_token())
+    caller = _f12_caller(member, installation)
+    before = len(token_store().issued)
+    held = StagedHold()
+    worker = _Worker(lambda: _adapter().device(caller, body, probe=held))
+    sweep = _Worker(run_sweeps)
+    waited = None
+    try:
+        worker.start()
+        expect(held.began.wait(REACH_SECONDS), "the register holds at its start")
+        issued = token_store().issued[before:]
+        expect(len(issued) == 1 and issued[0] in _pending(), "its handle written")
+        _aged(issued[0])
+        held.go.set()
+        expect(held.committing.wait(REACH_SECONDS), "the save holds at its commit")
+        sweep.start()
+        assert held.pid is not None
+        waited = _waiting_on(held.pid, sweep.ended)
+    finally:
+        held.free()
+        expect(worker.done(HOLD_SECONDS + 30) and sweep.done(HOLD_SECONDS + 30), "both ended")
+    expect(waited is not None, "the sweep's delete waited on the save's")
+    expect(worker.error is None and sweep.error is None, "neither raised")
+    expect(worker.result.outcome == "applied", f"the save applied ({worker.result.outcome})")
+    report = sweep.result
+    expect(
+        report.discards_gone >= 1 and report.discarded == 0,
+        "the sweep's delete removed no row; it discarded nothing",
+    )
+    expect(
+        _reference_of(member, installation) == issued[0] and _token_of(issued[0]) is not None,
+        "the registration holds its reference, its token kept",
+    )
+    return "the save committed first: the sweep's delete removed nothing, nothing discarded"
+
+
+@case("sweeps.a_failed_discard_is_written_again_under_a_new_key", "D24", "AO1", "DM-103")
+def a_failed_discard_is_written_again(ctx: ChatContext) -> str:
+    """A register held at its transaction's start has written its handle; the sweep takes it, and
+    the store's discard fails, so the sweep writes the row again under a new key; the register,
+    holding the old key, is then refused (``token_handle_missing``), and discards the token itself
+    once its outcome is known."""
+    from glow_persistence.models import PendingTokenDiscard
+
+    from glow_ordering_proof.discovery_cases import _Worker
+
+    member = _f12_member(ctx)
+    installation = ctx.installation()
+    body = ctx.device_body(installation, "register", 0, token=ctx.push_token())
+    caller = _f12_caller(member, installation)
+    before = len(token_store().issued)
+    held = BeginHold()
+    worker = _Worker(lambda: _adapter().device(caller, body, probe=held))
+    try:
+        worker.start()
+        expect(held.reached.wait(REACH_SECONDS), "the register holds at its start")
+        issued = token_store().issued[before:]
+        key = PendingTokenDiscard.objects.values_list("pk", flat=True).get(
+            token_secret_ref=issued[0]
+        )
+        _aged(issued[0])
+        token_store().fixture.fail_next_discard(1)
+        report = run_sweeps()
+        expect(report.rewritten >= 1, "the failed discard written again")
+        again = PendingTokenDiscard.objects.values_list("pk", flat=True).get(
+            token_secret_ref=issued[0]
+        )
+        expect(str(again) != str(key), "under a new key")
+        expect(_token_of(issued[0]) is not None, "its token still held")
+    finally:
+        held.free()
+        expect(worker.done(HOLD_SECONDS + 30), "the register ended")
+    expect(worker.error is None, "the register raised nothing")
+    result = worker.result
+    expect(
+        (result.outcome, result.reason) == ("refused", "token_handle_missing"),
+        f"the register holding the old key refused ({result.reason})",
+    )
+    expect(_registration(member.account_id, installation) is None, "no registration")
+    expect(_discarded(issued), "the register discarded it once its outcome was known")
+    return "written again under a new key: the old key's save refused, the token discarded"
+
+
+@case("sweeps.a_failed_read_writes_the_row_again", "D24", "AO1", "D18")
+def a_failed_read_writes_the_row_again(ctx: ChatContext) -> str:
+    """A revoke whose discard fails leaves its retired reference pending (B1's retire path). The
+    sweep takes the row once it is past the bound, and its read of the registrations then fails
+    (simulated): it discards nothing and writes the row again under a new key, so the token is
+    still held by a row; a later run, once the new row is past the bound, discards it."""
+    from glow_persistence.models import PendingTokenDiscard
+
+    from glow_ordering_proof.chat_support import registrations_read_fails
+
+    member = _f12_member(ctx)
+    installation = _device(ctx, member)
+    reference = _reference_of(member, installation)
+    assert reference is not None
+    token_store().fixture.fail_next_discard(1)
+    ctx.notifications(ctx.revoke(member, installation, 1), "the revoke")
+    expect(
+        reference in _pending() and _token_of(reference) is not None,
+        "the retired reference waits for the sweep",
+    )
+    key = PendingTokenDiscard.objects.values_list("pk", flat=True).get(token_secret_ref=reference)
+    _aged(reference)
+    with registrations_read_fails() as refused:
+        report = run_sweeps()
+    expect(refused == [1], "the sweep's read of the registrations failed (simulated)")
+    expect(
+        (report.discards_taken, report.rewritten, report.discarded, report.lost) == (1, 1, 0, 0),
+        "taken, written again, nothing discarded",
+    )
+    again = PendingTokenDiscard.objects.values_list("pk", flat=True).get(token_secret_ref=reference)
+    expect(str(again) != str(key), "under a new key")
+    expect(_token_of(reference) is not None, "the token still held, by the new row")
+    _aged(reference)
+    later = run_sweeps()
+    expect(later.discarded == 1, f"the next run discarded it ({later.discarded})")
+    expect(_discarded([reference]), "the token discarded, no pending row")
+    return "a failed read: nothing discarded, the row written again; the next run discarded it"
+
+
+# -- B2-21. a settings command and a send of one session at once (B1's review, r19) --------------
+
+
+@case("locks.a_settings_command_and_a_send_at_once", "D18", "AM3", "r19")
+def a_settings_command_and_a_send_at_once(ctx: ChatContext) -> str:
+    """A send holding the member's account row (its first lock) while a settings command of the
+    same session starts: the settings command waits on the account, as its order (the account,
+    then the session) says, and both finish with no deadlock. Locking the session first would
+    deadlock against the send, which locks the session after the accounts (B1's review, r19)."""
+    from glow_domain.chat import SendCommand
+
+    from glow_ordering_proof.discovery_cases import _Worker
+
+    one, two, match = _pair(ctx)
+    member = one if str(one.account_id) < str(two.account_id) else two
+    installation = _ready(ctx, member)
+    session = session_of(member)
+    version = int(_registration(member.account_id, installation).version)
+    held = Hold("after_first_lock")
+    send = _Worker(
+        lambda: _chat().send(
+            SendCommand(session, UUID(str(match.id)), 1, f"k{uuid4().hex}", "x" * 10), probe=held
+        )
+    )
+    intent = ctx.settings_body(False, True, version)
+    caller = _f12_caller(member, installation)
+    settings = _Worker(lambda: _adapter().settings(caller, intent))
+    waited = None
+    try:
+        send.start()
+        expect(held.reached["after_first_lock"].wait(REACH_SECONDS), "the send holds the account")
+        settings.start()
+        assert held.pid is not None
+        waited = _waiting_on(held.pid, settings.ended)
+    finally:
+        held.free()
+        expect(send.done(HOLD_SECONDS + 30) and settings.done(HOLD_SECONDS + 30), "both ended")
+    expect(waited is not None, "the settings command waited on the send's account lock")
+    expect(send.error is None and settings.error is None, "neither raised")
+    expect(send.result.outcome == "authorized", f"the send authorized ({send.result.outcome})")
+    expect(
+        settings.result.outcome == "applied",
+        f"the settings applied ({settings.result.outcome}: {settings.result.reason})",
+    )
+    ctx.deliver()
+    ctx.notify()
+    return "the settings command waited on the send's account lock; both finished, no deadlock"
+
+
+# -- B2-22. no push twice, and every push's content P06.3's (D22, D25) ---------------------------
+
+
+@case("deliverer.no_push_twice_and_only_p063s_content", "D22", "D25", "D4", "AM4")
+def no_push_twice_and_only_p063s_content(ctx: ChatContext) -> str:
+    """After every other B2 case: the transport accepted each ledger key at most once, and every
+    push it was given carried exactly P06.3's content for its kind, its device named by a reference
+    the token store issued, never a token; no event of a B2 case is left waiting on a backoff."""
+    from glow_persistence.models import OutboxEvent
+
+    ctx.notify()
+    recorded = list(_transport().recorded)
+    expect(len(recorded) >= 10, f"the B2 cases made their pushes ({len(recorded)})")
+    accepted = [push.idempotency_key for push in recorded if push.outcome == "accepted"]
+    expect(len(accepted) == len(set(accepted)), "no ledger key accepted twice")
+    expect(
+        all(push.payload in (CONTENT["match"], CONTENT["message"]) for push in recorded),
+        "every push carried P06.3's content only",
+    )
+    issued = set(token_store().issued)
+    expect(all(push.reference in issued for push in recorded), "each device named by reference")
+    expect(not any(push.reference in ctx.drawn_tokens for push in recorded), "never by its token")
+    expect(
+        not OutboxEvent.objects.filter(
+            schema_version=NOTIFICATIONS_SCHEMA, state__in=("pending", "leased")
+        )
+        .exclude(available_at__lte=_db_now())
+        .exists(),
+        "no notification waits on a backoff",
+    )
+    return f"{len(recorded)} pushes: each key accepted at most once; only P06.3's content"
 
 
 # -- B1-1. F12's routes refuse what is not their DTO (D19; AM6) -----------------------------------

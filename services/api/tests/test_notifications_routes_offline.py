@@ -996,6 +996,40 @@ class StructureTests(unittest.TestCase):
             contract.refusal("refused", n.TOKEN_HANDLE_MISSING), ("state_conflict", False)
         )
 
+    def test_a_failed_re_read_discards_nothing(self) -> None:
+        # SV4 B2 (DM-103, item 4; B1C1R-3; AO2): the one handler around the handle's re-read in
+        # device() answers its error and discards nothing, leaving the handle to the sweep, since
+        # a registration may hold the reference; and the re-read itself discards nothing. The
+        # B1-C1 review's reversal v8 (a failed re-read made to discard), which no case shows,
+        # fails here.
+        tree = parsed(ADAPTER)
+        command = _function(tree, "OrmNotificationPersistence", "device")
+        guarded = [
+            node
+            for node in ast.walk(command)
+            if isinstance(node, ast.Try)
+            and any("self._held_since(" in ast.unparse(statement) for statement in node.body)
+        ]
+        self.assertEqual(len(guarded), 1)
+        handlers = guarded[0].handlers
+        self.assertEqual(len(handlers), 1)
+        self.assertEqual([type(statement).__name__ for statement in handlers[0].body], ["Return"])
+        handled = ast.unparse(handlers[0])
+        self.assertEqual(handled.count("return n.CommandResult('error', type(exc).__name__)"), 1)
+        calls = {
+            ast.unparse(node.func) for node in ast.walk(handlers[0]) if isinstance(node, ast.Call)
+        }
+        self.assertEqual(calls, {"n.CommandResult", "type"})
+        held = _function(tree, "OrmNotificationPersistence", "_held_since")
+        # The called names' last parts (a model named PendingTokenDiscard is not a discard).
+        called = [
+            ast.unparse(node.func).rsplit(".", 1)[-1]
+            for node in ast.walk(held)
+            if isinstance(node, ast.Call)
+        ]
+        self.assertFalse([name for name in called if "discard" in name.lower()], called)
+        self.assertNotIn("self._tokens", ast.unparse(held))
+
     def test_the_outcome_is_known_until_the_body_returns(self) -> None:
         # B1-C1 (DM-102's AN1): _run marks the body's return before the commit, and a failure is
         # known only if it was raised before that mark; a refusal is known.
@@ -1117,7 +1151,8 @@ class StructureTests(unittest.TestCase):
         self.assertNotIn("device_id", text)
         self.assertIn("n.parse_installation(request.META.get(contract.INSTALLATION_HEADER))", text)
         self.assertEqual(contract.INSTALLATION_HEADER, "HTTP_GLOW_INSTALLATION_ID")
-        for path in sorted(PACKAGE.glob("*.py")):
+        # SV4 B2: every module of the package, its management command's included.
+        for path in sorted(PACKAGE.rglob("*.py")):
             source = path.read_text(encoding="utf-8")
             for node in ast.walk(ast.parse(source)):
                 if isinstance(node, ast.Call) and ast.unparse(node.func).startswith("logger."):
@@ -1128,7 +1163,8 @@ class StructureTests(unittest.TestCase):
                             self.assertEqual(ast.unparse(node.args[1]), "reason")
 
     def test_no_module_imports_the_runtime_or_another_slices_routes(self) -> None:
-        for path in sorted(PACKAGE.glob("*.py")):
+        # SV4 B2: every module of the package, its management command's included.
+        for path in sorted(PACKAGE.rglob("*.py")):
             for node in ast.walk(parsed(path)):
                 if isinstance(node, ast.ImportFrom) and node.module:
                     with self.subTest(module=path.name, imported=node.module):

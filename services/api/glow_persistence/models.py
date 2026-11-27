@@ -1103,18 +1103,28 @@ class NotificationLedgerEntry(Record):
 
 class PendingTokenDiscard(Record):
     """A token store reference that still has to be discarded, or may have to be (SV4 B1, migration
-    0014; its brief's D17 and D18; DM-101's AM4; B1-C1, DM-102's AN1): a reference only, never a
-    token. **A new reference's handle:** a register writes the reference the store gave it here,
-    in its own statement before its transaction, and only if no registration and no pending
-    discard already holds it; the transaction that saves the reference on a registration deletes
-    this row, and refuses unless it deletes exactly this one. A command whose outcome is known and
-    did not save the reference (a refusal, a deadlock, a replay, or a failure raised before its
-    transaction's body returned) discards it at once and removes the row; one whose outcome is
-    unknown (a failure at the commit) leaves the row for SV4 B2's sweep (its brief's D24), which
-    takes it only once it is old and no registration holds its reference. **A retired
-    reference:** an old reference a command retires (a rotation, a revocation or a transfer) is
-    kept here in the command's own transaction and removed once the store has discarded it after
-    the commit, so a failed discard waits here for the sweep to retry it."""
+    0014; its brief's D17, D18 and D24; DM-101's AM4; B1-C1, DM-102's AN1; DM-103's AO1 and AO2):
+    a reference only, never a token. **A new reference's handle:** a register writes the reference
+    the store gave it here, in its own statement before its transaction, and only if no
+    registration and no pending discard already holds it, then reads the registrations again; a
+    reference held, by either check, is the store's refusal and is never discarded. The
+    transaction that saves the reference on a registration deletes this row by its key, and
+    refuses unless it deletes exactly this one. Past those checks, a command that did not save the
+    reference discards it at once and removes the row when its outcome is known (a refusal, a
+    deadlock, a replay, or a failure raised before its transaction's body returned); a failed
+    write discards it at once (a row the write left anyway waits for the sweep); a failed re-read,
+    or an unknown outcome (a failure at the commit), leaves the row for SV4 B2's sweep. **A
+    retired reference:** an old reference a command retires (a rotation, a revocation or a
+    transfer), or SV4 B2's ``logout`` or sweep of inert registrations, is kept here in the
+    retiring transaction and removed once the store has discarded it after the commit, so a
+    failed discard waits here for the sweep. **The sweep** (``glow_notifications.sweeps``; D24
+    with AO1) takes a row only once it is older than its bound, in three steps: it deletes the row
+    by its key in its own committed transaction, taking no account, session or registration lock,
+    and stops if no row went; it reads the registrations with no lock, and stops, discarding
+    nothing, if one holds the reference; then it discards it through the store, and writes the row
+    again under a new key if that fails (or if its read of the registrations fails). A process
+    stop between that delete and the store's answer, or a failed read or discard and a failed
+    rewrite, can leave a token in no row."""
 
     token_secret_ref = models.CharField(max_length=255, unique=True)
 

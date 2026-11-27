@@ -27,23 +27,40 @@ it. It carries P06.DB's protocol (its brief, D5), as ``glow_chat``'s adapter doe
   checks (P06.DB 5.4: authorize, then deduplicate). The record is written here, with F12's receipt
   code (``register``, ``rotate``, ``revoke`` or ``settings``), as SV3's interactions write theirs;
   its lifetime is SV2's provisional 24 hours.
-- **Custody** (AM4; B1-C1, DM-102's AN1). The token store's ``put`` runs before the command's
-  transaction, never inside it, so no external call holds a lock. **Its handle comes first:**
-  before the transaction, the new reference's pending discard (``PendingTokenDiscard``) is written
-  in its own statement, and only if no registration and no pending discard already holds that
-  reference; a reference already held is the store's refusal (``token_store_refused``) and is not
-  discarded, and if the write fails the store discards the reference at once and the command
-  answers its error. The transaction that saves the reference on a registration deletes its
-  pending discard, and refuses (``state_conflict``) unless it deletes exactly that one row. A
-  command whose outcome is known and did not save the reference (a refusal, a deadlock, a replay,
-  or a failure raised before the transaction's body returned) discards it at once, as a retired
-  one is; one whose outcome is unknown (a failure after the body returned, at the commit) leaves
-  the handle to SV4 B2's sweep (``_run`` tells the two apart). So every reference the store holds
-  has a registration or a pending discard, except after a process stop, or a failed write and a
-  failed discard, between the ``put`` and the handle. A reference the command retires (a
-  rotation's old one, a revocation's, a transfer's) moves from the registration's row to a pending
-  discard in the command's own transaction; after the commit the store discards it and its pending
-  row is removed, and a failed discard leaves the row waiting for the sweep. A reference is held
+- **Custody** (AM4; B1-C1, DM-102's AN1; DM-103's AO1 and AO2). The token store's ``put`` runs
+  before the command's transaction, never inside it, so no external call holds a lock. **Its
+  handle comes first:** before the transaction, the new reference's pending discard
+  (``PendingTokenDiscard``) is written in its own statement, and only if no registration and no
+  pending discard already holds that reference. With a store that breaks its port, that statement
+  can miss a save of the same reference that commits while it waits, so the registrations are then
+  read again, and if one holds the reference the handle is removed by its key. A reference held,
+  by either check, is the store's refusal (``token_store_refused``) and is never discarded. If the
+  write fails, the store discards the reference at once and the command answers its error (a row
+  the write left anyway waits for SV4 B2's sweep). If the re-read fails, the command answers its
+  error and discards nothing, leaving the handle to the sweep, since a registration may hold the
+  reference. The transaction that saves the reference on a registration deletes its pending
+  discard, and refuses (``state_conflict``) unless it deletes exactly that one row. Past those
+  checks, a command that does not save the reference discards it at once when its transaction's
+  outcome is known (a refusal, a deadlock, a replay, or a failure raised before the transaction's
+  body returned), as a retired one is; when that outcome is unknown (a failure after the body
+  returned, at the commit), it leaves the handle to the sweep (``_run`` tells the two apart). A
+  reference the command retires (a rotation's old one, a revocation's, a transfer's) moves from the
+  registration's row to a pending discard in the command's own transaction; after the commit the
+  store discards it and its pending row is removed, and a failed discard leaves the row waiting for
+  the sweep (``hold_for_discard`` and ``discard_after_commit``, which SV4 B2's ``logout`` and its
+  sweep of inert registrations share). **The sweep** (SV4 B2, ``glow_notifications.sweeps``; D24
+  with AO1) takes a pending discard only once it is older than its bound, in three steps: it
+  deletes the row by its key in its own committed transaction, which takes no account, session or
+  registration lock, and stops if that delete removed no row; it reads the registrations, taking
+  no lock, and stops, discarding nothing, if one holds the reference; then it calls the store, and
+  if the discard fails it writes the row again under a new key, so no command still holding the
+  old key can save that reference. It rests on one rule: every transaction that writes a non-null
+  ``token_secret_ref`` (here ``_register``'s two writes, after ``_consume_handle``) deletes that
+  reference's pending discard by its key, or refuses. So every reference the store holds has a
+  registration or a pending discard, except after a process stop, or a failed write and a failed
+  discard, between the ``put`` and the handle, and except after a process stop between the sweep's
+  delete and the store's answer, or a failed read or discard and a failed rewrite (the sweep
+  answers a failed read of the registrations as a failed discard). A reference is held
   only by an active registration's row, a pending discard's row and (SV4 B2) the push request
   handed to the transport; no read, log line, answer, exception or receipt holds a token or a
   reference.
@@ -225,6 +242,34 @@ def _view(caller: n.Caller) -> n.NotificationSettingsView | None:
     return n.NotificationSettingsView(int(registration[0]), bool(match), bool(message), state)
 
 
+# -- the retire path, which SV4 B2's ``logout`` and its sweep of inert registrations share --------
+
+
+def hold_for_discard(references: Iterable[str]) -> None:
+    """Inside the retiring transaction (a command's, or SV4 B2's ``logout``'s or sweep's): each
+    retired reference moves from its registration's row to a pending discard."""
+    PendingTokenDiscard.objects.bulk_create(
+        [PendingTokenDiscard(token_secret_ref=value) for value in references]
+    )
+
+
+def discard_after_commit(tokens: n.TokenStore | None, references: Iterable[str]) -> None:
+    """After the retiring transaction's commit: each retired reference discarded through the
+    store, and its pending row removed; a failed discard leaves the row waiting for SV4 B2's
+    sweep."""
+    for value in references:
+        try:
+            assert tokens is not None
+            tokens.discard(n.TokenReference(value))
+        except Exception:  # noqa: BLE001 - kept for the sweep, whatever the store raised
+            logger.warning("notification token discard failed; kept for retry")
+            continue
+        try:
+            PendingTokenDiscard.objects.filter(token_secret_ref=value).delete()
+        except Exception:  # noqa: BLE001 - the row waits; a second discard changes nothing
+            logger.warning("notification pending discard not removed: error")
+
+
 class OrmNotificationPersistence:
     """``NotificationPersistence`` over ``glow_persistence``'s models. ``tokens`` is the token store
     the factory hook gives (``glow_notifications.providers``); only the device command needs it."""
@@ -398,17 +443,19 @@ class OrmNotificationPersistence:
     @staticmethod
     def _hold_for_discard(references: Iterable[str]) -> None:
         """Inside the command's transaction: each retired reference moves to a pending discard."""
-        PendingTokenDiscard.objects.bulk_create(
-            [PendingTokenDiscard(token_secret_ref=value) for value in references]
-        )
+        hold_for_discard(references)
 
     @staticmethod
     def _write_handle(reference: n.TokenReference) -> UUID | None:
         """B1-C1 (DM-102's AN1): before the command's transaction, in its own statement, the new
         reference's pending discard, its handle: its ID, or ``None`` when a registration or a
-        pending discard already holds the reference (``HANDLE_WRITE``); raises when the write fails,
-        nothing written. Alone, the statement tells the two apart: no row returned is a reference
-        held, an error a failed write."""
+        pending discard already holds the reference (``HANDLE_WRITE``). It raises when the write
+        fails. An error raised after the server ran the insert (its answer lost) can leave the row:
+        the command's immediate discard (``_discard_unwritten``) makes that safe, since no
+        registration can save a reference whose handle's key the command never used, and SV4 B2's
+        sweep later removes the row and discards again, which changes nothing (AN11). Alone, the
+        statement tells the two apart: no row returned is a reference held, an error a failed
+        write."""
         stamp = timezone.now()
         with connection.cursor() as cursor:
             cursor.execute(HANDLE_WRITE, [uuid4(), stamp, stamp, reference.value, reference.value])
@@ -424,8 +471,10 @@ class OrmNotificationPersistence:
         snapshot, once the handle is written; if one holds the reference now, the handle's row is
         removed by its key and the reference is the store's refusal. A save must delete the
         reference's one pending discard (``_consume_handle``), so no holder can appear after this
-        read. Raises if the read fails; the row is then left for SV4 B2's sweep, which takes none
-        a registration holds (D24)."""
+        read. Raises if the read fails: the command then discards nothing and leaves the row for
+        SV4 B2's sweep, which deletes it first and then, if a registration holds the reference,
+        stops and discards nothing, so the holder keeps its token and its later retire succeeds
+        (D24; DM-103's AO1)."""
         if DeviceRegistration.objects.filter(token_secret_ref=reference.value).exists():
             PendingTokenDiscard.objects.filter(pk=handle).delete()
             return True
@@ -455,17 +504,7 @@ class OrmNotificationPersistence:
     def _discard(self, references: Iterable[str]) -> None:
         """After the commit: each retired reference discarded through the store, and its pending
         row removed; a failed discard leaves the row waiting for SV4 B2's sweep."""
-        for value in references:
-            try:
-                assert self._tokens is not None
-                self._tokens.discard(n.TokenReference(value))
-            except Exception:  # noqa: BLE001 - kept for the sweep, whatever the store raised
-                logger.warning("notification token discard failed; kept for retry")
-                continue
-            try:
-                PendingTokenDiscard.objects.filter(token_secret_ref=value).delete()
-            except Exception:  # noqa: BLE001 - the row waits; a second discard changes nothing
-                logger.warning("notification pending discard not removed: error")
+        discard_after_commit(self._tokens, references)
 
     # -- F12: the owner's read ---------------------------------------------------------------
 
