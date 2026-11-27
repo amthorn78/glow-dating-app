@@ -3100,3 +3100,26 @@ These B2 tests read source text or constants rather than run the behaviour; each
 - **Stale lines outside B2's paths,** for the manager to route: `glow_notifications/providers.py`, line 44 ("SV4 B1 has no caller; SV4 B2's deliverer takes it here": the deliverer is now its caller), a file the prompt keeps unchanged; the brief's D24 custody exception's words (above).
 - **`npm ci` and `pip install` needed the proxy's variables** in the clean environment (above); nothing else was added to any command's environment.
 - **The local database runs are iteration only;** the run of record is CI's.
+
+### Manager verification of B2 (App Manager 13, 27 November 2026)
+
+- **The heads:** `claude/practical-wozniak-vu08z1` at `a9c4f3b` (records; it changes only this record), with the code head `9dbb0c9` on the prompt's commit `68a86c7`, one commit each. Merged into the manager branch at `aa11c83`, whose non-Markdown paths equal `9dbb0c9`. `main`'s trusted classifier (its digest equal to `1310896`'s `scripts/change_scope.py`), outside the checkout with `python3 -I` and full SHAs, gives `"full": true`, reason `behavior-or-empty`, one merge base `1310896`.
+- **The diff** (`git diff 68a86c7 9dbb0c9`): 23 paths, each in B2's owned paths. `glow_chat/` but `delivery.py`, `glow_discovery/` but `interactions.py`, `glow_identity/`, `glow_api/`, `glow_profiles/`, the migrations, `packages/`, `apps/` and `.github/` are unchanged. Read:
+  - **the two writers:** each adds one `OutboxEvent.objects.create` of `glow-notifications-1`, with the recipient as `payload_ref`. The like's is in `interact`, after `activate_reciprocal` applies, for the like's target. The receipt's is in `accepted`, inside the `pending` and reference check, for the match's other member, read from the match's pair with no lock in the receipt's transaction. Both take their constants from `glow_domain/notifications.py`, and neither imports `glow_notifications`;
+  - **`persistence.py`:** besides the docstrings, the code change is an extraction of the retire path into `hold_for_discard` and `discard_after_commit`, which the commands now call. B1's nineteen cases pass on it;
+  - **`logout.py`:** the account row through SV2's `lock_account`, then the registrations `FOR UPDATE` by key in one statement; no session row is locked;
+  - **the imports:** no `glow_notifications` module imports `glow_chat` or `glow_discovery`. `sweeps.py` imports SV1's `glow_identity.revocation.expire_found`, which calls `glow_chat`'s `expire_session` (the session's first judgment);
+  - **the sweep's pending discards:** D24's three steps, with the session's deviation (a failed read writes the row again under a new key; a failed delete leaves the row), in `_pending_discards` and its docstring.
+- **The run of record,** Foundation run 45974990880 (`push`, `9dbb0c9`), read with `gh api`:
+  - all twelve jobs succeeded, and the gate's log has "Application checks passed";
+  - the chat job (09:35:44 to 09:40:34 UTC) has `[chat] cases: 60/60 passed in 211.8 s`, both scans clean (2736 secrets and 1882 member values held, 0 found), `ROW LOCKS (D14): PASS` and `CHAT VERDICT: PASS`;
+  - the API checks job has `Ran 759 tests … OK (skipped=2)`, Ruff clean and mypy `Success: no issues found in 114 source files`, now with `glow_notifications`.
+  - The records head's push run 45976960229 succeeded as ordinary documentation.
+- **Not re-run by the manager:** the session's local checks, its own review and its 48 reversals.
+- **For the exact-head review and Dev Manager 7's pre-merge read** (the brief's review plan, B2's threat model):
+  - **the deviation** extends D24's words, which are DM-103's AO1: what the sweep does after a failed read or a failed delete, and the custody exception that follows ("a failed read or discard and a failed rewrite"). The code, `data-model.md` and `production-contracts.md` carry the new words, and the brief's D24 does not. The brief stays as it is until Dev Manager 7 decides;
+  - **the first judgment,** `expire_found`: `glow_notifications` reaches `glow_chat`'s writer one layer down, through SV1's reviewed entry point;
+  - **the ledger key** (`<event id>:<installation id>`) names the installation to the transport, which D19 and AM7 treat as a capability. It is D22's design point, and a real provider would receive it (P11B);
+  - **the window, the refusal settled as `delivered`, the logout that can dead-letter behind a conflicting pending row, and `deliver_due` draining the whole outbox,** as the session's limits state them;
+  - the reversal caught offline only (v40), and the structure tests' "Substring pins, not semantics".
+- **Routed from the session's limits:** `glow_notifications/providers.py`, line 44 ("SV4 B1 has no caller"), stale since B2, is carried to the next change of that file (the carried-items file). The rest wait on the review and DM-104.

@@ -1,4 +1,4 @@
-# Current handoff — App Manager 13 (27 November 2026; SV4 B1 merged; B2 next)
+# Current handoff — App Manager 13 (27 November 2026; SV4 B2 built; its review next)
 
 This file only routes: the current item, what happens next and who waits on whom. Each fact lives in one home, listed in the [documentation map](../README.md); earlier handoffs are in `docs/continuity/history/`, the last as [P06.2 to its merge](history/p06-2-handoff.md).
 
@@ -19,16 +19,16 @@ This file only routes: the current item, what happens next and who waits on whom
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| Nathan | App Manager 13 | B2's prompt, revision 1 (committed with this handoff), after its start gate (no pull request is open, so no Codex pass applies; AM13-23) | Nothing starts |
+| Nathan | App Manager 13 | B2's exact-head review prompt, after PR61's run and Codex's pass on B2's code head and on the prompt's commit (R39) | Nothing starts |
 
 ## Next actions (App Manager 13)
 
-1. **SV4 Stage A merged:** A0 (PR57, `499ccbb`), A1 (PR58, `43e794a`), A2 with A2-C1 (PR59, `988a36a`). **Now: SV4 Stage B** (the M09 record, section 4.3, item 2), the brief's revision 14 (D16 to D31). **B1 merged** with PR60 at `1310896` (B1 `e7e7e84` and its correction B1-C1 `48f0801`, DM-102's form (b); DM-103's pre-merge read; the SV4 record, "Merge (27 November 2026)"). **Next: B2's prompt, revision 1** ([the prompt](../ephemeral/2026-11-27-sv4-b2-triggers-sweeps-prompt.md); TypeSafe v8.2: Opus 5.5 at extra high): the triggers, the deliverer, `logout`, the sweeps with AO1's rules and G-04's read (D21 to D27), with the carried B2 entries. It goes to Nathan after its start gate. Carried items: "Carried to SV4".
+1. **SV4 Stage A merged:** A0 (PR57, `499ccbb`), A1 (PR58, `43e794a`), A2 with A2-C1 (PR59, `988a36a`). **Now: SV4 Stage B** (the M09 record, section 4.3, item 2), the brief's revision 14 (D16 to D31). **B1 merged** with PR60 at `1310896` (B1 `e7e7e84` and its correction B1-C1 `48f0801`, DM-102's form (b); DM-103's pre-merge read; the SV4 record, "Merge (27 November 2026)"). **B2 built** (code `9dbb0c9`, run 45974990880, the chat suite 60/60), verified and merged into the manager branch at `aa11c83`; PR61 carries it to `main`. **Next:** B2's exact-head review, with its threat model and the session's deviation in D24's sweep; then Dev Manager 7's pre-merge read (DM-104), which also decides D24's words. Carried items: "Carried to SV4".
 2. **Manager records:** PF02 1.9 (AM12-31 to AM12-49, AM13-01 to AM13-23; AM12-49's proposed rule: a prompt names both GitHub routes; DM-98's wording of the false-claim class); the manager workflow's next revision: DM-100's AL9 (the delta review's line count), for the Dev Manager's read; the status log's move (M09 (b)); R-07, R-10, R-26, R-28.
 
 **Carried follow-ups** live in their owning homes: [`carried-to-later-items.md`](../planning/carried-to-later-items.md), the P11 plan, the review log's "Deferred conditions".
 
 ## Branches and PRs (27 November 2026)
 
-- **Open PRs:** none.
-- **Remote branches, three** (27 November, after PR60's merge and the branch cleanup): `main` (`1310896`); the manager branch; `claude/dev-manager` (`2a619de`, merged).
+- **Open PRs:** PR61 (SV4 B2), from the manager branch.
+- **Remote branches, four** (27 November): `main` (`1310896`); the manager branch; B2's `claude/practical-wozniak-vu08z1` (`a9c4f3b`, merged at `aa11c83`; the cleanup deletes it once PR61 merges); `claude/dev-manager` (`2a619de`, merged).
