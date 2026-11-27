@@ -1,4 +1,4 @@
-# Current handoff — App Manager 13 (27 November 2026; SV4 B1-C1's prompt, on DM-102)
+# Current handoff — App Manager 13 (27 November 2026; SV4 B1-C1 verified; its review)
 
 This file only routes: the current item, what happens next and who waits on whom. Each fact lives in one home, listed in the [documentation map](../README.md); earlier handoffs are in `docs/continuity/history/`, the last as [P06.2 to its merge](history/p06-2-handoff.md).
 
@@ -19,16 +19,16 @@ This file only routes: the current item, what happens next and who waits on whom
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| App Manager 13 | Codex on the prompt's commit, then Nathan | Codex's pass (R39), then B1-C1's session and its report | Nothing merges |
+| App Manager 13 | PR60's run and Codex on this batch's commit | Codex's pass (R39), then B1-C1's review prompt to Nathan | Nothing merges |
 
 ## Next actions (App Manager 13)
 
-1. **SV4 Stage A merged:** A0 (PR57, `499ccbb`), A1 (PR58, `43e794a`), A2 with A2-C1 (PR59, `988a36a`). **Now: SV4 Stage B** (the M09 record, section 4.3, item 2), the brief's revision 12 (D16 to D31; DM-101's AM1 to AM16): B1, F12's surface, then B2, the triggers and sweeps. B1 (code head `e7e7e84`) is merged into the manager branch (`4fe1a7f`); PR60 carries it. Its exact-head review requested changes (the SV4 record, "Exact-head review of B1"): B1R-1 (Codex's P2, a reference lost when parking fails), B1R-2 and B1R-3 go to correction B1-C1, in DM-102's form (b) with AN1 to AN11; the brief's revision 13 applies AN1 and AN2. B1-C1's prompt (`docs/ephemeral/2026-11-27-sv4-b1-c1-custody-correction-prompt.md`) is next; AN9 and AN10 at its integration. Then its full exact-head review, Dev Manager 7's pre-merge read, the merge and B2's prompt. Carried items: "Carried to SV4", "Carried to the next change to the Foundation workflow (DM-97)".
-2. **Manager records:** PF02 1.9 (AM12-31 to AM12-49, AM13-01 to AM13-17; AM12-49's proposed rule: a prompt names both GitHub routes; DM-98's wording of the false-claim class); the manager workflow's next revision: DM-100's AL9 (the delta review's line count), for the Dev Manager's read; the status log's move (M09 (b)); R-07, R-10, R-26, R-28.
+1. **SV4 Stage A merged:** A0 (PR57, `499ccbb`), A1 (PR58, `43e794a`), A2 with A2-C1 (PR59, `988a36a`). **Now: SV4 Stage B** (the M09 record, section 4.3, item 2), the brief's revision 12 (D16 to D31; DM-101's AM1 to AM16): B1, F12's surface, then B2, the triggers and sweeps. B1 (code head `e7e7e84`) is merged into the manager branch (`4fe1a7f`); PR60 carries it. Its exact-head review requested changes (the SV4 record, "Exact-head review of B1"): B1R-1 (Codex's P2, a reference lost when parking fails), B1R-2 and B1R-3 go to correction B1-C1, in DM-102's form (b) with AN1 to AN11; the brief's revision 13 applies AN1 and AN2. B1-C1 (code head `48f0801`, run of record 45941121120, the chat suite 37/37) is verified and merged into the manager branch at `4185119`, with AN9 and AN10. Next: its full exact-head review (`docs/ephemeral/2026-11-27-sv4-b1-c1-review-prompt.md`), then Dev Manager 7's pre-merge read, the merge and B2's prompt. Carried items: "Carried to SV4", "Carried to the next change to the Foundation workflow (DM-97)".
+2. **Manager records:** PF02 1.9 (AM12-31 to AM12-49, AM13-01 to AM13-18; AM12-49's proposed rule: a prompt names both GitHub routes; DM-98's wording of the false-claim class); the manager workflow's next revision: DM-100's AL9 (the delta review's line count), for the Dev Manager's read; the status log's move (M09 (b)); R-07, R-10, R-26, R-28.
 
 **Carried follow-ups** live in their owning homes: [`carried-to-later-items.md`](../planning/carried-to-later-items.md), the P11 plan, the review log's "Deferred conditions".
 
 ## Branches and PRs (27 November 2026)
 
 - **Open PRs:** PR60 (SV4 B1), from the manager branch into `main`.
-- **Remote branches, four** (27 November): `main` (`988a36a`); the manager branch; `claude/dev-manager` (`60325b1`, merged); B1's `claude/lucid-fermi-droq7u` (`f106105`, merged at `4fe1a7f`), which the branch cleanup deletes once B1's pull request merges.
+- **Remote branches, five** (27 November): `main` (`988a36a`); the manager branch; `claude/dev-manager` (`f86ccaf`, merged); B1's `claude/lucid-fermi-droq7u` (`f106105`) and B1-C1's `claude/funny-hypatia-lpzbn0` (`1502359`), both merged; the branch cleanup deletes both once PR60 merges.

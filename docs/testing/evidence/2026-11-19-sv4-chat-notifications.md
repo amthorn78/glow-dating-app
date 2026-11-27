@@ -2714,3 +2714,29 @@ Section "B1" keeps B1's words (DM-100's AL4 and AL5), except AN8's mark in its "
 - **The deadlock analysis is by reading** (item 3); no case races a save against B2's sweep, which does not exist yet (B2 builds it, with AN2).
 - **`tests/test_notifications.py` is unchanged:** the fixture's new `reuse_next_put` is pinned in `test_notifications_port.py`.
 - **The local database runs are iteration only;** the run of record is CI's.
+
+### Manager verification of B1-C1 (App Manager 13, 27 November 2026)
+
+- **The heads:** `claude/funny-hypatia-lpzbn0` at `1502359` (records; it changes only this record), with the code head `48f0801` on the prompt's commit `f7a21b9`. Merged into the manager branch at `4185119`, whose non-Markdown paths equal `48f0801`. `main`'s trusted classifier (unchanged since `43e794a`), outside the checkout with `python3 -I` and full SHAs, gives `"full": true`, reason `behavior-or-empty`.
+- **The diff** (`git diff f7a21b9 48f0801`): 13 paths, each in B1-C1's owned paths, every file mode 100644; `views.py`, `providers.py`, the models' fields and constraints, the migration, `chat_suite.py`, `tests/test_notifications.py`, `glow_chat/`, `glow_api/`, the workflow and the CI policy unchanged.
+- **Read in full: `glow_notifications/persistence.py`'s custody paths.**
+  - **`_run`** returns whether its outcome is known: `returned` is set once the body returns, so a failure before it is known and one after it (the `before_commit` hold point and the commit) is unknown.
+  - **The handle:** `HANDLE_WRITE` is one `INSERT … SELECT … WHERE NOT EXISTS (a registration holding the reference) ON CONFLICT (token_secret_ref) DO NOTHING RETURNING id`, run in autocommit after the `put` and before `_run`; no row returned is a reference held (`token_store_refused`, nothing discarded), an error a failed write (`_discard_unwritten`, then the error).
+  - **`_held_since`** reads the registrations again once the handle is written and, if one holds the reference, removes the handle by its key and refuses; it exists because the insert's snapshot can miss a save that commits while the insert waits on the uniqueness.
+  - **`_consume_handle`** deletes the handle by key and reference inside `_register`, after the registrations' locks and after a transfer's holder is revoked, and refuses `token_handle_missing` unless one row went; `REFUSALS` maps it to `state_conflict`, not retryable.
+  - **After `_run`,** a fresh reference not saved is discarded through `_discard` when the outcome is known, and left with its handle when it is not; `_park` is gone.
+- **The run of record,** Foundation run 45941121120 (`push`, `48f0801`, attempt 1), read with `gh api`:
+  - all twelve jobs succeeded, and the gate's log has "Application checks passed";
+  - the chat job's log has `Applying glow_persistence.0014_notification_devices... OK`, `[chat] cases: 37/37 passed in 122.6 s`, both scans clean (2003 secrets held; 1335 member values held; 0 found), `ROW LOCKS (D14): PASS`, `CHAT VERDICT: PASS`, and `dbshell` refused (exit status 1);
+  - the API checks job has `Ran 737 tests … OK (skipped=2)`.
+- **DM-102's words at the head** (`1502359`), by script: AN3 to AN7 and AN11 each found once, their old passages gone; AN8's new passage once (it begins with its old one); B1R-7's new sentence once.
+- **Not re-run by the manager:** the session's local checks and its 14 reversals; the run of record ran the suites in CI.
+- **The session's two judgments:**
+  - **the handle in two statements** implements AN1's condition ("only if no registration and no pending discard already holds that reference") under concurrency, with no change to the design, a model or the lock order; it goes to the exact-head review and the pre-merge read (D-07);
+  - **the four earlier cases' lookup** (by the store's issue order, since a discarded reference resolves to no token) was beyond what the prompt's item 9 allowed, which the prompt's stop rule made a stop. The prompt's "nothing else in those cases changes" could not hold (AM13-18), the change only finds the same reference another way, and the exact-head review reads it.
+- **Routed from the session's limits:**
+  - to SV4 B2 (the carried-items file, B1-C1's entry): the stale lines (the codes bullet's two reasons; the README's line 76), the unused `_references_of`, the sweep's race, a failed re-read's row, and the handle's clock;
+  - recorded here: the `before_commit` edge, a reused reference served retryable, the two extra statements, and section "B1"'s case descriptions, which B1-C1's "What B1-C1 changes in section B1" states.
+- **AN9 and AN10** applied to the carried-items file at this integration, as DM-102 says.
+- **For the exact-head review:** DM-102's section 5 focus, with B1's threat model's custody parts at the new head.
+
