@@ -19,7 +19,7 @@ This file only routes: the current item, what happens next and who waits on whom
 
 | Who waits | On whom | For what | If nothing arrives |
 |---|---|---|---|
-| Nathan | App Manager 13 | B2's exact-head review prompt, after PR61's run and Codex's pass on B2's code head and on the prompt's commit (R39) | Nothing starts |
+| Nathan | App Manager 13 | B2's exact-head review prompt, revision 1 (committed with this handoff), after PR61's run and Codex's pass on that commit (R39); Codex found nothing on `674a6bf` | Nothing starts |
 
 ## Next actions (App Manager 13)
 
