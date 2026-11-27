@@ -2831,7 +2831,7 @@ Section "B1" keeps B1's words (DM-100's AL4 and AL5), except AN8's mark in its "
   - Codex's two threads (4713760650 and 4715163584) were resolved before the merge, as DM-103 agreed;
   - PR60's checklist was filled.
 - **The code merged is the code reviewed:** `git diff --name-only 48f0801 14bde0f -- . ':!*.md'` lists nothing. **`main`'s tree** at `1310896` equals `14bde0f`'s.
-- **`main`'s push run** 45954918003 (`push`, `1310896`) was in progress when this receipt was committed; its result is recorded in the next batch.
+- **`main`'s push run** 45954918003 (`push`, `1310896`): all twelve jobs succeeded, recorded in the batch after this receipt. Database proof checks (chat) passed 37/37 in 117.2 s, with `ROW LOCKS (D14): PASS` and `CHAT VERDICT: PASS`; the gate printed "Application checks passed" (07:02 UTC).
 - **The branch cleanup,** run 45954917951 (`push`, `1310896`): success.
   - Deleted, each merged into `main`: `claude/lucid-fermi-droq7u` (`f106105`, B1) and `claude/funny-hypatia-lpzbn0` (`1502359`, B1-C1).
   - Kept, on the keep-list: `main` (`1310896`), the manager branch (`14bde0f`) and `claude/dev-manager` (`2a619de`).
